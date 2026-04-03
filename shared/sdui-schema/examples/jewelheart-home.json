@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "minAppVersion": "2.0.0",
+  "screen": {
+    "id": "jewelheart.home",
+    "title": "JewelHeart",
+    "components": [
+      {
+        "type": "container",
+        "layout": "column",
+        "spacing": 12,
+        "style": { "padding": { "all": 16 } },
+        "children": [
+          {
+            "type": "text",
+            "content": "JewelHeart Admin",
+            "textStyle": { "fontSize": 22, "fontWeight": "bold" }
+          },
+          {
+            "type": "button",
+            "label": "Retreats",
+            "icon": "list.bullet",
+            "action": { "type": "navigate", "target": "retreat.list" }
+          }
+        ]
+      }
+    ]
+  }
+}

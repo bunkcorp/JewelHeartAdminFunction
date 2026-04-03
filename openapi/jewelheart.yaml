@@ -1372,15 +1372,19 @@ components:
 
     SduiScreenResponse:
       type: object
-      required: [version, screen]
+      required: [schemaVersion, screen]
+      description: Matches KarmaDots SDUI wire format (see shared/sdui-schema in buddhist-stone-ios-app).
       properties:
-        version:
+        schemaVersion:
           type: integer
           example: 1
+        minAppVersion:
+          type: string
+          example: "2.0.0"
         screen:
           type: object
           additionalProperties: true
-          description: Opaque SDUI document (lists, forms, actions). Align with KarmaDots client renderer.
+          description: Screen id, title, optional metadata, components tree (container, text, button, …).
 
     SduiActionRequest:
       type: object
@@ -1404,6 +1408,7 @@ components:
           type: string
         nextScreen:
           $ref: "#/components/schemas/SduiScreenResponse"
+          description: Full SDUI envelope after mutation (e.g. navigate to new retreat).
         refreshScreenId:
           type: string
 
