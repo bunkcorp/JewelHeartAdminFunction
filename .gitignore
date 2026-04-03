@@ -1,5 +1,8 @@
 .DS_Store
 
+# Firebase iOS — never commit (GitHub secret scanning; keys belong per-app from Console)
+clients/ios/GoogleService-Info.plist
+
 # Xcode (user-specific)
 **/xcuserdata/
 **/*.xcuserstate

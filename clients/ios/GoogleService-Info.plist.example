@@ -3,23 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne.apps.googleusercontent.com</string>
+	<string>YOUR_IOS_CLIENT_ID.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne</string>
+	<string>com.googleusercontent.apps.YOUR_IOS_CLIENT_ID</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>120549448949-ffh3khlk0087hsi6ehp5baesr7cmon7h.apps.googleusercontent.com</string>
+	<string>YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyCrF56oiDnJFexCp5Sgz9QBnl3bd3xbzyk</string>
+	<string>YOUR_WEB_API_KEY_FROM_FIREBASE_CONSOLE</string>
 	<key>GCM_SENDER_ID</key>
-	<string>120549448949</string>
+	<string>YOUR_GCM_SENDER_ID</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>org.jewelheart.admin</string>
 	<key>PROJECT_ID</key>
-	<string>gettingstoned-4aee3</string>
+	<string>your-firebase-project-id</string>
 	<key>STORAGE_BUCKET</key>
-	<string>gettingstoned-4aee3.firebasestorage.app</string>
+	<string>your-firebase-project-id.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true/>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:120549448949:ios:189513e804833eed5db9bc</string>
+	<string>1:YOUR_NUMERIC_APP_ID:ios:YOUR_SUFFIX</string>
 </dict>
 </plist>

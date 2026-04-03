@@ -99,8 +99,7 @@ struct SDUIComponentView: View {
     }
 
     private var spacerBody: some View {
-        let h = component.style?.height?.value ?? 12
-        Color.clear.frame(height: CGFloat(h))
+        Color.clear.frame(height: CGFloat(component.style?.height?.value ?? 12))
     }
 
     private var cardBody: some View {

@@ -16,9 +16,11 @@ The repo includes a generated Xcode project under **`clients/ios/`** (Firebase v
    `cd clients/ios && xcodegen generate`
 2. Open **`clients/ios/JewelHeartAdmin.xcodeproj`** in Xcode.
 3. Let Xcode **resolve packages** (File → Packages → Resolve Package Versions). If resolution fails with *“already exists in file system”*, reset caches: **File → Packages → Reset Package Caches**, or remove stale dirs under `~/Library/Caches/org.swift.swiftpm/artifacts/`.
-4. **`GoogleService-Info.plist`** is in **`clients/ios/`** and wired into the target (copied from the KarmaDots Firebase project with **`BUNDLE_ID`** `org.jewelheart.admin`). After you register **`org.jewelheart.admin`** in Firebase Console, download the official plist and replace this file so **`GOOGLE_APP_ID`** matches the new app.
+4. **Firebase config (not in git):** Copy **`clients/ios/GoogleService-Info.plist.example`** → **`clients/ios/GoogleService-Info.plist`**, then replace every placeholder with values from Firebase Console (Project settings → Your apps → iOS `org.jewelheart.admin`, or download **GoogleService-Info.plist** and drop it in **`clients/ios/`**). The Xcode target already includes that filename in **Copy Bundle Resources**.
 5. Set **Signing & Capabilities** for your team.
 6. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
+
+**GitHub / leaked plist:** If a real plist was ever pushed, GitHub flags the **API_KEY**. After removing it from the repo, **purge it from git history** (e.g. [`git filter-repo`](https://github.com/newren/git-filter-repo)) or GitHub’s guidance for exposed secrets, then **restrict or rotate** the key in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (API key restrictions; Firebase may issue a new plist if you regenerate).
 
 ## Android
 
