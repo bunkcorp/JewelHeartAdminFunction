@@ -50,11 +50,21 @@ actor JewelHeartAPI {
         }
     }
 
-    /// Resolve the ID token on the main actor (Firebase Auth is main-thread-friendly; reduces SDK concurrency warnings).
+    /// Resolve the ID token on the main actor (avoids Firebase Auth off-main-thread edge cases).
     private func firebaseIDToken() async throws -> String {
-        try await MainActor.run {
-            guard let user = Auth.auth().currentUser else { throw JewelHeartAPIError.noToken }
-            return try await user.getIDToken()
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+            Task { @MainActor in
+                do {
+                    guard let user = Auth.auth().currentUser else {
+                        cont.resume(throwing: JewelHeartAPIError.noToken)
+                        return
+                    }
+                    let token = try await user.getIDToken()
+                    cont.resume(returning: token)
+                } catch {
+                    cont.resume(throwing: error)
+                }
+            }
         }
     }
 

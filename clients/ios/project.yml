@@ -21,6 +21,9 @@ targets:
         buildPhase: resources
     settings:
       base:
+        # Same Apple team as KarmaDots (Xcode → Signing if you need a different team)
+        DEVELOPMENT_TEAM: 7YLNYUAHS3
+        CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: org.jewelheart.admin
         PRODUCT_NAME: JewelHeartAdmin
         TARGETED_DEVICE_FAMILY: "1,2"
