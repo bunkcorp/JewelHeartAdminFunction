@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,6 +14,7 @@
 		758BFD16A2D671BF640B9CBF /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B0F11341987EB2FB8D8B7C6 /* FirebaseAuth */; };
 		7C256388C03D1D9C0E09ED8F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F89A5301AC11B1F2C0BB34A9 /* FirebaseCore */; };
 		84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA254DD62D9077915714E370 /* SDUIRenderer.swift */; };
+		89526927E3592D052E29DDDD /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5FE2C87396BD4169305A414D /* GoogleService-Info.plist */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
 /* End PBXBuildFile section */
 
@@ -21,7 +22,8 @@
 		04D1E1F2F366079542D83BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartConfig.swift; sourceTree = "<group>"; };
 		24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAPI.swift; sourceTree = "<group>"; };
-		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FE2C87396BD4169305A414D /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7D032E827A7E776FB693FD8C /* SDUIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIModels.swift; sourceTree = "<group>"; };
 		BEDB020DEB082BAE7EC2C12F /* JewelHeartApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartApp.swift; sourceTree = "<group>"; };
 		DA254DD62D9077915714E370 /* SDUIRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIRenderer.swift; sourceTree = "<group>"; };
@@ -51,6 +53,7 @@
 		BFA73F216BC6B8876E47112E = {
 			isa = PBXGroup;
 			children = (
+				5FE2C87396BD4169305A414D /* GoogleService-Info.plist */,
 				FEC02E32128A49CDAD315EBA /* Sources */,
 				71708C6DD9506FEDB6438458 /* Products */,
 			);
@@ -77,6 +80,7 @@
 			buildConfigurationList = 9BA18E3C8031629D2E2E75C2 /* Build configuration list for PBXNativeTarget "JewelHeartAdmin" */;
 			buildPhases = (
 				9D63D1B787D25374516C62B0 /* Sources */,
+				0674BB6BC45B3C66DBC05C07 /* Resources */,
 				E6FC2C105C88F31209B42FF0 /* Frameworks */,
 			);
 			buildRules = (
@@ -114,7 +118,6 @@
 			packageReferences = (
 				9D174E4566C467CC12A6D10C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -122,6 +125,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0674BB6BC45B3C66DBC05C07 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89526927E3592D052E29DDDD /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9D63D1B787D25374516C62B0 /* Sources */ = {
@@ -146,6 +160,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";
@@ -171,6 +186,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";

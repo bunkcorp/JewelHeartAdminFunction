@@ -16,7 +16,7 @@ The repo includes a generated Xcode project under **`clients/ios/`** (Firebase v
    `cd clients/ios && xcodegen generate`
 2. Open **`clients/ios/JewelHeartAdmin.xcodeproj`** in Xcode.
 3. Let Xcode **resolve packages** (File → Packages → Resolve Package Versions). If resolution fails with *“already exists in file system”*, reset caches: **File → Packages → Reset Package Caches**, or remove stale dirs under `~/Library/Caches/org.swift.swiftpm/artifacts/`.
-4. Add **`GoogleService-Info.plist`** to the **JewelHeartAdmin** target (Firebase Console → iOS app with bundle ID **`org.jewelheart.admin`**, same Firebase project as KarmaDots is fine).
+4. **`GoogleService-Info.plist`** is in **`clients/ios/`** and wired into the target (copied from the KarmaDots Firebase project with **`BUNDLE_ID`** `org.jewelheart.admin`). After you register **`org.jewelheart.admin`** in Firebase Console, download the official plist and replace this file so **`GOOGLE_APP_ID`** matches the new app.
 5. Set **Signing & Capabilities** for your team.
 6. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
 

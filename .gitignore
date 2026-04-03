@@ -1,3 +1,5 @@
+.DS_Store
+
 # Xcode (user-specific)
 **/xcuserdata/
 **/*.xcuserstate
@@ -5,6 +7,3 @@
 
 # SwiftPM / Xcode (optional local resolution; commit Package.resolved when present for reproducible builds)
 .swiftpm/configuration/
-
-# Firebase (add via Xcode; do not commit real secrets)
-clients/ios/GoogleService-Info.plist
