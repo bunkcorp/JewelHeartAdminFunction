@@ -1,11 +1,8 @@
 import SwiftUI
-import FirebaseCore
 
 @main
 struct JewelHeartAdminApp: App {
-    init() {
-        FirebaseApp.configure()
-    }
+    @UIApplicationDelegateAdaptor(JewelHeartAppDelegate.self) private var appDelegate
 
     var body: some Scene {
         WindowGroup {
