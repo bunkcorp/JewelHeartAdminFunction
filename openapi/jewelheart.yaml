@@ -1,0 +1,1411 @@
+openapi: 3.0.3
+info:
+  title: JewelHeart Admin API
+  description: |
+    Retreat volunteer scheduling API for JewelHeart mobile apps (iOS/Android).
+    Hosted on the same Cloudflare tunnel as KarmaDots: **https://api.karmadots.org**.
+
+    All endpoints except `/jewelheart/health` require a **Firebase ID token** (same as KarmaDots private-server):
+    `Authorization: Bearer <firebase_id_token>`.
+
+    **ACL:** The server must verify the token and enforce JewelHeart admin / per-retreat access (implementation detail; not expressed in this contract).
+  version: 0.1.0
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.karmadots.org
+    description: Production (Cloudflare tunnel → private-server)
+
+tags:
+  - name: Meta
+  - name: Retreats
+  - name: Jobs
+  - name: Slots
+  - name: Tasks
+  - name: Volunteers
+  - name: Assignments
+  - name: Schedule
+  - name: Reports
+  - name: SDUI
+
+paths:
+  /jewelheart/health:
+    get:
+      tags: [Meta]
+      summary: Liveness probe (no auth)
+      operationId: jewelheartHealth
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /jewelheart/retreats:
+    get:
+      tags: [Retreats]
+      summary: List retreats the caller may access
+      operationId: listRetreats
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated retreats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetreatListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Retreats]
+      summary: Create retreat
+      operationId: createRetreat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetreatCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retreat"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Retreats]
+      summary: Get retreat
+      operationId: getRetreat
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retreat"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Retreats]
+      summary: Update retreat
+      operationId: updateRetreat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetreatPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Retreat"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Retreats]
+      summary: Delete retreat (cascade jobs, slots, tasks, links)
+      operationId: deleteRetreat
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/jobs:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Jobs]
+      summary: List jobs for retreat
+      operationId: listJobs
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Jobs]
+      summary: Create job (optional subjobs)
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/jobs/{jobId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/JobId"
+    get:
+      tags: [Jobs]
+      summary: Get job
+      operationId: getJob
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Jobs]
+      summary: Update job and replace subjobs if `subjobs` present
+      operationId: updateJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Jobs]
+      summary: Delete job
+      operationId: deleteJob
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/slots:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Slots]
+      summary: List slots (optional filter by date)
+      operationId: listSlots
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Slots]
+      summary: Create slot
+      operationId: createSlot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/slots/{slotId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/SlotId"
+    get:
+      tags: [Slots]
+      summary: Get slot
+      operationId: getSlot
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Slots]
+      summary: Update slot
+      operationId: updateSlot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Slots]
+      summary: Delete slot
+      operationId: deleteSlot
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/tasks:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Tasks]
+      summary: List tasks for retreat
+      operationId: listTasks
+      parameters:
+        - name: slotId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: unassignedOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: underassignedOnly
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Tasks]
+      summary: Create task (job × slot)
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "409":
+          description: Duplicate job+slot for retreat
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/tasks/{taskId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [Tasks]
+      summary: Get task
+      operationId: getTask
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Tasks]
+      summary: Update notes or move to another slot (`slotId`)
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Target slot would duplicate job+slot
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Tasks]
+      summary: Delete task
+      operationId: deleteTask
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/tasks/{taskId}/duplicate:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Tasks]
+      summary: Duplicate task; set `slotId` for the new copy
+      operationId: duplicateTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                slotId:
+                  type: string
+                  format: uuid
+              required: [slotId]
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Duplicate job+slot
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/volunteers:
+    get:
+      tags: [Volunteers]
+      summary: Search global volunteer directory
+      operationId: searchVolunteers
+      parameters:
+        - name: q
+          in: query
+          description: Search name or email (implementation-defined)
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VolunteerListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Volunteers]
+      summary: Create volunteer (global)
+      operationId: createVolunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VolunteerCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/volunteers/{volunteerId}:
+    parameters:
+      - $ref: "#/components/parameters/VolunteerId"
+    get:
+      tags: [Volunteers]
+      summary: Get volunteer
+      operationId: getVolunteer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Volunteers]
+      summary: Update volunteer
+      operationId: updateVolunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VolunteerPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Volunteers]
+      summary: Delete volunteer (fails if assignments exist unless force — server policy)
+      operationId: deleteVolunteer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Still assigned to tasks
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/volunteers:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Volunteers]
+      summary: List volunteers linked to this retreat
+      operationId: listRetreatVolunteers
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetreatVolunteerListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Volunteers]
+      summary: Link existing volunteer to retreat
+      operationId: linkRetreatVolunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [volunteerId]
+              properties:
+                volunteerId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetreatVolunteer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Already linked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/volunteers/import:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    post:
+      tags: [Volunteers]
+      summary: Import volunteers from CSV (creates global rows + retreat links)
+      operationId: importRetreatVolunteersCsv
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: |
+                    CSV columns (header row): display_name, email, phone, other_duties
+                    (email used for upsert match when present).
+      responses:
+        "200":
+          description: Import summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VolunteerImportResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/volunteers/{volunteerId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/VolunteerId"
+    delete:
+      tags: [Volunteers]
+      summary: Remove volunteer from retreat (does not delete global volunteer)
+      operationId: unlinkRetreatVolunteer
+      responses:
+        "204":
+          description: Unlinked
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/tasks/{taskId}/assignments:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Assignments]
+      summary: Assign volunteer to task (must be linked to retreat; capacity enforced)
+      operationId: createAssignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignmentCreate"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Over capacity or duplicate assignment
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/assignments/{assignmentId}:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+      - $ref: "#/components/parameters/AssignmentId"
+    delete:
+      tags: [Assignments]
+      summary: Remove assignment
+      operationId: deleteAssignment
+      responses:
+        "204":
+          description: Removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/schedule:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Schedule]
+      summary: Schedule for one calendar day (tasks with slot, job, assignments)
+      operationId: getScheduleByDay
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleDayResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/reports/poster:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Reports]
+      summary: One-day lobby poster (PDF)
+      operationId: getPosterPdf
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/retreats/{retreatId}/reports/daily:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Reports]
+      summary: Daily signup / assignments report
+      operationId: getDailyReport
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [pdf, csv]
+            default: pdf
+      responses:
+        "200":
+          description: PDF or CSV
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/sdui/screen:
+    post:
+      tags: [SDUI]
+      summary: Fetch a versioned screen document for server-driven UI
+      operationId: postSduiScreen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SduiScreenRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SduiScreenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /jewelheart/sdui/action:
+    post:
+      tags: [SDUI]
+      summary: Optional dispatcher for SDUI actions (navigate, submit, refresh)
+      operationId: postSduiAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SduiActionRequest"
+      responses:
+        "200":
+          description: Action result (e.g. next screen or toast)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SduiActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    FirebaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Auth ID token
+
+  parameters:
+    RetreatId:
+      name: retreatId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SlotId:
+      name: slotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    VolunteerId:
+      name: volunteerId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid Firebase token
+    NotFound:
+      description: Resource not found
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [ok, service]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        service:
+          type: string
+          example: jewelheart
+
+    TimeBand:
+      type: string
+      enum: [early, lunchtime, dinnertime, allday, anytime]
+
+    RetreatStatus:
+      type: string
+      enum: [draft, published, archived]
+
+    Retreat:
+      type: object
+      required: [id, name, timezone, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        timezone:
+          type: string
+          description: IANA tz, e.g. America/New_York
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: "#/components/schemas/RetreatStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RetreatCreate:
+      type: object
+      required: [name, timezone]
+      properties:
+        name:
+          type: string
+        timezone:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/RetreatStatus"
+
+    RetreatPatch:
+      type: object
+      properties:
+        name:
+          type: string
+        timezone:
+          type: string
+        startDate:
+          type: string
+          format: date
+          nullable: true
+        endDate:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: "#/components/schemas/RetreatStatus"
+
+    RetreatListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Retreat"
+        nextCursor:
+          type: string
+          nullable: true
+
+    Job:
+      type: object
+      required:
+        [id, retreatId, title, volunteersNeeded, estimatedMinutes, subjobs, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        retreatId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        volunteersNeeded:
+          type: integer
+          minimum: 1
+        estimatedMinutes:
+          type: integer
+          minimum: 0
+        subjobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subjob"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Subjob:
+      type: object
+      required: [sortOrder, text]
+      properties:
+        sortOrder:
+          type: integer
+          minimum: 0
+        text:
+          type: string
+
+    JobCreate:
+      type: object
+      required: [title, volunteersNeeded, estimatedMinutes]
+      properties:
+        title:
+          type: string
+        volunteersNeeded:
+          type: integer
+          minimum: 1
+        estimatedMinutes:
+          type: integer
+          minimum: 0
+        subjobs:
+          type: array
+          items:
+            type: string
+          description: Plain lines; server assigns sortOrder
+
+    JobPatch:
+      type: object
+      properties:
+        title:
+          type: string
+        volunteersNeeded:
+          type: integer
+          minimum: 1
+        estimatedMinutes:
+          type: integer
+          minimum: 0
+        subjobs:
+          type: array
+          items:
+            type: string
+          description: If present, replaces all subjobs
+
+    JobListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+
+    Slot:
+      type: object
+      required:
+        - id
+        - retreatId
+        - label
+        - slotDate
+        - timeBand
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        retreatId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        slotDate:
+          type: string
+          format: date
+        dayOfWeek:
+          type: string
+          description: Denormalized label e.g. Wednesday
+          nullable: true
+        activityContext:
+          type: string
+          nullable: true
+        timeBand:
+          $ref: "#/components/schemas/TimeBand"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SlotCreate:
+      type: object
+      required: [label, slotDate, timeBand]
+      properties:
+        label:
+          type: string
+        slotDate:
+          type: string
+          format: date
+        dayOfWeek:
+          type: string
+        activityContext:
+          type: string
+        timeBand:
+          $ref: "#/components/schemas/TimeBand"
+
+    SlotPatch:
+      type: object
+      properties:
+        label:
+          type: string
+        slotDate:
+          type: string
+          format: date
+        dayOfWeek:
+          type: string
+          nullable: true
+        activityContext:
+          type: string
+          nullable: true
+        timeBand:
+          $ref: "#/components/schemas/TimeBand"
+
+    SlotListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Slot"
+
+    Task:
+      type: object
+      required: [id, retreatId, jobId, slotId, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        retreatId:
+          type: string
+          format: uuid
+        jobId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          nullable: true
+        assignmentCount:
+          type: integer
+          description: Present on list responses
+        volunteersNeeded:
+          type: integer
+          description: From job; denormalized on list for underassigned filter
+        isUnderassigned:
+          type: boolean
+          description: assignmentCount < volunteersNeeded
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskCreate:
+      type: object
+      required: [jobId, slotId]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+
+    TaskPatch:
+      type: object
+      properties:
+        slotId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          nullable: true
+
+    TaskDetail:
+      allOf:
+        - $ref: "#/components/schemas/Task"
+        - type: object
+          properties:
+            job:
+              $ref: "#/components/schemas/Job"
+            slot:
+              $ref: "#/components/schemas/Slot"
+            assignments:
+              type: array
+              items:
+                $ref: "#/components/schemas/Assignment"
+
+    TaskListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+
+    Volunteer:
+      type: object
+      required: [id, displayName, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        otherDuties:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VolunteerCreate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        otherDuties:
+          type: string
+
+    VolunteerPatch:
+      type: object
+      properties:
+        displayName:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        otherDuties:
+          type: string
+          nullable: true
+
+    VolunteerListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Volunteer"
+
+    RetreatVolunteer:
+      type: object
+      required: [retreatId, volunteerId, volunteer, linkedAt]
+      properties:
+        retreatId:
+          type: string
+          format: uuid
+        volunteerId:
+          type: string
+          format: uuid
+        volunteer:
+          $ref: "#/components/schemas/Volunteer"
+        linkedAt:
+          type: string
+          format: date-time
+
+    RetreatVolunteerListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetreatVolunteer"
+
+    VolunteerImportResult:
+      type: object
+      required: [created, updated, linked, errors]
+      properties:
+        created:
+          type: integer
+        updated:
+          type: integer
+        linked:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              message:
+                type: string
+
+    Assignment:
+      type: object
+      required: [id, taskId, volunteerId, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        volunteerId:
+          type: string
+          format: uuid
+        volunteer:
+          $ref: "#/components/schemas/Volunteer"
+          description: Optional embed
+
+    AssignmentCreate:
+      type: object
+      required: [volunteerId]
+      properties:
+        volunteerId:
+          type: string
+          format: uuid
+
+    ScheduleDayResponse:
+      type: object
+      required: [date, items]
+      properties:
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            type: object
+            required: [task, slot, job]
+            properties:
+              task:
+                $ref: "#/components/schemas/Task"
+              slot:
+                $ref: "#/components/schemas/Slot"
+              job:
+                $ref: "#/components/schemas/Job"
+              assignments:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignment"
+
+    SduiScreenRequest:
+      type: object
+      required: [screenId]
+      properties:
+        screenId:
+          type: string
+          example: schedule.board
+        retreatId:
+          type: string
+          format: uuid
+        params:
+          type: object
+          additionalProperties: true
+
+    SduiScreenResponse:
+      type: object
+      required: [version, screen]
+      properties:
+        version:
+          type: integer
+          example: 1
+        screen:
+          type: object
+          additionalProperties: true
+          description: Opaque SDUI document (lists, forms, actions). Align with KarmaDots client renderer.
+
+    SduiActionRequest:
+      type: object
+      required: [actionId]
+      properties:
+        actionId:
+          type: string
+        retreatId:
+          type: string
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+
+    SduiActionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        nextScreen:
+          $ref: "#/components/schemas/SduiScreenResponse"
+        refreshScreenId:
+          type: string
+
+security:
+  - FirebaseBearer: []

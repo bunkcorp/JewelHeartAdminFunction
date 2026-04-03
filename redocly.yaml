@@ -1,0 +1,9 @@
+# Redocly CLI: OpenAPI is valid without per-response descriptions (3.0.3).
+extends:
+  - recommended
+
+rules:
+  struct: off
+  tag-description: off
+  operation-4xx-response: off
+  info-license-strict: off
