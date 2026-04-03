@@ -10,12 +10,15 @@ Minimal **iOS (SwiftUI)** and **Android (Compose)** shells that talk to the same
 
 ## iOS
 
-1. Xcode → **App** → Product Name **JewelHeartAdmin**, Interface **SwiftUI**.
-2. Add Swift Package: **Firebase** (Auth; optionally Analytics).
-3. Add `GoogleService-Info.plist` from your Firebase project (same project as KarmaDots is fine; add an iOS app with your new bundle ID).
-4. Drag all files from **`clients/ios/Sources/`** into the app target.
-5. Set **Signing** and a unique **Bundle ID** (e.g. `org.jewelheart.admin`).
-6. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different tunnel host.
+The repo includes a generated Xcode project under **`clients/ios/`** (Firebase via SPM: **FirebaseAuth** + **FirebaseCore**). There is a single `@main` entry point: **`JewelHeartAdminApp`** in `Sources/JewelHeartApp.swift` — do not add a second SwiftUI App template with `@main`.
+
+1. Install [XcodeGen](https://github.com/yonaskolb/XcodeGen) if you change `project.yml`:  
+   `cd clients/ios && xcodegen generate`
+2. Open **`clients/ios/JewelHeartAdmin.xcodeproj`** in Xcode.
+3. Let Xcode **resolve packages** (File → Packages → Resolve Package Versions). If resolution fails with *“already exists in file system”*, reset caches: **File → Packages → Reset Package Caches**, or remove stale dirs under `~/Library/Caches/org.swift.swiftpm/artifacts/`.
+4. Add **`GoogleService-Info.plist`** to the **JewelHeartAdmin** target (Firebase Console → iOS app with bundle ID **`org.jewelheart.admin`**, same Firebase project as KarmaDots is fine).
+5. Set **Signing & Capabilities** for your team.
+6. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
 
 ## Android
 
@@ -24,6 +27,18 @@ Minimal **iOS (SwiftUI)** and **Android (Compose)** shells that talk to the same
 3. Add **`jewelheart-admin/google-services.json`**: in Firebase Console create an Android app with package **`org.jewelheart.admin`**, download config, or merge a second client into your existing JSON.
 4. Sync Gradle; build **`:jewelheart-admin`**.
 
+## Production private-server sync
+
+From a machine that can SSH to the host:
+
+```bash
+export JEWELHEART_DEPLOY_SSH="you@your-server"
+export JEWELHEART_PRIVATE_SERVER_SRC="$HOME/path/to/buddhist-stone-ios-app/private-server"
+./scripts/rsync-private-server-to-prod.sh
+```
+
+Then on the server: `cd ~/private-server && npm ci` and restart your process (pm2/systemd/etc.).
+
 ## ACL reminder
 
-After sign-in, create a retreat (REST or SDUI action `mutations.createRetreat`) or insert a row in `jewelheart_admins` for your Firebase UID so `/jewelheart/*` returns data.
+After sign-in, create a retreat (REST or SDUI action `mutations.createRetreat`) or run `scripts/sql/insert-jewelheart-admin-global.sql` (edit UID) so `/jewelheart/*` returns data for global admins.
