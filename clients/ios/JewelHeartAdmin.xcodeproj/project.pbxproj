@@ -16,11 +16,13 @@
 		7C256388C03D1D9C0E09ED8F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F89A5301AC11B1F2C0BB34A9 /* FirebaseCore */; };
 		84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA254DD62D9077915714E370 /* SDUIRenderer.swift */; };
 		89526927E3592D052E29DDDD /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5FE2C87396BD4169305A414D /* GoogleService-Info.plist */; };
+		B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		04D1E1F2F366079542D83BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartSceneDelegate.swift; sourceTree = "<group>"; };
 		17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartConfig.swift; sourceTree = "<group>"; };
 		24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAPI.swift; sourceTree = "<group>"; };
 		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -68,6 +70,7 @@
 				80A884B38D25B77F9522043C /* JewelHeartAppDelegate.swift */,
 				17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */,
 				74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */,
+				12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */,
 				04D1E1F2F366079542D83BAA /* RootView.swift */,
 				7D032E827A7E776FB693FD8C /* SDUIModels.swift */,
 				DA254DD62D9077915714E370 /* SDUIRenderer.swift */,
@@ -156,6 +159,7 @@
 				7BABC1A1F952325D6886956C /* JewelHeartAppDelegate.swift in Sources */,
 				0FD978D3B0907FDEFEA4B205 /* JewelHeartConfig.swift in Sources */,
 				01516A825BCC4BCE4E664F07 /* JewelHeartLog.swift in Sources */,
+				B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */,
 				03EB4846FC78F2657859B3C3 /* RootView.swift in Sources */,
 				56AC20D06B3A62DB3CCF37D8 /* SDUIModels.swift in Sources */,
 				84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */,
@@ -176,8 +180,9 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISceneDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -204,8 +209,9 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISceneDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

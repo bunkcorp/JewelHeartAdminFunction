@@ -33,8 +33,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: JewelHeart Admin
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        # Single-window UIKit lifecycle (AppDelegate sets `window`); avoids SceneDelegate without a scene class.
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "0.1.0"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
