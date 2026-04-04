@@ -1,30 +1,27 @@
 import UIKit
+import SwiftUI
 import FirebaseCore
 
-/// Registered with ObjC runtime for Firebase; `@MainActor` matches `UIApplicationDelegate` in current SDKs.
+/// UIKit app entry (`@main`) so `UIApplication.shared.delegate` is a real `UIApplicationDelegate`.
+/// This matches what Firebase/GoogleUtilities expect and removes SwiftUI-adaptor delegate warnings.
 @objc(JewelHeartAppDelegate)
-@MainActor
-final class JewelHeartAppDelegate: NSObject, UIApplicationDelegate {
+@main
+final class JewelHeartAppDelegate: UIResponder, UIApplicationDelegate {
+
+    var window: UIWindow?
 
     func application(
         _ application: UIApplication,
-        willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        configureFirebaseIfNeeded()
-        return true
-    }
-
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Bool {
-        configureFirebaseIfNeeded()
-        return true
-    }
-
-    private func configureFirebaseIfNeeded() {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = UIHostingController(rootView: AuthGate())
+        self.window = window
+        window.makeKeyAndVisible()
+        return true
     }
 }

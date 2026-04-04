@@ -10,7 +10,7 @@ Minimal **iOS (SwiftUI)** and **Android (Compose)** shells that talk to the same
 
 ## iOS
 
-The repo includes a generated Xcode project under **`clients/ios/`** (Firebase via SPM: **FirebaseAuth** + **FirebaseCore**). There is a single `@main` entry point: **`JewelHeartAdminApp`** in `Sources/JewelHeartApp.swift` — do not add a second SwiftUI App template with `@main`.
+The repo includes a generated Xcode project under **`clients/ios/`** (Firebase via SPM: **FirebaseAuth** + **FirebaseCore**). The **`@main`** entry point is **`JewelHeartAppDelegate`** (`UIResponder` + `UIApplicationDelegate`), which hosts SwiftUI via **`UIHostingController`**. Do not add a second `@main` (e.g. a SwiftUI-only `App` struct).
 
 1. Install [XcodeGen](https://github.com/yonaskolb/XcodeGen) if you change `project.yml`:  
    `cd clients/ios && xcodegen generate`
