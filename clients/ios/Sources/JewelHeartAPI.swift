@@ -16,6 +16,17 @@ enum JewelHeartAPIError: LocalizedError {
 
     /// Avoid dumping full Cloudflare/HTML error pages into the UI.
     private static func httpMessage(code: Int, body: String?) -> String {
+        switch code {
+        case 530:
+            return "HTTP 530 — Cloudflare tunnel isn’t connected (host Mac asleep, tunnel stopped, or brief outage). Wake the Mac that runs cloudflared, or restart the tunnel, then Reload."
+        case 502:
+            return "HTTP 502 — API origin behind Cloudflare is down or not reachable. Check private-server and tunnel."
+        case 503:
+            return "HTTP 503 — service unavailable. Try again shortly."
+        default:
+            break
+        }
+
         guard let body, !body.isEmpty else { return "HTTP \(code)" }
         let looksLikeHtml =
             body.range(of: "<!DOCTYPE", options: .caseInsensitive) != nil
