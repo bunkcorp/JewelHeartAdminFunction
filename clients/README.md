@@ -20,7 +20,7 @@ The repo includes a generated Xcode project under **`clients/ios/`** (Firebase v
 5. Set **Signing & Capabilities** for your team.
 6. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
 
-**Console diagnostics:** The app logs to the unified logging system with subsystem **`org.jewelheart.admin`** (categories **API**, **UI**, **Auth**). In Xcode’s console, use the filter field or Console.app to narrow to that subsystem; failed requests log HTTP status, **cf-ray**, response size, and a truncated body.
+**Console diagnostics:** Every diagnostic is also **`print`**’d as **`[JewelHeart][API|UI|Auth] …`** so it always shows in Xcode’s debug console. The same lines go to **`os.Logger`** (subsystem **`org.jewelheart.admin`**) for Console.app / filtering. Failed requests include HTTP status, **cf-ray**, and a truncated body.
 
 **GitHub / leaked plist:** If a real plist was ever pushed, GitHub flags the **API_KEY**. After removing it from the repo, **purge it from git history** (e.g. [`git filter-repo`](https://github.com/newren/git-filter-repo)) or GitHub’s guidance for exposed secrets, then **restrict or rotate** the key in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (API key restrictions; Firebase may issue a new plist if you regenerate).
 

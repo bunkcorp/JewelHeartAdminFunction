@@ -26,4 +26,46 @@ enum JewelHeartLog {
         let ns = error as NSError
         return "\(type(of: error)): \(error.localizedDescription) | domain=\(ns.domain) code=\(ns.code)"
     }
+
+    // MARK: - Mirror to stdout (Xcode debug console always shows print; os_log can be filtered out)
+
+    static func apiInfo(_ message: String) {
+        print("[JewelHeart][API] \(message)")
+        api.info("\(message, privacy: .public)")
+    }
+
+    static func apiWarning(_ message: String) {
+        print("[JewelHeart][API] \(message)")
+        api.warning("\(message, privacy: .public)")
+    }
+
+    static func apiError(_ message: String) {
+        print("[JewelHeart][API] \(message)")
+        api.error("\(message, privacy: .public)")
+    }
+
+    static func uiInfo(_ message: String) {
+        print("[JewelHeart][UI] \(message)")
+        ui.info("\(message, privacy: .public)")
+    }
+
+    static func uiWarning(_ message: String) {
+        print("[JewelHeart][UI] \(message)")
+        ui.warning("\(message, privacy: .public)")
+    }
+
+    static func uiError(_ message: String) {
+        print("[JewelHeart][UI] \(message)")
+        ui.error("\(message, privacy: .public)")
+    }
+
+    static func authInfo(_ message: String) {
+        print("[JewelHeart][Auth] \(message)")
+        auth.info("\(message, privacy: .public)")
+    }
+
+    static func authError(_ message: String) {
+        print("[JewelHeart][Auth] \(message)")
+        auth.error("\(message, privacy: .public)")
+    }
 }

@@ -1,7 +1,6 @@
 import SwiftUI
 import FirebaseAuth
 import UIKit
-import os
 
 struct RootView: View {
     @State private var error: String?
@@ -43,19 +42,19 @@ struct RootView: View {
             envelope = nil
         }
         guard let uid = Auth.auth().currentUser?.uid else {
-            JewelHeartLog.ui.warning("load blocked: not signed in")
+            JewelHeartLog.uiWarning("load blocked: not signed in")
             await MainActor.run { error = "Sign in first." }
             return
         }
-        JewelHeartLog.ui.info("load start screenId=\(self.screenId, privacy: .public) uid=\(String(uid.prefix(8)), privacy: .public)…")
+        JewelHeartLog.uiInfo("load start screenId=\(self.screenId) uid=\(String(uid.prefix(8)))…")
         do {
             let api = JewelHeartAPI()
             let env = try await api.fetchScreen(screenId: screenId, retreatId: retreatId, params: extraParams)
-            JewelHeartLog.ui.info("load ok screen.id=\(env.screen.id, privacy: .public) schema=\(env.schemaVersion, privacy: .public)")
+            JewelHeartLog.uiInfo("load ok screen.id=\(env.screen.id) schema=\(env.schemaVersion)")
             await MainActor.run { envelope = env }
         } catch {
             let line = JewelHeartLog.describe(error)
-            JewelHeartLog.ui.error("load FAILED: \(line, privacy: .public)")
+            JewelHeartLog.uiError("load FAILED: \(line)")
             await MainActor.run { self.error = error.localizedDescription }
         }
     }
@@ -112,9 +111,9 @@ struct AuthGate: View {
         await MainActor.run { busy = true; message = nil }
         do {
             let r = try await Auth.auth().signInAnonymously()
-            JewelHeartLog.auth.info("anonymous sign-in ok uid=\(String(r.user.uid.prefix(8)), privacy: .public)…")
+            JewelHeartLog.authInfo("anonymous sign-in ok uid=\(String(r.user.uid.prefix(8)))…")
         } catch {
-            JewelHeartLog.auth.error("anonymous sign-in FAILED: \(JewelHeartLog.describe(error), privacy: .public)")
+            JewelHeartLog.authError("anonymous sign-in FAILED: \(JewelHeartLog.describe(error))")
             await MainActor.run { message = error.localizedDescription }
         }
         await MainActor.run { busy = false }
