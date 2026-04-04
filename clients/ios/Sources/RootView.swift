@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import UIKit
+import os
 
 struct RootView: View {
     @State private var error: String?
@@ -41,15 +42,20 @@ struct RootView: View {
             error = nil
             envelope = nil
         }
-        guard Auth.auth().currentUser != nil else {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            JewelHeartLog.ui.warning("load blocked: not signed in")
             await MainActor.run { error = "Sign in first." }
             return
         }
+        JewelHeartLog.ui.info("load start screenId=\(self.screenId, privacy: .public) uid=\(String(uid.prefix(8)), privacy: .public)…")
         do {
             let api = JewelHeartAPI()
             let env = try await api.fetchScreen(screenId: screenId, retreatId: retreatId, params: extraParams)
+            JewelHeartLog.ui.info("load ok screen.id=\(env.screen.id, privacy: .public) schema=\(env.schemaVersion, privacy: .public)")
             await MainActor.run { envelope = env }
         } catch {
+            let line = JewelHeartLog.describe(error)
+            JewelHeartLog.ui.error("load FAILED: \(line, privacy: .public)")
             await MainActor.run { self.error = error.localizedDescription }
         }
     }
@@ -105,8 +111,10 @@ struct AuthGate: View {
     private func signInAnon() async {
         await MainActor.run { busy = true; message = nil }
         do {
-            _ = try await Auth.auth().signInAnonymously()
+            let r = try await Auth.auth().signInAnonymously()
+            JewelHeartLog.auth.info("anonymous sign-in ok uid=\(String(r.user.uid.prefix(8)), privacy: .public)…")
         } catch {
+            JewelHeartLog.auth.error("anonymous sign-in FAILED: \(JewelHeartLog.describe(error), privacy: .public)")
             await MainActor.run { message = error.localizedDescription }
         }
         await MainActor.run { busy = false }

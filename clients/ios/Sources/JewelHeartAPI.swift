@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseAuth
+import os
 
 enum JewelHeartAPIError: LocalizedError {
     case noToken
@@ -44,6 +45,21 @@ enum JewelHeartAPIError: LocalizedError {
         let trimmed = body.count > 400 ? String(body.prefix(400)) + "…" : body
         return "HTTP \(code): \(trimmed)"
     }
+
+    /// One line for Xcode console (subsystem org.jewelheart.admin).
+    var logLine: String {
+        switch self {
+        case .noToken:
+            return "JewelHeartAPIError.noToken (no Firebase user)"
+        case .http(let code, let body):
+            let preview = (body ?? "")
+                .replacingOccurrences(of: "\n", with: " ")
+                .prefix(240)
+            return "JewelHeartAPIError.http status=\(code) bodyPreview=\(String(preview))"
+        case .decode(let e):
+            return "JewelHeartAPIError.decode \(JewelHeartLog.describe(e))"
+        }
+    }
 }
 
 actor JewelHeartAPI {
@@ -81,7 +97,8 @@ actor JewelHeartAPI {
 
     private func authorizedRequest(path: String, method: String, jsonBody: [String: Any]?) async throws -> (Data, HTTPURLResponse) {
         let token = try await firebaseIDToken()
-        var req = URLRequest(url: JewelHeartConfig.baseURL.appendingPathComponent(path))
+        let url = JewelHeartConfig.baseURL.appendingPathComponent(path)
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -89,23 +106,45 @@ actor JewelHeartAPI {
             req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
         }
 
+        JewelHeartLog.api.info("request \(method, privacy: .public) \(url.absoluteString, privacy: .public)")
+
         var lastError: Error?
         for attempt in 0 ..< 4 {
             do {
                 let (data, resp) = try await session.data(for: req)
-                guard let http = resp as? HTTPURLResponse else { throw JewelHeartAPIError.http(-1, nil) }
+                guard let http = resp as? HTTPURLResponse else {
+                    JewelHeartLog.api.error("non-HTTP response for \(url.absoluteString, privacy: .public)")
+                    throw JewelHeartAPIError.http(-1, nil)
+                }
+                let cfRay = http.value(forHTTPHeaderField: "cf-ray") ?? "-"
+                let cfCache = http.value(forHTTPHeaderField: "cf-cache-status") ?? "-"
                 guard (200 ... 299).contains(http.statusCode) else {
                     let text = String(data: data, encoding: .utf8)
+                    JewelHeartLog.api.error(
+                        "HTTP failure status=\(http.statusCode, privacy: .public) url=\(url.absoluteString, privacy: .public) cf-ray=\(cfRay, privacy: .public) cf-cache-status=\(cfCache, privacy: .public) bodyChars=\(data.count, privacy: .public)"
+                    )
+                    if let text, !text.isEmpty {
+                        let oneLine = text.replacingOccurrences(of: "\n", with: " ").prefix(500)
+                        JewelHeartLog.api.error("response body (truncated): \(String(oneLine), privacy: .public)")
+                    }
                     throw JewelHeartAPIError.http(http.statusCode, text)
                 }
+                JewelHeartLog.api.info("HTTP \(http.statusCode, privacy: .public) ok cf-ray=\(cfRay, privacy: .public) bytes=\(data.count, privacy: .public)")
                 return (data, http)
             } catch let urlError as URLError where Self.isTransient(urlError) && attempt < 3 {
                 lastError = urlError
+                JewelHeartLog.api.warning(
+                    "transient network attempt=\(attempt + 1, privacy: .public)/4 \(JewelHeartLog.describe(urlError), privacy: .public)"
+                )
                 let delayNs: UInt64 = 400_000_000 * UInt64(attempt + 1)
                 try await Task.sleep(nanoseconds: delayNs)
             } catch {
+                JewelHeartLog.api.error("failed \(JewelHeartLog.describe(error), privacy: .public)")
                 throw error
             }
+        }
+        if let lastError {
+            JewelHeartLog.api.error("gave up after retries: \(JewelHeartLog.describe(lastError), privacy: .public)")
         }
         throw lastError ?? URLError(.unknown)
     }
@@ -121,6 +160,9 @@ actor JewelHeartAPI {
     }
 
     func fetchScreen(screenId: String, retreatId: String? = nil, params: [String: String] = [:]) async throws -> SDUIEnvelope {
+        JewelHeartLog.api.info(
+            "fetchScreen screenId=\(screenId, privacy: .public) retreatId=\(retreatId ?? "nil", privacy: .public) params=\(String(describing: params), privacy: .public) baseURL=\(JewelHeartConfig.baseURL.absoluteString, privacy: .public)"
+        )
         var body: [String: Any] = ["screenId": screenId]
         if let retreatId { body["retreatId"] = retreatId }
         if !params.isEmpty { body["params"] = params }
@@ -129,6 +171,7 @@ actor JewelHeartAPI {
             let dec = JSONDecoder()
             return try dec.decode(SDUIEnvelope.self, from: data)
         } catch {
+            JewelHeartLog.api.error("JSON decode failed: \(JewelHeartLog.describe(error), privacy: .public) dataPrefix=\(String(data: data.prefix(200), encoding: .utf8) ?? "?", privacy: .public)")
             throw JewelHeartAPIError.decode(error)
         }
     }
