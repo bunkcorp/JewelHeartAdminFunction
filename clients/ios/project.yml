@@ -29,6 +29,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
+        # Auth-only: disable Firebase App Delegate swizzling (quiet I-SWZ001014 with SwiftUI).
+        INFOPLIST_KEY_FirebaseAppDelegateProxyEnabled: NO
         INFOPLIST_KEY_CFBundleDisplayName: JewelHeart Admin
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
