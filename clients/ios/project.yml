@@ -27,6 +27,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: org.jewelheart.admin
         PRODUCT_NAME: JewelHeartAdmin
         TARGETED_DEVICE_FAMILY: "1,2"
+        # Prefer real iPhone in the destination list over “My Mac (Designed for iPhone)”.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: JewelHeart Admin
