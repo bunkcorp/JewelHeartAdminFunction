@@ -108,8 +108,9 @@ actor JewelHeartAPI {
 
         JewelHeartLog.apiInfo("request \(method) \(url.absoluteString)")
 
+        let maxAttempts = 8
         var lastError: Error?
-        for attempt in 0 ..< 4 {
+        for attempt in 0 ..< maxAttempts {
             do {
                 let (data, resp) = try await session.data(for: req)
                 guard let http = resp as? HTTPURLResponse else {
@@ -127,12 +128,13 @@ actor JewelHeartAPI {
                         let oneLine = text.replacingOccurrences(of: "\n", with: " ").prefix(500)
                         JewelHeartLog.apiError("response body (truncated): \(String(oneLine))")
                     }
-                    // 530 = Cloudflare tunnel / edge could not reach origin; 502 = bad gateway — often clear in seconds after wake or cloudflared reconnect.
-                    if [530, 502].contains(http.statusCode), attempt < 3 {
+                    // 530 = Cloudflare tunnel / edge could not reach origin; 502 = bad gateway — often clear after cloudflared reconnect (watchdog ~30s) or edge blip.
+                    if [530, 502].contains(http.statusCode), attempt < maxAttempts - 1 {
                         JewelHeartLog.apiWarning(
-                            "retryable HTTP status=\(http.statusCode) attempt=\(attempt + 1)/4 cf-ray=\(cfRay)"
+                            "retryable HTTP status=\(http.statusCode) attempt=\(attempt + 1)/\(maxAttempts) cf-ray=\(cfRay)"
                         )
-                        let delayNs: UInt64 = 600_000_000 * UInt64(attempt + 1)
+                        // 1s, 2s, … so total wait can span a tunnel-watchdog interval.
+                        let delayNs: UInt64 = 1_000_000_000 * UInt64(attempt + 1)
                         try await Task.sleep(nanoseconds: delayNs)
                         continue
                     }
@@ -140,10 +142,10 @@ actor JewelHeartAPI {
                 }
                 JewelHeartLog.apiInfo("HTTP \(http.statusCode) ok cf-ray=\(cfRay) bytes=\(data.count)")
                 return (data, http)
-            } catch let urlError as URLError where Self.isTransient(urlError) && attempt < 3 {
+            } catch let urlError as URLError where Self.isTransient(urlError) && attempt < maxAttempts - 1 {
                 lastError = urlError
                 JewelHeartLog.apiWarning(
-                    "transient network attempt=\(attempt + 1)/4 \(JewelHeartLog.describe(urlError))"
+                    "transient network attempt=\(attempt + 1)/\(maxAttempts) \(JewelHeartLog.describe(urlError))"
                 )
                 let delayNs: UInt64 = 400_000_000 * UInt64(attempt + 1)
                 try await Task.sleep(nanoseconds: delayNs)

@@ -19,7 +19,7 @@
 	<key>RunAtLoad</key>
 	<true/>
 	<key>StartInterval</key>
-	<integer>120</integer>
+	<integer>30</integer>
 	<key>StandardOutPath</key>
 	<string>__PRIVATE_SERVER_DIR__/logs/tunnel-watchdog-stdout.log</string>
 	<key>StandardErrorPath</key>
