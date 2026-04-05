@@ -10,6 +10,9 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     from: 11.7.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 8.0.0
 targets:
   JewelHeartAdmin:
     type: application
@@ -19,6 +22,8 @@ targets:
       - path: Sources
       - path: GoogleService-Info.plist
         buildPhase: resources
+    info:
+      path: Supporting/GoogleURLScheme.plist
     settings:
       base:
         # Same Apple team as KarmaDots (Xcode → Signing if you need a different team)
@@ -31,18 +36,25 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         SWIFT_VERSION: "5.0"
         GENERATE_INFOPLIST_FILE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/JewelHeartAdmin-Bridging-Header.h
         INFOPLIST_KEY_CFBundleDisplayName: JewelHeart Admin
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationDelegateClassName: $(PRODUCT_MODULE_NAME).JewelHeartAppDelegate
         INFOPLIST_KEY_UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "0.1.0"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
+        CODE_SIGN_ENTITLEMENTS: JewelHeartAdmin.entitlements
+        # Matches GettingStoned Firebase iOS app (same project as KarmaDots / api.karmadots.org).
+        GOOGLE_REVERSED_CLIENT_ID: com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne
     dependencies:
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: GoogleSignIn
+        product: GoogleSignIn
 
 schemes:
   JewelHeartAdmin:

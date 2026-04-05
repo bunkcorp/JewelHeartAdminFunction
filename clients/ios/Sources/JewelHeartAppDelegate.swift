@@ -1,5 +1,6 @@
 import UIKit
 import FirebaseCore
+import GoogleSignIn
 
 /// `@main` must be this class (not a wrapper `enum`) so GoogleUtilities/AppDelegateSwizzler sees a
 /// real `UIApplicationDelegate`. Use `NSObject` (not `UIResponder`) so the Objective-C runtime
@@ -10,8 +11,13 @@ import FirebaseCore
 final class JewelHeartAppDelegate: NSObject, UIApplicationDelegate {
 
     override init() {
+        // Configure before `super.init()` (cannot call instance methods on `self` yet). Avoid
+        // `[FIRApp configure]` in ObjC `+load` / `constructor` — that runs before UIApplicationDelegate exists.
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+        JewelHeartFirebaseBootstrapTouch()
         super.init()
-        configureFirebaseIfNeeded()
     }
 
     func application(
@@ -28,6 +34,14 @@ final class JewelHeartAppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         configureFirebaseIfNeeded()
         return true
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        GIDSignIn.sharedInstance.handle(url)
     }
 
     func application(

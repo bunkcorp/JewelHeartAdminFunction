@@ -8,31 +8,51 @@
 
 /* Begin PBXBuildFile section */
 		01516A825BCC4BCE4E664F07 /* JewelHeartLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */; };
+		016BE9B27177D83C6B260EB5 /* JewelHeartFirebaseSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = A959266B5A269656940ADBCC /* JewelHeartFirebaseSignIn.swift */; };
 		03EB4846FC78F2657859B3C3 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D1E1F2F366079542D83BAA /* RootView.swift */; };
 		0FD978D3B0907FDEFEA4B205 /* JewelHeartConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */; };
+		2E040C33EA71A0CEEB9378D0 /* JewelHeartSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9D49FFF9CB5ED057F410552 /* JewelHeartSignInView.swift */; };
+		33C77EFE5290718FFA451434 /* Bundle+GoogleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980A596320DA31A5DA3067E4 /* Bundle+GoogleService.swift */; };
+		3CD64DEC1C4C0980303AB06C /* JewelHeartAPI+REST.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E61DCB552040A77C886AFAB /* JewelHeartAPI+REST.swift */; };
 		56AC20D06B3A62DB3CCF37D8 /* SDUIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D032E827A7E776FB693FD8C /* SDUIModels.swift */; };
+		5A2820E7BAEEC0EF12B4F8B5 /* JewelHeartAdminResourceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */; };
+		7424BD45B8B09C6FC1921110 /* JewelHeartRESTModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C64887F96267A1539C6F04B6 /* JewelHeartRESTModels.swift */; };
 		758BFD16A2D671BF640B9CBF /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1B0F11341987EB2FB8D8B7C6 /* FirebaseAuth */; };
 		7BABC1A1F952325D6886956C /* JewelHeartAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A884B38D25B77F9522043C /* JewelHeartAppDelegate.swift */; };
 		7C256388C03D1D9C0E09ED8F /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F89A5301AC11B1F2C0BB34A9 /* FirebaseCore */; };
 		84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA254DD62D9077915714E370 /* SDUIRenderer.swift */; };
+		86A1FFB6613A786ECE1A5D38 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = CEEFB79224CD083029E35C8D /* GoogleSignIn */; };
 		89526927E3592D052E29DDDD /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 5FE2C87396BD4169305A414D /* GoogleService-Info.plist */; };
+		97DCCCC3F0D1A4882B8B66E8 /* JewelHeartAuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750F35F1EDDA470A4186EA9E /* JewelHeartAuthState.swift */; };
+		9D0A23FFE1C7B0CC8803E4F2 /* JewelHeartRootPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */; };
 		A43C12252E49B91130127D43 /* JewelHeartFirebaseEarlyConfigure.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */; };
 		B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */; };
+		E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		04D1E1F2F366079542D83BAA /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartSceneDelegate.swift; sourceTree = "<group>"; };
+		1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminRootTabView.swift; sourceTree = "<group>"; };
 		17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartConfig.swift; sourceTree = "<group>"; };
 		1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = JewelHeartFirebaseEarlyConfigure.m; sourceTree = "<group>"; };
 		24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAPI.swift; sourceTree = "<group>"; };
 		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FE2C87396BD4169305A414D /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartLog.swift; sourceTree = "<group>"; };
+		750F35F1EDDA470A4186EA9E /* JewelHeartAuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAuthState.swift; sourceTree = "<group>"; };
+		7AACD0A60804A7B0160A6162 /* JewelHeartAdmin-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "JewelHeartAdmin-Bridging-Header.h"; sourceTree = "<group>"; };
 		7D032E827A7E776FB693FD8C /* SDUIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIModels.swift; sourceTree = "<group>"; };
 		80A884B38D25B77F9522043C /* JewelHeartAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAppDelegate.swift; sourceTree = "<group>"; };
+		980A596320DA31A5DA3067E4 /* Bundle+GoogleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bundle+GoogleService.swift"; sourceTree = "<group>"; };
+		9E61DCB552040A77C886AFAB /* JewelHeartAPI+REST.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "JewelHeartAPI+REST.swift"; sourceTree = "<group>"; };
+		A959266B5A269656940ADBCC /* JewelHeartFirebaseSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartFirebaseSignIn.swift; sourceTree = "<group>"; };
+		AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartRootPresenter.swift; sourceTree = "<group>"; };
+		B9D49FFF9CB5ED057F410552 /* JewelHeartSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartSignInView.swift; sourceTree = "<group>"; };
+		C64887F96267A1539C6F04B6 /* JewelHeartRESTModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartRESTModels.swift; sourceTree = "<group>"; };
 		DA254DD62D9077915714E370 /* SDUIRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIRenderer.swift; sourceTree = "<group>"; };
+		FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAdminResourceViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,6 +62,7 @@
 			files = (
 				758BFD16A2D671BF640B9CBF /* FirebaseAuth in Frameworks */,
 				7C256388C03D1D9C0E09ED8F /* FirebaseCore in Frameworks */,
+				86A1FFB6613A786ECE1A5D38 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -68,12 +89,22 @@
 		FEC02E32128A49CDAD315EBA /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */,
+				980A596320DA31A5DA3067E4 /* Bundle+GoogleService.swift */,
+				7AACD0A60804A7B0160A6162 /* JewelHeartAdmin-Bridging-Header.h */,
+				FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */,
 				24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */,
+				9E61DCB552040A77C886AFAB /* JewelHeartAPI+REST.swift */,
 				80A884B38D25B77F9522043C /* JewelHeartAppDelegate.swift */,
+				750F35F1EDDA470A4186EA9E /* JewelHeartAuthState.swift */,
 				17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */,
 				1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */,
+				A959266B5A269656940ADBCC /* JewelHeartFirebaseSignIn.swift */,
 				74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */,
+				C64887F96267A1539C6F04B6 /* JewelHeartRESTModels.swift */,
+				AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */,
 				12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */,
+				B9D49FFF9CB5ED057F410552 /* JewelHeartSignInView.swift */,
 				04D1E1F2F366079542D83BAA /* RootView.swift */,
 				7D032E827A7E776FB693FD8C /* SDUIModels.swift */,
 				DA254DD62D9077915714E370 /* SDUIRenderer.swift */,
@@ -100,6 +131,7 @@
 			packageProductDependencies = (
 				1B0F11341987EB2FB8D8B7C6 /* FirebaseAuth */,
 				F89A5301AC11B1F2C0BB34A9 /* FirebaseCore */,
+				CEEFB79224CD083029E35C8D /* GoogleSignIn */,
 			);
 			productName = JewelHeartAdmin;
 			productReference = 2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */;
@@ -132,6 +164,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				9D174E4566C467CC12A6D10C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				A8B1F8EC3794040A27549438 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
@@ -158,12 +191,21 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */,
+				33C77EFE5290718FFA451434 /* Bundle+GoogleService.swift in Sources */,
+				3CD64DEC1C4C0980303AB06C /* JewelHeartAPI+REST.swift in Sources */,
 				E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */,
+				5A2820E7BAEEC0EF12B4F8B5 /* JewelHeartAdminResourceViews.swift in Sources */,
 				7BABC1A1F952325D6886956C /* JewelHeartAppDelegate.swift in Sources */,
+				97DCCCC3F0D1A4882B8B66E8 /* JewelHeartAuthState.swift in Sources */,
 				0FD978D3B0907FDEFEA4B205 /* JewelHeartConfig.swift in Sources */,
 				A43C12252E49B91130127D43 /* JewelHeartFirebaseEarlyConfigure.m in Sources */,
+				016BE9B27177D83C6B260EB5 /* JewelHeartFirebaseSignIn.swift in Sources */,
 				01516A825BCC4BCE4E664F07 /* JewelHeartLog.swift in Sources */,
+				7424BD45B8B09C6FC1921110 /* JewelHeartRESTModels.swift in Sources */,
+				9D0A23FFE1C7B0CC8803E4F2 /* JewelHeartRootPresenter.swift in Sources */,
 				B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */,
+				2E040C33EA71A0CEEB9378D0 /* JewelHeartSignInView.swift in Sources */,
 				03EB4846FC78F2657859B3C3 /* RootView.swift in Sources */,
 				56AC20D06B3A62DB3CCF37D8 /* SDUIModels.swift in Sources */,
 				84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */,
@@ -177,13 +219,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = JewelHeartAdmin.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne";
+				INFOPLIST_FILE = Supporting/GoogleURLScheme.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";
+				INFOPLIST_KEY_UIApplicationDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartAppDelegate";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISceneDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate";
@@ -197,6 +243,7 @@
 				PRODUCT_NAME = JewelHeartAdmin;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/JewelHeartAdmin-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -206,13 +253,17 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = JewelHeartAdmin.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne";
+				INFOPLIST_FILE = Supporting/GoogleURLScheme.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "JewelHeart Admin";
+				INFOPLIST_KEY_UIApplicationDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartAppDelegate";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISceneDelegateClassName = "$(PRODUCT_MODULE_NAME).JewelHeartSceneDelegate";
@@ -226,6 +277,7 @@
 				PRODUCT_NAME = JewelHeartAdmin;
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_OBJC_BRIDGING_HEADER = "Sources/JewelHeartAdmin-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -382,6 +434,14 @@
 				minimumVersion = 11.7.0;
 			};
 		};
+		A8B1F8EC3794040A27549438 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -389,6 +449,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9D174E4566C467CC12A6D10C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		CEEFB79224CD083029E35C8D /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A8B1F8EC3794040A27549438 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 		F89A5301AC11B1F2C0BB34A9 /* FirebaseCore */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -85,37 +85,15 @@ struct RootView: View {
 }
 
 struct AuthGate: View {
-    @State private var busy = false
-    @State private var message: String?
+    @StateObject private var auth = JewelHeartAuthState()
 
     var body: some View {
         Group {
-            if Auth.auth().currentUser != nil {
-                RootView()
+            if auth.user != nil {
+                AdminRootTabView()
             } else {
-                VStack(spacing: 16) {
-                    Text("JewelHeart Admin").font(.title)
-                    if let message { Text(message).font(.caption).foregroundStyle(.red) }
-                    Button("Sign in anonymously") {
-                        Task { await signInAnon() }
-                    }
-                    .disabled(busy)
-                    if busy { ProgressView() }
-                }
-                .padding()
+                JewelHeartSignInView()
             }
         }
-    }
-
-    private func signInAnon() async {
-        await MainActor.run { busy = true; message = nil }
-        do {
-            let r = try await Auth.auth().signInAnonymously()
-            JewelHeartLog.authInfo("anonymous sign-in ok uid=\(String(r.user.uid.prefix(8)))…")
-        } catch {
-            JewelHeartLog.authError("anonymous sign-in FAILED: \(JewelHeartLog.describe(error))")
-            await MainActor.run { message = error.localizedDescription }
-        }
-        await MainActor.run { busy = false }
     }
 }

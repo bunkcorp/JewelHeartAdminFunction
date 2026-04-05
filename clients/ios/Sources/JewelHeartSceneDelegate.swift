@@ -1,3 +1,4 @@
+import GoogleSignIn
 import SwiftUI
 import UIKit
 
@@ -15,5 +16,11 @@ final class JewelHeartSceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = UIHostingController(rootView: AuthGate())
         self.window = window
         window.makeKeyAndVisible()
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for ctx in URLContexts {
+            _ = GIDSignIn.sharedInstance.handle(ctx.url)
+        }
     }
 }

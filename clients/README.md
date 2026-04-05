@@ -10,16 +10,18 @@ Minimal **iOS (SwiftUI)** and **Android (Compose)** shells that talk to the same
 
 ## iOS
 
-The repo includes a generated Xcode project under **`clients/ios/`** (Firebase via SPM: **FirebaseAuth** + **FirebaseCore**). The **`@main`** entry point is **`JewelHeartAppDelegate`** (`UIApplicationDelegate`); **`JewelHeartSceneDelegate`** (`UIWindowSceneDelegate`) creates the window and hosts SwiftUI via **`UIHostingController`**. Do not add a second `@main`.
+The repo includes a generated Xcode project under **`clients/ios/`** (SPM: **FirebaseAuth**, **FirebaseCore**, **GoogleSignIn**). Sign-in matches **KarmaDots**: Google, Sign in with Apple, email (sign in + create account), and anonymous. The **`@main`** entry point is **`JewelHeartAppDelegate`**; **`JewelHeartSceneDelegate`** hosts SwiftUI. Do not add a second `@main`.
 
 1. Install [XcodeGen](https://github.com/yonaskolb/XcodeGen) if you change `project.yml`:  
    `cd clients/ios && xcodegen generate`
 2. Open **`clients/ios/JewelHeartAdmin.xcodeproj`** in Xcode.
 3. **Run on your iPhone “KAW” (not the simulator):** Connect **KAW** with USB (or use a device already paired for wireless debugging). Unlock the phone and tap **Trust** if asked. In the Xcode toolbar, click the **destination** control next to the scheme **JewelHeartAdmin** and select **KAW** under **iOS Device**. Avoid any **Simulator** entry. Then press **⌘R**. If KAW is missing, on the iPhone enable **Developer Mode** (Settings → Privacy & Security) and confirm the Mac is trusted.
 4. Let Xcode **resolve packages** (File → Packages → Resolve Package Versions). If resolution fails with *“already exists in file system”*, reset caches: **File → Packages → Reset Package Caches**, or remove stale dirs under `~/Library/Caches/org.swift.swiftpm/artifacts/`.
-5. **Firebase config (not in git):** Copy **`clients/ios/GoogleService-Info.plist.example`** → **`clients/ios/GoogleService-Info.plist`**, then replace every placeholder with values from Firebase Console (Project settings → Your apps → iOS `org.jewelheart.admin`, or download **GoogleService-Info.plist** and drop it in **`clients/ios/`**). The Xcode target already includes that filename in **Copy Bundle Resources**.
-6. Set **Signing & Capabilities** for your team.
-7. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
+5. **Firebase config (not in git):** Copy **`clients/ios/GoogleService-Info.plist.example`** → **`clients/ios/GoogleService-Info.plist`**, then use real values from Firebase Console (iOS app **`org.jewelheart.admin`**). In **Firebase → Authentication → Sign-in method**, enable **Google**, **Apple**, and **Email/Password** (same as KarmaDots).
+6. **Google Sign-In URL scheme:** In **`clients/ios/project.yml`**, set **`GOOGLE_REVERSED_CLIENT_ID`** to the **`REVERSED_CLIENT_ID`** string from **`GoogleService-Info.plist`** (then `xcodegen generate`). That value is merged via **`Supporting/GoogleURLScheme.plist`** so the OAuth redirect works.
+7. **Sign in with Apple (device builds):** The target uses **`JewelHeartAdmin.entitlements`**. In [Apple Developer](https://developer.apple.com) → Identifiers → **`org.jewelheart.admin`** → enable **Sign in with Apple**, then refresh your provisioning profile (Xcode **Signing & Capabilities**). Without this, **device** builds can fail; Simulator builds may still succeed.
+8. Set **Signing & Capabilities** for your team.
+9. In `JewelHeartConfig.swift`, confirm `apiHost` if you use a different API host.
 
 **Command-line build for KAW** (device must be visible to `xcodebuild`; same signing as Xcode):
 

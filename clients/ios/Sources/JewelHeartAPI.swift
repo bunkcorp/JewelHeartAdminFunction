@@ -18,6 +18,8 @@ enum JewelHeartAPIError: LocalizedError {
     /// Avoid dumping full Cloudflare/HTML error pages into the UI.
     private static func httpMessage(code: Int, body: String?) -> String {
         switch code {
+        case 403:
+            return "JewelHeart admin access required (HTTP 403). Add your Firebase user ID to Postgres: jewelheart_admins (global), or jewelheart_retreat_admins (per retreat). Template: scripts/sql/insert-jewelheart-admin-global.sql"
         case 530:
             return "HTTP 530 — Cloudflare tunnel isn’t connected (host Mac asleep, tunnel stopped, or brief outage). Wake the Mac that runs cloudflared, or restart the tunnel, then Reload."
         case 502:
@@ -95,18 +97,55 @@ actor JewelHeartAPI {
         }
     }
 
-    private func authorizedRequest(path: String, method: String, jsonBody: [String: Any]?) async throws -> (Data, HTTPURLResponse) {
+    internal static func makeAPIURL(path: String, queryItems: [URLQueryItem] = []) -> URL {
+        var comp = URLComponents()
+        comp.scheme = JewelHeartConfig.useTLS ? "https" : "http"
+        comp.host = JewelHeartConfig.apiHost
+        let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        comp.path = "/" + trimmed
+        if !queryItems.isEmpty {
+            comp.queryItems = queryItems
+        }
+        guard let url = comp.url else {
+            preconditionFailure("invalid API URL path=\(path)")
+        }
+        return url
+    }
+
+    /// Unauthenticated request (e.g. `GET /jewelheart/health`).
+    internal func publicDataRequest(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem] = []
+    ) async throws -> (Data, HTTPURLResponse) {
+        let url = Self.makeAPIURL(path: path, queryItems: queryItems)
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        return try await dataWithRetries(request: req, urlForLog: url)
+    }
+
+    /// Bearer-authenticated request. Set `httpBody` + `contentType` for POST/PATCH bodies; omit both for GET/DELETE.
+    internal func authorizedDataRequest(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem] = [],
+        httpBody: Data? = nil,
+        contentType: String? = nil
+    ) async throws -> (Data, HTTPURLResponse) {
         let token = try await firebaseIDToken()
-        let url = JewelHeartConfig.baseURL.appendingPathComponent(path)
+        let url = Self.makeAPIURL(path: path, queryItems: queryItems)
         var req = URLRequest(url: url)
         req.httpMethod = method
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let jsonBody {
-            req.httpBody = try JSONSerialization.data(withJSONObject: jsonBody)
+        if let httpBody {
+            req.httpBody = httpBody
+            req.setValue(contentType ?? "application/json", forHTTPHeaderField: "Content-Type")
         }
+        return try await dataWithRetries(request: req, urlForLog: url)
+    }
 
-        JewelHeartLog.apiInfo("request \(method) \(url.absoluteString)")
+    private func dataWithRetries(request req: URLRequest, urlForLog: URL) async throws -> (Data, HTTPURLResponse) {
+        JewelHeartLog.apiInfo("request \(req.httpMethod ?? "?") \(urlForLog.absoluteString)")
 
         let maxAttempts = 8
         var lastError: Error?
@@ -114,7 +153,7 @@ actor JewelHeartAPI {
             do {
                 let (data, resp) = try await session.data(for: req)
                 guard let http = resp as? HTTPURLResponse else {
-                    JewelHeartLog.apiError("non-HTTP response for \(url.absoluteString)")
+                    JewelHeartLog.apiError("non-HTTP response for \(urlForLog.absoluteString)")
                     throw JewelHeartAPIError.http(-1, nil)
                 }
                 let cfRay = http.value(forHTTPHeaderField: "cf-ray") ?? "-"
@@ -122,18 +161,16 @@ actor JewelHeartAPI {
                 guard (200 ... 299).contains(http.statusCode) else {
                     let text = String(data: data, encoding: .utf8)
                     JewelHeartLog.apiError(
-                        "HTTP failure status=\(http.statusCode) url=\(url.absoluteString) cf-ray=\(cfRay) cf-cache-status=\(cfCache) bodyChars=\(data.count)"
+                        "HTTP failure status=\(http.statusCode) url=\(urlForLog.absoluteString) cf-ray=\(cfRay) cf-cache-status=\(cfCache) bodyChars=\(data.count)"
                     )
                     if let text, !text.isEmpty {
                         let oneLine = text.replacingOccurrences(of: "\n", with: " ").prefix(500)
                         JewelHeartLog.apiError("response body (truncated): \(String(oneLine))")
                     }
-                    // 530 = Cloudflare tunnel / edge could not reach origin; 502 = bad gateway — often clear after cloudflared reconnect (watchdog ~30s) or edge blip.
                     if [530, 502].contains(http.statusCode), attempt < maxAttempts - 1 {
                         JewelHeartLog.apiWarning(
                             "retryable HTTP status=\(http.statusCode) attempt=\(attempt + 1)/\(maxAttempts) cf-ray=\(cfRay)"
                         )
-                        // 1s, 2s, … so total wait can span a tunnel-watchdog interval.
                         let delayNs: UInt64 = 1_000_000_000 * UInt64(attempt + 1)
                         try await Task.sleep(nanoseconds: delayNs)
                         continue
@@ -160,6 +197,15 @@ actor JewelHeartAPI {
         throw lastError ?? URLError(.unknown)
     }
 
+    internal func jsonEncoder() -> JSONEncoder {
+        let e = JSONEncoder()
+        return e
+    }
+
+    internal func jsonDecoder() -> JSONDecoder {
+        JSONDecoder()
+    }
+
     private static func isTransient(_ e: URLError) -> Bool {
         switch e.code {
         case .networkConnectionLost, .timedOut, .cannotConnectToHost, .dnsLookupFailed,
@@ -177,7 +223,13 @@ actor JewelHeartAPI {
         var body: [String: Any] = ["screenId": screenId]
         if let retreatId { body["retreatId"] = retreatId }
         if !params.isEmpty { body["params"] = params }
-        let (data, _) = try await authorizedRequest(path: "jewelheart/sdui/screen", method: "POST", jsonBody: body)
+        let bodyData = try JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/sdui/screen",
+            method: "POST",
+            httpBody: bodyData,
+            contentType: "application/json"
+        )
         do {
             let dec = JSONDecoder()
             return try dec.decode(SDUIEnvelope.self, from: data)

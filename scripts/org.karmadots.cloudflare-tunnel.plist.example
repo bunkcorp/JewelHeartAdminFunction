@@ -18,8 +18,9 @@
 	<true/>
 	<key>KeepAlive</key>
 	<true/>
+	<!-- Seconds before LaunchAgent respawns the job after exit (lower = faster recovery after pkill). -->
 	<key>ThrottleInterval</key>
-	<integer>5</integer>
+	<integer>1</integer>
 	<key>StandardOutPath</key>
 	<string>__PRIVATE_SERVER_DIR__/logs/tunnel-stdout.log</string>
 	<key>StandardErrorPath</key>

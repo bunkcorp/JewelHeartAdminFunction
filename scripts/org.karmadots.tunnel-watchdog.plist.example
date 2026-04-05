@@ -7,19 +7,22 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>__PRIVATE_SERVER_DIR__/scripts/tunnel-watchdog.sh</string>
+		<string>__PRIVATE_SERVER_DIR__/scripts/tunnel-watchdog-loop.sh</string>
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PRIVATE_SERVER_DIR</key>
 		<string>__PRIVATE_SERVER_DIR__</string>
+		<!-- Seconds between checks (default 1). -->
+		<key>WATCHDOG_INTERVAL_SEC</key>
+		<string>1</string>
 	</dict>
 	<key>WorkingDirectory</key>
 	<string>__PRIVATE_SERVER_DIR__</string>
 	<key>RunAtLoad</key>
 	<true/>
-	<key>StartInterval</key>
-	<integer>15</integer>
+	<key>KeepAlive</key>
+	<true/>
 	<key>StandardOutPath</key>
 	<string>__PRIVATE_SERVER_DIR__/logs/tunnel-watchdog-stdout.log</string>
 	<key>StandardErrorPath</key>
