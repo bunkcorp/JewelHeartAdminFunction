@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>org.karmadots.tunnel-watchdog</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>__PRIVATE_SERVER_DIR__/scripts/tunnel-watchdog.sh</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PRIVATE_SERVER_DIR</key>
+		<string>__PRIVATE_SERVER_DIR__</string>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>__PRIVATE_SERVER_DIR__</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StartInterval</key>
+	<integer>120</integer>
+	<key>StandardOutPath</key>
+	<string>__PRIVATE_SERVER_DIR__/logs/tunnel-watchdog-stdout.log</string>
+	<key>StandardErrorPath</key>
+	<string>__PRIVATE_SERVER_DIR__/logs/tunnel-watchdog-stderr.log</string>
+</dict>
+</plist>
