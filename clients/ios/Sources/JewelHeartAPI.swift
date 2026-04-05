@@ -127,6 +127,15 @@ actor JewelHeartAPI {
                         let oneLine = text.replacingOccurrences(of: "\n", with: " ").prefix(500)
                         JewelHeartLog.apiError("response body (truncated): \(String(oneLine))")
                     }
+                    // 530 = Cloudflare tunnel / edge could not reach origin; 502 = bad gateway — often clear in seconds after wake or cloudflared reconnect.
+                    if [530, 502].contains(http.statusCode), attempt < 3 {
+                        JewelHeartLog.apiWarning(
+                            "retryable HTTP status=\(http.statusCode) attempt=\(attempt + 1)/4 cf-ray=\(cfRay)"
+                        )
+                        let delayNs: UInt64 = 600_000_000 * UInt64(attempt + 1)
+                        try await Task.sleep(nanoseconds: delayNs)
+                        continue
+                    }
                     throw JewelHeartAPIError.http(http.statusCode, text)
                 }
                 JewelHeartLog.apiInfo("HTTP \(http.statusCode) ok cf-ray=\(cfRay) bytes=\(data.count)")

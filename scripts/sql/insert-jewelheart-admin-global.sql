@@ -1,5 +1,4 @@
--- Global JewelHeart admin by Firebase UID (optional).
--- Replace YOUR_FIREBASE_UID_HERE (Settings → KarmaDots profile / Firebase console).
+-- Global JewelHeart admin for Firebase UID (run once against prod DB).
 
 INSERT INTO jewelheart_admins (firebase_uid)
 VALUES ('YOUR_FIREBASE_UID_HERE')

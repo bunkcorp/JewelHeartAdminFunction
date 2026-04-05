@@ -1,0 +1,7 @@
+# Merge into ~/.cloudflared/config.yml (top level, next to tunnel / credentials-file).
+# Forces edge transport over HTTP/2 (TCP) instead of QUIC (UDP), which avoids frequent
+# "timeout: no recent network activity" disconnects on some home networks.
+#
+#   protocol: http2
+
+protocol: http2

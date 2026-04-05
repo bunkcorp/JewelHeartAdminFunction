@@ -1,10 +1,18 @@
 import UIKit
 import FirebaseCore
 
-/// App entry (`@main`). Firebase configures here before any scene connects.
+/// `@main` must be this class (not a wrapper `enum`) so GoogleUtilities/AppDelegateSwizzler sees a
+/// real `UIApplicationDelegate`. Use `NSObject` (not `UIResponder`) so the Objective-C runtime
+/// exposes the delegate the swizzler expects. Firebase is also configured in
+/// `JewelHeartFirebaseEarlyConfigure.m` before `UIApplicationMain`.
 @objc(JewelHeartAppDelegate)
 @main
-final class JewelHeartAppDelegate: UIResponder, UIApplicationDelegate {
+final class JewelHeartAppDelegate: NSObject, UIApplicationDelegate {
+
+    override init() {
+        super.init()
+        configureFirebaseIfNeeded()
+    }
 
     func application(
         _ application: UIApplication,

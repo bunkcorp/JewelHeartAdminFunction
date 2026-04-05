@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>org.karmadots.private-server</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__PRIVATE_SERVER_DIR__/scripts/run-with-launchd.sh</string>
+	</array>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>PRIVATE_SERVER_DIR</key>
+		<string>__PRIVATE_SERVER_DIR__</string>
+	</dict>
+	<key>WorkingDirectory</key>
+	<string>__PRIVATE_SERVER_DIR__</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>StandardOutPath</key>
+	<string>__PRIVATE_SERVER_DIR__/logs/stdout.log</string>
+	<key>StandardErrorPath</key>
+	<string>__PRIVATE_SERVER_DIR__/logs/stderr.log</string>
+</dict>
+</plist>
