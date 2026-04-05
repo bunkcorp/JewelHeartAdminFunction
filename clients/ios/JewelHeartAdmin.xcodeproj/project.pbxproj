@@ -26,6 +26,7 @@
 		97DCCCC3F0D1A4882B8B66E8 /* JewelHeartAuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750F35F1EDDA470A4186EA9E /* JewelHeartAuthState.swift */; };
 		9D0A23FFE1C7B0CC8803E4F2 /* JewelHeartRootPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */; };
 		A43C12252E49B91130127D43 /* JewelHeartFirebaseEarlyConfigure.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */; };
+		B50DA5C2B4E42C7574E6B3F7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 433923B95ABD412F2853CA40 /* Assets.xcassets */; };
 		B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */; };
 		E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
@@ -39,6 +40,7 @@
 		1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = JewelHeartFirebaseEarlyConfigure.m; sourceTree = "<group>"; };
 		24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAPI.swift; sourceTree = "<group>"; };
 		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		433923B95ABD412F2853CA40 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5FE2C87396BD4169305A414D /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartLog.swift; sourceTree = "<group>"; };
 		750F35F1EDDA470A4186EA9E /* JewelHeartAuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAuthState.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 		BFA73F216BC6B8876E47112E = {
 			isa = PBXGroup;
 			children = (
+				433923B95ABD412F2853CA40 /* Assets.xcassets */,
 				5FE2C87396BD4169305A414D /* GoogleService-Info.plist */,
 				FEC02E32128A49CDAD315EBA /* Sources */,
 				71708C6DD9506FEDB6438458 /* Products */,
@@ -180,6 +183,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B50DA5C2B4E42C7574E6B3F7 /* Assets.xcassets in Resources */,
 				89526927E3592D052E29DDDD /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

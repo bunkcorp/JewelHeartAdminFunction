@@ -20,6 +20,7 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Sources
+      - path: Assets.xcassets
       - path: GoogleService-Info.plist
         buildPhase: resources
     info:
@@ -38,6 +39,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_OBJC_BRIDGING_HEADER: Sources/JewelHeartAdmin-Bridging-Header.h
         INFOPLIST_KEY_CFBundleDisplayName: JewelHeart Admin
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationDelegateClassName: $(PRODUCT_MODULE_NAME).JewelHeartAppDelegate

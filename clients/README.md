@@ -34,10 +34,13 @@ Override with `JEWELHEART_IOS_DEST='platform=iOS,name=Other iPhone' ./clients/io
 
 ## Android
 
-1. Open the **KarmaDots** `android/` Gradle project in Android Studio.
-2. Run the **`jewelheart-admin`** configuration (installs `org.jewelheart.admin`).
-3. Add **`jewelheart-admin/google-services.json`**: in Firebase Console create an Android app with package **`org.jewelheart.admin`**, download config, or merge a second client into your existing JSON.
-4. Sync Gradle; build **`:jewelheart-admin`**.
+Module: **`buddhist-stone-ios-app/android/jewelheart-admin`** (same Gradle project as KarmaDots).
+
+1. Open the **KarmaDots** `android/` project in Android Studio.
+2. Add **`jewelheart-admin/google-services.json`** (Firebase Android app **`org.jewelheart.admin`**, or merge clients into one JSON for the GettingStoned project).
+3. **`strings.xml`** includes **`default_web_client_id`** for Google Sign-In (GettingStoned web OAuth client); adjust if you use another Firebase project.
+4. Run **`jewelheart-admin`** — bottom tabs match the iOS shell: **SDUI**, **Retreats** (Navigation Compose: jobs, slots, tasks, linked volunteers, CSV import, schedule, reports), **Directory** (global volunteer search), **Meta** (health, UID, SDUI action, sign out). Auth: email, anonymous, Google (same as iOS).
+5. Build: `./gradlew :jewelheart-admin:assembleDebug`
 
 ## Production private-server sync
 
