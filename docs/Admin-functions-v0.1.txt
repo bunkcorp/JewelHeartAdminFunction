@@ -1,0 +1,67 @@
+Admin functions v0.1.
+	•	General structure
+	•	Job: main assignable unit of work
+	•	Example: Full clean main men’s room
+	•	Slot: day and time for a job
+	•	Example: Day 2, lunchtime
+	•	Possible times: early, lunchtime, dinnertime, anytime
+	•	Task: a job in a slot
+	•	Example: Full clean main men’s room, Day 2, lunchtime
+	•	Assignment: a volunteer assigned to a task (job, slot)
+	•	Example: Dan Rosen, assigned to full clean main men’s room, day 2, lunchtime
+	•	Unassigned (or underassigned) task: task with no assignment, or not enough volunteers
+	•	Schedule, all the tasks, some with assignments.
+	•	Job  management
+	•	Add/delete/edit/list jobs: title, subjobs (purely descriptive, no structure), # volunteers, estimated time (for all assigned volunteers, working together)
+	•	Examples
+	•	Full clean main man’s room (2 volunteers, 8 minutes), subjobs:
+	•	Wipe counter
+	•	Clean/polish faucets
+	•	Clean & sanitize urinals
+	•	Clean and sanitize toilet
+	•	Mop main floor
+	•	Mop toilet stall floor
+	•	Replenish TP in stall
+	•	Replenish paper towels on counter
+	•	Replenish paper towels in dispenser
+	•	Etc
+	•	Light clean main men’s room (1 volunteer, 6 minutes), subjobs:
+	•	Wipe counter
+	•	Clean and sanitize urinals (sanitary wipes)
+	•	Quick wipe toilet lip (sanitary wipes)
+	•	Mop floor near urinals
+	•	Mop floor near toilet
+	•	Replenish paper towels on counter
+	•	Check & replenish supply cabinets from closet (1 volunteer, 12 minutes), subjobs:
+	•	Replenish main men’s room cabinet
+	•	Replenish main women’s room cabinet
+	•	Replenish unisex bathroom area cabinet
+	•	Replenish Lama bathroom cabinet
+	•	Slot management
+	•	Add/delete/edit slots: title; date; day; activities, time. 
+	•	Arrival day (7/19; Sunday; arrival, registration), lunchtime
+	•	Regular day 3 (7/22; Wednesday, registration), dinnertime
+	•	/Dinnertime
+	•	AllDay (any time during the day)
+	•	Activities 1-7 (7/20-25, Monday-Saturday; regular activities)
+	•	Early
+	•	Lunchtime
+	•	Dinnertime
+	•	AllDay (any time during the day)
+	•	Final day- (7/26; Sunday; Tara Initiation, brunch )
+	•	Early
+	•	Lunchtime
+	•	AllDay (any time during the day)
+	•	Schedule management
+	•	Add/delete/edit task
+	•	Duplicate task, change slot (to help construct schedule)
+	•	Or, allow multiple slots when adding
+	•	List, report schedule: tasks by day
+	•	Generate schedule poster (1 day/page, large lettering for posting in lobby)
+	•	Generate daily signup report: ass
+	•	Volunteer management
+	•	Add/delete/edit/list volunteers: name, email, phone, other retreat duties
+	•	Examples: 
+	•	Dan Rosen, drosen123@gmail.com, 987-654-2345
+	•	Kathy Gardiner, KathyG@jewelheart.org, 123-456-7890, program coordinator
+	•	Import volunteers (from retreat registration spreadsheet, to streamline creation of original volunteer list)
