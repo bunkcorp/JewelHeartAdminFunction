@@ -47,8 +47,8 @@ targets:
         # Required for App Store / iPad multitasking (must appear in merged Info.plist).
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
-        CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: 2
+        MARKETING_VERSION: "0.1.1"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         CODE_SIGN_ENTITLEMENTS: JewelHeartAdmin.entitlements
         # Matches GettingStoned Firebase iOS app (same project as KarmaDots / api.karmadots.org).
