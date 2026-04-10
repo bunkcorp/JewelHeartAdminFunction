@@ -22,7 +22,7 @@ struct RootView: View {
                     ProgressView("Loading…")
                 }
             }
-            .navigationTitle("JewelHeart")
+            .navigationTitle(envelope?.screen.title ?? "Home")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

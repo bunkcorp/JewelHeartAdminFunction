@@ -299,7 +299,9 @@ struct JobListView: View {
                 Text(error).foregroundStyle(.red)
             } else {
                 List(items) { j in
-                    NavigationLink(value: j) {
+                    NavigationLink {
+                        JobDetailView(retreatId: retreatId, job: j)
+                    } label: {
                         VStack(alignment: .leading) {
                             Text(j.title).font(.headline)
                             Text("Need \(j.volunteersNeeded) · \(j.estimatedMinutes) min").font(.caption).foregroundStyle(.secondary)
@@ -309,9 +311,6 @@ struct JobListView: View {
             }
         }
         .navigationTitle("Jobs")
-        .navigationDestination(for: Job.self) { j in
-            JobDetailView(retreatId: retreatId, job: j)
-        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -513,7 +512,9 @@ struct SlotListView: View {
             if let error { Text(error).foregroundStyle(.red) }
             else {
                 List(items) { s in
-                    NavigationLink(value: s) {
+                    NavigationLink {
+                        SlotDetailView(retreatId: retreatId, slot: s)
+                    } label: {
                         VStack(alignment: .leading) {
                             Text(s.label).font(.headline)
                             Text("\(s.slotDate) · \(s.timeBand.rawValue)").font(.caption).foregroundStyle(.secondary)
@@ -523,9 +524,6 @@ struct SlotListView: View {
             }
         }
         .navigationTitle("Slots")
-        .navigationDestination(for: Slot.self) { s in
-            SlotDetailView(retreatId: retreatId, slot: s)
-        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -737,7 +735,9 @@ struct JHTaskListView: View {
             if let error { Text(error).foregroundStyle(.red) }
             else {
                 List(items) { t in
-                    NavigationLink(value: t) {
+                    NavigationLink {
+                        JHTaskDetailView(retreatId: retreatId, taskId: t.id)
+                    } label: {
                         VStack(alignment: .leading) {
                             Text("Task \(String(t.id.prefix(8)))…").font(.headline)
                             Text("job \(String(t.jobId.prefix(8)))… · slot \(String(t.slotId.prefix(8)))…")
@@ -752,9 +752,6 @@ struct JHTaskListView: View {
             }
         }
         .navigationTitle("Tasks")
-        .navigationDestination(for: JHTask.self) { t in
-            JHTaskDetailView(retreatId: retreatId, taskId: t.id)
-        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -1358,7 +1355,9 @@ struct GlobalVolunteersAdminView: View {
             if let error { Text(error).foregroundStyle(.red) }
             else {
                 List(items) { v in
-                    NavigationLink(value: v) {
+                    NavigationLink {
+                        VolunteerDetailView(volunteer: v)
+                    } label: {
                         VStack(alignment: .leading) {
                             Text(v.displayName)
                             if let e = v.email { Text(e).font(.caption).foregroundStyle(.secondary) }
@@ -1380,9 +1379,6 @@ struct GlobalVolunteersAdminView: View {
                     }
                 }
             }
-        }
-        .navigationDestination(for: Volunteer.self) { v in
-            VolunteerDetailView(volunteer: v)
         }
         .task { await search() }
         .sheet(isPresented: $showCreate) {

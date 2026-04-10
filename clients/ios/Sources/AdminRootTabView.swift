@@ -7,7 +7,7 @@ struct AdminRootTabView: View {
     var body: some View {
         TabView {
             RootView()
-                .tabItem { Label("SDUI", systemImage: "rectangle.3.group") }
+                .tabItem { Label("Home", systemImage: "rectangle.3.group") }
 
             NavigationStack {
                 RetreatAdminListView()
@@ -22,7 +22,7 @@ struct AdminRootTabView: View {
             NavigationStack {
                 MetaAdminView()
             }
-            .tabItem { Label("Meta", systemImage: "wrench.and.screwdriver") }
+            .tabItem { Label("Settings", systemImage: "wrench.and.screwdriver") }
         }
     }
 }
@@ -113,7 +113,7 @@ struct MetaAdminView: View {
                 }
             }
         }
-        .navigationTitle("Meta")
+        .navigationTitle("Settings")
     }
 
     private func pingHealth() async {

@@ -7,12 +7,7 @@ struct SDUIRoot: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if let title = screen.title {
-                    Text(title)
-                        .font(.title2)
-                        .bold()
-                        .padding(.bottom, 8)
-                }
+                // `screen.title` is shown in the parent `NavigationStack` only (avoids triple headings).
                 if let roots = screen.components {
                     ForEach(Array(roots.enumerated()), id: \.offset) { _, c in
                         SDUIComponentView(component: c, onAction: onAction)
