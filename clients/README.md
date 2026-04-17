@@ -34,13 +34,16 @@ Override with `JEWELHEART_IOS_DEST='platform=iOS,name=Other iPhone' ./clients/io
 
 ## Android
 
-Module: **`buddhist-stone-ios-app/android/jewelheart-admin`** (same Gradle project as KarmaDots).
+Module: **`clients/android/jewelheart-admin`** (standalone Gradle project in this repo; no KarmaDots `:app` required).
 
-1. Open the **KarmaDots** `android/` project in Android Studio.
-2. Add **`jewelheart-admin/google-services.json`** (Firebase Android app **`org.jewelheart.admin`**, or merge clients into one JSON for the GettingStoned project).
-3. **`strings.xml`** includes **`default_web_client_id`** for Google Sign-In (GettingStoned web OAuth client); adjust if you use another Firebase project.
-4. Run **`jewelheart-admin`** — bottom tabs match the iOS shell: **SDUI**, **Retreats** (Navigation Compose: jobs, slots, tasks, linked volunteers, CSV import, schedule, reports), **Directory** (global volunteer search), **Meta** (health, UID, SDUI action, sign out). Auth: email, anonymous, Google (same as iOS).
-5. Build: `./gradlew :jewelheart-admin:assembleDebug`
+1. Open **`clients/android/`** in Android Studio (root **`JewelHeartAdminAndroid`**). Use **JDK 17+** for Gradle (Android Studio’s embedded JDK is fine).
+2. Ensure the Android SDK is configured: Android Studio usually creates **`local.properties`** with `sdk.dir=…`. From the command line, set **`ANDROID_HOME`** or copy **`local.properties.example`** → **`local.properties`** and edit the path.
+3. Add **`jewelheart-admin/google-services.json`** (Firebase Android app **`org.jewelheart.admin`**). The file is gitignored; see **`jewelheart-admin/README.md`**.
+4. **`strings.xml`** includes **`default_web_client_id`** for Google Sign-In; adjust if you use another Firebase / OAuth client.
+5. Run **`jewelheart-admin`** — bottom tabs match the iOS shell: **SDUI**, **Retreats** (Navigation Compose: jobs, slots, tasks, linked volunteers, CSV import, schedule, reports), **Directory** (global volunteer search), **Meta** (health, UID, SDUI action, sign out). Auth: email, anonymous, Google (same as iOS).
+6. From **`clients/android/`**: `./gradlew :jewelheart-admin:assembleDebug` (with **`JAVA_HOME`** pointing at JDK 17+ if your default `java` is older).
+
+A copy of the same module also remains in **`buddhist-stone-ios-app/android/jewelheart-admin`** if you prefer building inside the KarmaDots Android monorepo; keep them in sync when you change one.
 
 ## Production private-server sync
 

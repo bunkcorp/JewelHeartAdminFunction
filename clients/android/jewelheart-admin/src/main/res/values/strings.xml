@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JewelHeart Admin</string>
+    <!-- Web client (client_type 3) from Firebase / google-services — same project as KarmaDots -->
+    <string name="default_web_client_id">120549448949-78jfg94ccn5g1ie9374ibe39ptnvqatu.apps.googleusercontent.com</string>
+    <!-- Same Firebase project as :app (gettingstoned-4aee3); init without google-services.json in this module -->
+    <string name="firebase_app_id" translatable="false">1:120549448949:android:650ef852d582742b5db9bc</string>
+    <string name="firebase_api_key" translatable="false">AIzaSyA0grtduFMGASuTF-u99TTRS63uUueCYhc</string>
+    <string name="firebase_project_id" translatable="false">gettingstoned-4aee3</string>
+    <string name="firebase_gcm_sender_id" translatable="false">120549448949</string>
+    <string name="firebase_storage_bucket" translatable="false">gettingstoned-4aee3.firebasestorage.app</string>
+</resources>

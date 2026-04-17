@@ -32,5 +32,7 @@ psql "$DATABASE_URL" -f migrations/001_jewelheart_initial.sql
 |------|---------|
 | `openapi/jewelheart.yaml` | Contract for REST + SDUI endpoints |
 | `migrations/001_jewelheart_initial.sql` | Enums, tables, indexes, `updated_at` triggers |
+| `clients/ios/` | JewelHeart Admin **iOS** (Xcode) |
+| `clients/android/` | JewelHeart Admin **Android** (Gradle); open this folder in Android Studio |
 
 **Implemented** in `buddhist-stone-ios-app/private-server`: `GET/POST https://api.karmadots.org/jewelheart/...` (same auth as `/user/*`). Run `npm run db:jewelheart` in `private-server` after setting `DATABASE_URL`. Seed a global admin with `INSERT INTO jewelheart_admins (firebase_uid) VALUES ('your-firebase-uid');` or rely on per-retreat access: creating a retreat adds your UID to `jewelheart_retreat_admins`.

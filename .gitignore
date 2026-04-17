@@ -10,3 +10,9 @@ clients/ios/GoogleService-Info.plist
 
 # SwiftPM / Xcode (optional local resolution; commit Package.resolved when present for reproducible builds)
 .swiftpm/configuration/
+
+# Android (JewelHeart Admin) — Firebase; build outputs
+clients/android/jewelheart-admin/google-services.json
+clients/android/**/build/
+clients/android/.gradle/
+clients/android/local.properties
