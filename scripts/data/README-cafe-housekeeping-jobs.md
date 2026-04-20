@@ -55,6 +55,8 @@ python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
 
 Optional: `export JEWELHEART_API=https://api.karmadots.org/jewelheart`.
 
+**Getting `TOKEN`:** On **https://karmadots.org/login/** (after sign-in), use **Copy ID token** — that is the JWT for `export TOKEN='…'`. The “Firebase UID” line is **not** the token.
+
 **Re-running** `--all-retreats` will **append duplicate jobs** (same titles again). Delete jobs in-app or only run once per retreat.
 
 ## Option C — iOS / Android admin
