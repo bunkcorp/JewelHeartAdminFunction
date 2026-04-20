@@ -40,15 +40,22 @@ Split your single “tidy lunch **and** dinner” line into **two** jobs so each
 
 ## Option B — REST (script)
 
-```bash
-export JEWELHEART_API="${JEWELHEART_API:-https://api.karmadots.org/jewelheart}"
-export RETREAT_ID="<your-retreat-uuid>"
-export TOKEN="<firebase-id-token>"   # short-lived; get from app/debug or Firebase CLI
+From repo root:
 
+```bash
+export TOKEN="<firebase-id-token>"   # short-lived; same Firebase project as the API
+
+# One retreat:
+export RETREAT_ID="<your-retreat-uuid>"
 python3 scripts/import_cafe_housekeeping_jobs.py
+
+# Every retreat your account can list (GET /jewelheart/retreats):
+python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
 ```
 
-Run from repo root; see `scripts/import_cafe_housekeeping_jobs.py`.
+Optional: `export JEWELHEART_API=https://api.karmadots.org/jewelheart`.
+
+**Re-running** `--all-retreats` will **append duplicate jobs** (same titles again). Delete jobs in-app or only run once per retreat.
 
 ## Option C — iOS / Android admin
 
