@@ -1,0 +1,185 @@
+[
+  {
+    "title": "Coffee — Set up area, supplies, and brew (each early morning)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 20,
+    "subjobs": [
+      "Lay out supplies, cups, snacks as needed",
+      "Start coffee; confirm second pot if crowd expected"
+    ]
+  },
+  {
+    "title": "Coffee — Tidy area (each lunch break)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 5
+  },
+  {
+    "title": "Coffee — Tidy area (each dinner break)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 5
+  },
+  {
+    "title": "Coffee — Refill coffee, supplies, snacks (afternoon break)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 10,
+    "subjobs": [
+      "Brew fresh batch if low",
+      "Replenish snacks, cups, stirrers, dairy"
+    ]
+  },
+  {
+    "title": "Coffee — Break down area (each end of day)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 10
+  },
+  {
+    "title": "Coffee — Clean pots & equipment (each end of day)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 10
+  },
+  {
+    "title": "Cafe — Clean floor and tables (each end of day)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  },
+  {
+    "title": "Facilities — Trash, liners, recycling (each end of day)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Kitchen — Quick sweep/mop floor (alternate end of day; pair with full mop job)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Kitchen — Full sweep & mop floor (alternate end of day; pair with quick mop job)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 28
+  },
+  {
+    "title": "Restroom — Quick clean (main men's)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Restroom — Quick clean (main women's)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Restroom — Quick clean (unisex)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Restroom — Quick clean (Lama bathroom)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Restroom — Full clean & restock (main men's)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22
+  },
+  {
+    "title": "Restroom — Full clean & restock (main women's)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22
+  },
+  {
+    "title": "Restroom — Full clean & restock (unisex)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22
+  },
+  {
+    "title": "Restroom — Full clean & restock (Lama bathroom)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22
+  },
+  {
+    "title": "Office — Quick tidy (Lama's office)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  },
+  {
+    "title": "Office — Full clean & restock (Lama's office)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 25
+  },
+  {
+    "title": "Office — Quick tidy (secondary office)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  },
+  {
+    "title": "Office — Full clean & restock (secondary office)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 25
+  },
+  {
+    "title": "Floors — Vacuum main hall",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 18
+  },
+  {
+    "title": "Floors — Vacuum store",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Floors — Vacuum red couch room",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Foyer — Quick clean floor",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 10
+  },
+  {
+    "title": "Foyer — Full clean floor",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22
+  },
+  {
+    "title": "Windows — Clean front windows",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 18
+  },
+  {
+    "title": "Windows — Clean cafe windows",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Floors — Quick vacuum main hall",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 16
+  },
+  {
+    "title": "Kitchen — Quick clean fridge (interior wipe)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Kitchen — Full clean fridge (deep clean)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 35
+  },
+  {
+    "title": "Main hall — Clear clutter, chairs, obvious trash",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 20
+  },
+  {
+    "title": "Main hall — Full clean (surfaces, edges, detailed)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 50
+  },
+  {
+    "title": "Main hall — Reset layout, cushions, signage",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 18
+  }
+]
