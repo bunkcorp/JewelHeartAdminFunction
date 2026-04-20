@@ -11,6 +11,10 @@ All retreats you can access:
   python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
 
 Optional: JEWELHEART_API (default https://api.karmadots.org/jewelheart)
+Optional: JEWELHEART_USER_AGENT — override browser-like User-Agent if Cloudflare blocks defaults.
+
+Cloudflare may return 1010 (browser_signature_banned) for Python's default urllib User-Agent;
+this script sends a normal browser UA unless you override it.
 """
 
 from __future__ import annotations
@@ -24,17 +28,29 @@ import urllib.parse
 import urllib.request
 
 
+def _request_headers(token: str, *, json_body: bool) -> dict[str, str]:
+    ua = os.environ.get(
+        "JEWELHEART_USER_AGENT",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    )
+    h: dict[str, str] = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/json",
+        "User-Agent": ua,
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    if json_body:
+        h["Content-Type"] = "application/json"
+    return h
+
+
 def api_json(method: str, url: str, token: str, body: dict | None = None) -> dict | list | None:
     data = None if body is None else json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url,
         data=data,
         method=method,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            **({"Content-Type": "application/json"} if body is not None else {}),
-        },
+        headers=_request_headers(token, json_body=body is not None),
     )
     with urllib.request.urlopen(req, timeout=120) as resp:
         raw = resp.read().decode()

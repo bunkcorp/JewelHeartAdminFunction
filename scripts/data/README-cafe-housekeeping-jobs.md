@@ -55,6 +55,8 @@ python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
 
 Optional: `export JEWELHEART_API=https://api.karmadots.org/jewelheart`.
 
+If **`GET /retreats` returns Cloudflare 1010** (“browser signature banned”), the import script already sends a **browser-like `User-Agent`**. Override with `export JEWELHEART_USER_AGENT='…'` if your zone still blocks the default string, or adjust **Cloudflare** rules / Bot Fight Mode for `api.karmadots.org` to allow your IP or authenticated API traffic.
+
 **Getting `TOKEN`:** On **https://karmadots.org/login/** (after sign-in), use **Copy ID token** — that is the JWT for `export TOKEN='…'`. The “Firebase UID” line is **not** the token.
 
 **Re-running** `--all-retreats` will **append duplicate jobs** (same titles again). Delete jobs in-app or only run once per retreat.
