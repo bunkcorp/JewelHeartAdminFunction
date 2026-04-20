@@ -1,0 +1,75 @@
+[
+  {
+    "title": "Altar — Set up (cloths, texts, offerings, bowls)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 28,
+    "subjobs": [
+      "Lay altar cloths and arrange central supports",
+      "Place texts, statues, photos per lineage custom",
+      "Set offering bowls and implements"
+    ]
+  },
+  {
+    "title": "Altar — Empty water offering bowls",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Altar — Fill / refresh water offering bowls",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Altar — Break down (after session / end of day)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 22,
+    "subjobs": [
+      "Carefully clear offerings per custom",
+      "Fold and store cloths; pack texts and supports"
+    ]
+  },
+  {
+    "title": "Altar — Clean surfaces, dust, wipe (no rearrange)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 18
+  },
+  {
+    "title": "Altar flowers — Purchase (errand)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 50,
+    "subjobs": [
+      "Confirm vase count and color preferences if applicable",
+      "Transport safely; refrigerate if needed before setup"
+    ]
+  },
+  {
+    "title": "Altar flowers — Cull / remove spent blooms",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  },
+  {
+    "title": "Altar flowers — Arrange / set up on altar",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 18
+  },
+  {
+    "title": "Altar — Light / refresh butter lamps (or electric equivalents)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  },
+  {
+    "title": "Altar — Refresh fruit / food offerings (replace, dispose compost)",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 15
+  },
+  {
+    "title": "Altar — Straighten texts, covers, small implements",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 8
+  },
+  {
+    "title": "Altar area — Sweep or vacuum floor around altar",
+    "volunteersNeeded": 1,
+    "estimatedMinutes": 12
+  }
+]

@@ -22,6 +22,11 @@ Rough mapping from your wording:
 
 Create **tasks** only on the dates you want (skip every other “end of day” slot for that job), or use **notes** on tasks. The model does not encode “alternate” inside the job row itself.
 
+## Other packs
+
+- **`altar-jobs.json`** — altar, water bowls, flowers, lamps, offerings. See **`README-altar-jobs.md`**. Import with  
+  `--jobs-file scripts/data/altar-jobs.json`.
+
 ## File: `cafe-housekeeping-jobs.json`
 
 Array of objects matching **`POST /jewelheart/retreats/{retreatId}/jobs`** (`JobCreate`):
@@ -51,6 +56,9 @@ python3 scripts/import_cafe_housekeeping_jobs.py
 
 # Every retreat your account can list (GET /jewelheart/retreats):
 python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
+
+# Altar pack instead of cafe (or run both commands, one after the other):
+python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats --jobs-file scripts/data/altar-jobs.json
 ```
 
 Optional: `export JEWELHEART_API=https://api.karmadots.org/jewelheart`.

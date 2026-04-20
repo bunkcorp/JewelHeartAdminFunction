@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""POST jobs from scripts/data/cafe-housekeeping-jobs.json to JewelHeart API.
+"""POST jobs from a JSON pack (JobCreate[]) to JewelHeart API.
+
+Default job file: scripts/data/cafe-housekeeping-jobs.json
 
 Single retreat:
   export RETREAT_ID="<uuid>"
@@ -9,6 +11,9 @@ Single retreat:
 All retreats you can access:
   export TOKEN="<firebase-id-token>"
   python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats
+
+Altar pack:
+  python3 scripts/import_cafe_housekeeping_jobs.py --all-retreats --jobs-file scripts/data/altar-jobs.json
 
 Optional: JEWELHEART_API (default https://api.karmadots.org/jewelheart)
 Optional: JEWELHEART_USER_AGENT — override browser-like User-Agent if Cloudflare blocks defaults.
@@ -95,11 +100,16 @@ def import_jobs_for_retreat(base: str, token: str, retreat_id: str, jobs: list[d
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Import cafe/housekeeping jobs into JewelHeart.")
+    parser = argparse.ArgumentParser(description="Import JewelHeart jobs from a JSON pack.")
     parser.add_argument(
         "--all-retreats",
         action="store_true",
         help="Create jobs on every retreat returned by GET /retreats (for your token).",
+    )
+    parser.add_argument(
+        "--jobs-file",
+        default="scripts/data/cafe-housekeeping-jobs.json",
+        help="Path to JSON array of JobCreate objects (default: cafe pack).",
     )
     args = parser.parse_args()
 
@@ -112,9 +122,16 @@ def main() -> int:
         return 1
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(root, "scripts", "data", "cafe-housekeeping-jobs.json")
+    path = args.jobs_file if os.path.isabs(args.jobs_file) else os.path.join(root, args.jobs_file)
+    if not os.path.isfile(path):
+        print(f"Jobs file not found: {path}", file=sys.stderr)
+        return 1
     with open(path, encoding="utf-8") as f:
         jobs = json.load(f)
+    if not isinstance(jobs, list):
+        print("Jobs file must be a JSON array.", file=sys.stderr)
+        return 1
+    print(f"Using jobs file: {path} ({len(jobs)} job(s))\n")
 
     if args.all_retreats:
         print("Listing retreats…")
