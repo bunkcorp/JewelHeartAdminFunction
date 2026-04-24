@@ -16,3 +16,9 @@ clients/android/jewelheart-admin/google-services.json
 clients/android/**/build/
 clients/android/.gradle/
 clients/android/local.properties
+
+# Local-only: never commit (Firebase ID token + test retreat id for scripts)
+.jewelheart-token
+.jewelheart-test-retreat-id
+
+scripts/__pycache__/

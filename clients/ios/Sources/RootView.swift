@@ -70,7 +70,17 @@ struct RootView: View {
                 } else if target == "retreat.list" || target == "jewelheart.home" {
                     retreatId = nil
                 }
-                if let d = action.payload?["date"] {
+                switch target {
+                case "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home":
+                    extraParams.removeValue(forKey: "day")
+                case "retreat.schedule.day":
+                    if let d = action.payload?["day"], !d.isEmpty {
+                        extraParams["day"] = d
+                    }
+                default:
+                    break
+                }
+                if let d = action.payload?["date"], !d.isEmpty {
                     extraParams["date"] = d
                 }
             }

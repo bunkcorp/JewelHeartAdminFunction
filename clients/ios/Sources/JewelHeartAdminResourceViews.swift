@@ -1548,19 +1548,41 @@ struct ScheduleDayView: View {
     @State private var day = Date()
     @State private var response: ScheduleDayResponse?
     @State private var error: String?
+    @State private var suggestedDates: [String] = []
 
     var body: some View {
         List {
             Section {
+                if !suggestedDates.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(suggestedDates, id: \.self) { d in
+                                Button(d) {
+                                    if let dt = AdminDayFormat.api.date(from: d) {
+                                        day = dt
+                                    }
+                                    Task { await load() }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    Text("From slots on this retreat").font(.caption).foregroundStyle(.secondary)
+                }
                 DatePicker("Day", selection: $day, displayedComponents: .date)
                 Button("Load schedule") { Task { await load() } }
             }
             if let r = response {
-                Section("Items (\(r.items.count))") {
+                let volMin = r.items.reduce(0) { $0 + $1.job.volunteersNeeded * $1.job.estimatedMinutes }
+                Section("Tasks (\(r.items.count)) · ~\(volMin) volunteer-min") {
                     ForEach(Array(r.items.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(item.job.title).font(.headline)
-                            Text(item.slot.label + " · " + item.slot.slotDate).font(.subheadline)
+                            Text("\(item.slot.label) · \(item.slot.slotDate) · \(item.job.volunteersNeeded)v × \(item.job.estimatedMinutes)m")
+                                .font(.subheadline)
+                            let need = item.task.volunteersNeeded ?? item.job.volunteersNeeded
+                            let ac = item.task.assignmentCount ?? 0
+                            Text("Assigned \(ac) / \(need)").font(.caption)
                             if let notes = item.task.notes, !notes.isEmpty {
                                 Text(notes).font(.caption).foregroundStyle(.secondary)
                             }
@@ -1575,7 +1597,18 @@ struct ScheduleDayView: View {
             }
         }
         .navigationTitle("Schedule")
+        .task(id: retreatId) { await loadSuggestedDates() }
         if let error { Text(error).foregroundStyle(.red).padding() }
+    }
+
+    private func loadSuggestedDates() async {
+        do {
+            let sl = try await api.listSlots(retreatId: retreatId)
+            let u = Array(Set(sl.items.map(\.slotDate))).sorted()
+            await MainActor.run { suggestedDates = u }
+        } catch {
+            await MainActor.run { suggestedDates = [] }
+        }
     }
 
     private func load() async {

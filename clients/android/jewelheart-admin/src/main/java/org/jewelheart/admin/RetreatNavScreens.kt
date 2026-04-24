@@ -3,6 +3,7 @@ package org.jewelheart.admin
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -740,6 +741,27 @@ private fun ScheduleScreen(nav: NavHostController, retreatId: String) {
     var dateStr by remember { mutableStateOf(java.time.LocalDate.now().toString()) }
     var sched by remember { mutableStateOf<ScheduleDayResponse?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    var suggestedDates by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    fun loadDay() {
+        scope.launch {
+            try {
+                sched = repo.getScheduleByDay(retreatId, dateStr.trim())
+                err = null
+            } catch (e: Exception) {
+                err = e.message
+                sched = null
+            }
+        }
+    }
+
+    LaunchedEffect(retreatId) {
+        try {
+            suggestedDates = repo.listSlots(retreatId).items.map { it.slotDate }.distinct().sorted()
+        } catch (_: Exception) {
+            suggestedDates = emptyList()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -754,27 +776,43 @@ private fun ScheduleScreen(nav: NavHostController, retreatId: String) {
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = dateStr, onValueChange = { dateStr = it }, label = { Text("Date yyyy-MM-dd") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        sched = repo.getScheduleByDay(retreatId, dateStr.trim())
-                        err = null
-                    } catch (e: Exception) {
-                        err = e.message
-                        sched = null
+            if (suggestedDates.isNotEmpty()) {
+                Text("Days with slots", style = MaterialTheme.typography.labelMedium)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                    suggestedDates.forEach { d ->
+                        TextButton(
+                            onClick = {
+                                dateStr = d
+                                loadDay()
+                            },
+                        ) { Text(d) }
                     }
                 }
-            }) { Text("Load day") }
+            }
+            OutlinedTextField(value = dateStr, onValueChange = { dateStr = it }, label = { Text("Date yyyy-MM-dd") }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = { loadDay() }) { Text("Load day") }
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             sched?.let { s ->
-                Text("${s.items.size} items", style = MaterialTheme.typography.titleSmall)
+                val volMin = s.items.sumOf { it.job.volunteersNeeded * it.job.estimatedMinutes }
+                Text("${s.items.size} task(s) · ~$volMin volunteer-minutes", style = MaterialTheme.typography.titleSmall)
                 LazyColumn {
                     items(s.items) { row ->
                         Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(Modifier.padding(8.dp)) {
                                 Text(row.job.title, style = MaterialTheme.typography.titleSmall)
-                                Text(row.slot.label + " · " + row.slot.slotDate)
+                                Text(
+                                    "${row.slot.label} · ${row.slot.slotDate} · ${row.job.volunteersNeeded}v × ${row.job.estimatedMinutes}m",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                val ac = row.task.assignmentCount ?: 0
+                                val need = row.task.volunteersNeeded ?: row.job.volunteersNeeded
+                                Text("Assigned $ac / $need", style = MaterialTheme.typography.labelSmall)
+                                row.assignments?.takeIf { it.isNotEmpty() }?.let { assigns ->
+                                    Text(
+                                        assigns.mapNotNull { it.volunteer?.displayName ?: it.volunteerId }.joinToString(", "),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
                             }
                         }
                     }

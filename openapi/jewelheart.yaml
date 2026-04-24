@@ -1362,7 +1362,10 @@ components:
       properties:
         screenId:
           type: string
-          example: schedule.board
+          description: >
+            Known JewelHeart examples include jewelheart.home, retreat.list, retreat.home,
+            retreat.schedule (hub; requires retreatId), retreat.schedule.day (requires retreatId and params.day=YYYY-MM-DD).
+          example: jewelheart.home
         retreatId:
           type: string
           format: uuid
