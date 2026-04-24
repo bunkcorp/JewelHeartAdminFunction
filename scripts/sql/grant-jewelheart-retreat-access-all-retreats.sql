@@ -8,4 +8,4 @@
 INSERT INTO jewelheart_retreat_admins (retreat_id, firebase_uid)
 SELECT r.id, 'YOUR_FIREBASE_UID_HERE'
 FROM jewelheart_retreats r
-ON CONFLICT DO NOTHING;
+ON CONFLICT (retreat_id, firebase_uid) DO NOTHING;
