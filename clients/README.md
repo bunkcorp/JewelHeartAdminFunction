@@ -8,6 +8,8 @@ Minimal **iOS (SwiftUI)** and **Android (Compose)** shells that talk to the same
 - **SDUI:** `POST /jewelheart/sdui/screen` with `{ "screenId", "retreatId?", "params?" }`  
   Response matches KarmaDots `schemaVersion` + `screen.components` (see `../shared/sdui-schema/examples/home-screen.json`).
 
+**Retreat volunteer schedule (SDUI + native):** The **Home** tab loads SDUI from the server. On **KarmaDots**, the live router is **`buddhist-stone-ios-app/private-server/src/jewelheart/sduiScreens.js`**: it exposes **`retreat.home`** (same as retreat detail), **`retreat.schedule`** (one button per day that has slots), and **`retreat.schedule.day`** (`params.day` = `YYYY-MM-DD`), all backed by the same **`service.js`** functions as **`GET /jewelheart/retreats/{retreatId}/schedule`**. The copy in **`JewelHeartAdminFunction/integrations/private-server/jewelheart-service-sdui.fragment.js`** is for other deployments or paste-into-custom servers. The **Retreats** tab has **Schedule (by day)** via that GET endpoint; iOS and Android also suggest dates from **`GET .../slots`** and show assignment counts and volunteer-minutes totals.
+
 ## iOS
 
 The repo includes a generated Xcode project under **`clients/ios/`** (SPM: **FirebaseAuth**, **FirebaseCore**, **GoogleSignIn**). Sign-in matches **KarmaDots**: Google, Sign in with Apple, email (sign in + create account), and anonymous. The **`@main`** entry point is **`JewelHeartAppDelegate`**; **`JewelHeartSceneDelegate`** hosts SwiftUI. Do not add a second `@main`.
