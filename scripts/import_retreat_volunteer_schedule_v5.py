@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 import uuid
@@ -67,6 +68,21 @@ def _u5(*parts: str) -> str:
 
 def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace("'", "''")
+
+
+def _resolve_psql() -> str:
+    """Locate psql (SSH and minimal PATH often omit Homebrew)."""
+    p = shutil.which("psql")
+    if p:
+        return p
+    for c in (
+        "/usr/local/opt/postgresql@16/bin/psql",
+        "/opt/homebrew/opt/postgresql@16/bin/psql",
+        "/usr/local/bin/psql",
+    ):
+        if os.path.isfile(c):
+            return c
+    raise SystemExit("psql not found. Install PostgreSQL client or add psql to PATH.")
 
 
 def _parse_day_to_iso(day_cell: str) -> str | None:
@@ -464,7 +480,7 @@ def main() -> None:
         if not db:
             raise SystemExit("DATABASE_URL must be set for --apply")
         r = subprocess.run(
-            ["psql", db, "-v", "ON_ERROR_STOP=1", "-f", "-"],
+            [_resolve_psql(), db, "-v", "ON_ERROR_STOP=1", "-f", "-"],
             input=sql.encode(),
             capture_output=True,
         )
