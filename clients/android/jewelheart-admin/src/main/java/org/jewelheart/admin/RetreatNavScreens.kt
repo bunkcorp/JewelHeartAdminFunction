@@ -3,6 +3,7 @@ package org.jewelheart.admin
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -619,19 +620,25 @@ private fun jhTaskListTitle(
     val sFromLookup = slotLabelById[t.slotId]?.trim().orEmpty()
     val j = if (jFromTask.isNotEmpty()) jFromTask else jFromLookup
     val s = if (sFromTask.isNotEmpty()) sFromTask else sFromLookup
-    return when {
-        j.isNotEmpty() && s.isNotEmpty() -> "$j — $s"
-        j.isNotEmpty() -> j
-        s.isNotEmpty() -> s
-        else -> {
-            val n = t.notes?.trim().orEmpty()
-            if (n.isNotEmpty()) {
-                if (n.length > 56) n.take(56) + "…" else n
-            } else {
-                "Volunteer task"
+    val primary =
+        when {
+            j.isNotEmpty() && s.isNotEmpty() -> "$j — $s"
+            j.isNotEmpty() -> j
+            s.isNotEmpty() -> s
+            else -> {
+                val n = t.notes?.trim().orEmpty()
+                if (n.isNotEmpty()) {
+                    if (n.length > 56) n.take(56) + "…" else n
+                } else {
+                    "Volunteer task"
+                }
             }
         }
+    val ctx = t.slotActivityContext?.trim().orEmpty()
+    if (ctx.isNotEmpty() && !primary.contains(ctx, ignoreCase = true)) {
+        return "$primary · $ctx"
     }
+    return primary
 }
 
 private fun jhTaskListSubtitle(t: JHTask): String? {
@@ -1252,6 +1259,9 @@ private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: 
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                (d.slot?.activityContext ?: d.slotActivityContext)?.takeIf { it.isNotBlank() }?.let { ctx ->
+                    Text("Site / context: $ctx", style = MaterialTheme.typography.bodySmall)
+                }
                 val need = d.volunteersNeeded ?: d.job?.volunteersNeeded
                 val ac = d.assignmentCount ?: 0
                 Text("Assigned $ac / ${need ?: "?"}", style = MaterialTheme.typography.titleSmall)

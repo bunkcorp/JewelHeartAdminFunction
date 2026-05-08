@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -237,6 +238,7 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
 private fun AdminTabShell() {
     var tab by remember { mutableIntStateOf(0) }
     val retreatNav = rememberNavController()
+    val volunteerNav = rememberNavController()
     val sduiVm: JewelHeartViewModel = viewModel()
 
     Scaffold(
@@ -263,6 +265,12 @@ private fun AdminTabShell() {
                 NavigationBarItem(
                     selected = tab == 3,
                     onClick = { tab = 3 },
+                    icon = { Icon(Icons.Filled.VolunteerActivism, contentDescription = null) },
+                    label = { Text("Volunteer") },
+                )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     label = { Text("Settings") },
                 )
@@ -274,7 +282,8 @@ private fun AdminTabShell() {
                 0 -> SduiTabContent(vm = sduiVm)
                 1 -> RetreatNavHost(navController = retreatNav)
                 2 -> DirectoryTabContent()
-                3 -> MetaTabContent()
+                3 -> VolunteerNavHost(navController = volunteerNav)
+                4 -> MetaTabContent()
             }
         }
     }

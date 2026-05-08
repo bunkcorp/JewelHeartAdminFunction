@@ -131,6 +131,16 @@ async function retreatHomeSdui(firebaseUid, retreatId) {
             },
             {
               type: 'button',
+              label: 'Volunteer week (signup)',
+              icon: 'person.3',
+              action: {
+                type: 'navigate',
+                target: 'retreat.volunteer.week',
+                payload: { retreatId },
+              },
+            },
+            {
+              type: 'button',
               label: 'Volunteer schedule',
               icon: 'calendar',
               action: {
@@ -231,6 +241,357 @@ async function retreatScheduleHubSdui(firebaseUid, retreatId) {
           type: 'container',
           layout: 'column',
           spacing: 12,
+          style: { padding: { all: 16 } },
+          children,
+        },
+      ],
+    },
+  };
+}
+
+/** Calendar yyyy-MM-dd interpreted as a UTC civil date (matches server slot dates). */
+function mondayContainingIsoYmd(ymd) {
+  const [y, m, d] = ymd.split('-').map((x) => parseInt(x, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const dow = dt.getUTCDay();
+  const daysFromMonday = (dow + 6) % 7;
+  dt.setUTCDate(dt.getUTCDate() - daysFromMonday);
+  const yy = dt.getUTCFullYear();
+  const mo = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const da = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mo}-${da}`;
+}
+
+function addDaysIsoYmd(ymd, delta) {
+  const [y, m, d] = ymd.split('-').map((x) => parseInt(x, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  dt.setUTCDate(dt.getUTCDate() + delta);
+  const yy = dt.getUTCFullYear();
+  const mo = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const da = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mo}-${da}`;
+}
+
+function todayYmdInTimeZone(timeZone) {
+  const tz = timeZone || 'UTC';
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date())
+    .filter((p) => p.type !== 'literal')
+    .reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function weekStringsFromMonday(mondayYmd) {
+  return Array.from({ length: 7 }, (_, i) => addDaysIsoYmd(mondayYmd, i));
+}
+
+function volunteerSignupInitialWeekMonday(retreat, timeZone) {
+  const tz = timeZone || 'UTC';
+  if (retreat.startDate && isIsoDate(retreat.startDate)) return mondayContainingIsoYmd(retreat.startDate);
+  if (retreat.endDate && isIsoDate(retreat.endDate)) return mondayContainingIsoYmd(retreat.endDate);
+  return mondayContainingIsoYmd(todayYmdInTimeZone(tz));
+}
+
+function apiWeekOverlapsRetreatRange(weekDays, start, end) {
+  if (!start || !end) return true;
+  const first = weekDays[0];
+  const last = weekDays[6];
+  if (!first || !last) return true;
+  return !(last < start || first > end);
+}
+
+function civilDayLabel(iso) {
+  const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' }).format(dt);
+}
+
+function civilDayAxisLabel(iso) {
+  const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric' }).format(dt);
+}
+
+/** @param {Array<{task:any, slot:any, job:any, assignments?:any[]}>} rows */
+function volunteerDayLoadMetricsFromRows(rows, weekDates) {
+  return weekDates.map((iso) => {
+    const inDay = rows.filter((row) => row.slot?.slotDate === iso);
+    const seenTask = new Set();
+    const items = inDay.filter((row) => {
+      const tid = row.task?.id;
+      if (!tid || seenTask.has(tid)) return false;
+      seenTask.add(tid);
+      return true;
+    });
+    let demandMinutes = 0;
+    let demandSlots = 0;
+    let assignedMinutes = 0;
+    const volunteerIds = new Set();
+    let filledSlots = 0;
+    for (const item of items) {
+      const need = item.task?.volunteersNeeded != null ? item.task.volunteersNeeded : item.job?.volunteersNeeded;
+      const mins = item.job?.estimatedMinutes != null ? item.job.estimatedMinutes : 0;
+      demandMinutes += need * mins;
+      demandSlots += need;
+      const assigns = item.assignments || [];
+      const ac = assigns.length === 0 ? item.task?.assignmentCount || 0 : assigns.length;
+      filledSlots += ac;
+      assignedMinutes += ac * mins;
+      for (const a of assigns) {
+        if (a.volunteerId) volunteerIds.add(a.volunteerId);
+      }
+    }
+    const distinct = volunteerIds.size ? volunteerIds.size : null;
+    const avgDemand = demandSlots > 0 ? demandMinutes / demandSlots : 0;
+    const avgActual =
+      assignedMinutes <= 0
+        ? null
+        : distinct && distinct > 0
+          ? assignedMinutes / distinct
+          : filledSlots > 0
+            ? assignedMinutes / filledSlots
+            : null;
+    const usesTilde = !(distinct && distinct > 0) && filledSlots > 0 && assignedMinutes > 0;
+    return {
+      iso,
+      displayLabel: civilDayLabel(iso),
+      axisLabel: civilDayAxisLabel(iso),
+      demandMinutes,
+      demandSlots,
+      filledMinutes: assignedMinutes,
+      distinct,
+      filledSlots,
+      avgDemand,
+      avgActual,
+      usesTilde,
+    };
+  });
+}
+
+function barLine(widthChars, frac) {
+  const n = Math.max(0, Math.min(widthChars, Math.round(widthChars * frac)));
+  return ''.padStart(n, '█');
+}
+
+/** @param {string} firebaseUid @param {string} retreatId @param {any} params */
+async function retreatVolunteerWeekSdui(firebaseUid, retreatId, params) {
+  const r = await getRetreat(firebaseUid, retreatId);
+  const sch = scheduleDeps();
+  const tz = r.timezone || 'UTC';
+  let wmRaw = params?.weekMonday != null ? String(params.weekMonday) : '';
+  let monday =
+    wmRaw && isIsoDate(wmRaw)
+      ? mondayContainingIsoYmd(wmRaw)
+      : volunteerSignupInitialWeekMonday(r, tz);
+  const weekDays = weekStringsFromMonday(monday);
+
+  const weekTitle = `${civilDayLabel(weekDays[0])} – ${civilDayLabel(weekDays[6])}`;
+  const children = [
+    { type: 'text', content: r.name, textStyle: { fontSize: 22, fontWeight: 'bold' } },
+    {
+      type: 'text',
+      content: `Volunteer week · ${weekTitle}`,
+      textStyle: { fontSize: 16, fontWeight: 'semibold' },
+    },
+    {
+      type: 'text',
+      content: `Timezone: ${tz}`,
+      textStyle: { fontSize: 13 },
+    },
+  ];
+
+  if (!apiWeekOverlapsRetreatRange(weekDays, r.startDate, r.endDate)) {
+    children.push({
+      type: 'text',
+      content: `These dates are outside this retreat (${r.startDate || '—'} … ${r.endDate || '—'}).`,
+      textStyle: { fontSize: 13 },
+    });
+  }
+
+  children.push({
+    type: 'container',
+    layout: 'row',
+    spacing: 8,
+    children: [
+      {
+        type: 'button',
+        label: 'Prev week',
+        action: { type: 'navigate', target: 'retreat.volunteer.week', payload: { retreatId, weekMonday: addDaysIsoYmd(monday, -7) } },
+      },
+      {
+        type: 'button',
+        label: 'This week',
+        action: {
+          type: 'navigate',
+          target: 'retreat.volunteer.week',
+          payload: { retreatId, weekMonday: mondayContainingIsoYmd(todayYmdInTimeZone(tz)) },
+        },
+      },
+      {
+        type: 'button',
+        label: 'Next week',
+        action: { type: 'navigate', target: 'retreat.volunteer.week', payload: { retreatId, weekMonday: addDaysIsoYmd(monday, 7) } },
+      },
+    ],
+  });
+
+  if (!sch?.getScheduleByDay) {
+    children.push({
+      type: 'text',
+      content:
+        'Set globalThis.__jhSchedule.getScheduleByDay(firebaseUid, retreatId, date) for merged week view, or use buddhist-stone private-server.',
+      textStyle: { fontSize: 13 },
+    });
+  } else {
+    const responses = await Promise.all(weekDays.map((day) => sch.getScheduleByDay(firebaseUid, retreatId, day)));
+    const merged = responses.flatMap((res) => res?.items || []);
+    const seen = new Set();
+    const deduped = merged.filter((row) => {
+      const id = row.task?.id;
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    const metrics = volunteerDayLoadMetricsFromRows(deduped, weekDays);
+    const maxDemand = metrics.reduce((a, m) => Math.max(a, m.demandMinutes), 0) || 1;
+    const maxFilled = metrics.reduce((a, m) => Math.max(a, m.filledMinutes), 0) || 1;
+
+    if (metrics.every((m) => m.demandSlots === 0)) {
+      children.push({
+        type: 'text',
+        content: 'No tasks in this week with current filters.',
+        textStyle: { fontSize: 14 },
+      });
+    } else {
+      children.push({
+        type: 'text',
+        content: 'Person-minutes needed (demand)',
+        textStyle: { fontSize: 15, fontWeight: 'semibold' },
+      });
+      for (const m of metrics) {
+        const bar = barLine(16, m.demandMinutes / maxDemand);
+        children.push({
+          type: 'text',
+          content: `${m.axisLabel}  ${bar}  ${m.demandMinutes}`,
+          textStyle: { fontSize: 13 },
+        });
+      }
+      children.push({ type: 'spacer', style: { height: { value: 8 } } });
+      children.push({
+        type: 'text',
+        content: 'Person-minutes filled',
+        textStyle: { fontSize: 15, fontWeight: 'semibold' },
+      });
+      for (const m of metrics) {
+        const bar = barLine(16, m.filledMinutes / maxFilled);
+        children.push({
+          type: 'text',
+          content: `${m.axisLabel}  ${bar}  ${m.filledMinutes}`,
+          textStyle: { fontSize: 13 },
+        });
+      }
+      children.push({
+        type: 'text',
+        content: 'By day',
+        textStyle: { fontSize: 15, fontWeight: 'semibold' },
+      });
+      for (const m of metrics) {
+        const avgActStr =
+          m.avgActual == null ? '—' : `${m.usesTilde ? '~' : ''}${m.avgActual.toFixed(1)}`;
+        const cardLines = [
+          m.displayLabel,
+          `Demand (person·min): ${m.demandMinutes}`,
+          `Slots needed: ${m.demandSlots}`,
+          `Avg demand (min per slot): ${m.avgDemand.toFixed(1)}`,
+          `Filled (person·min): ${m.filledMinutes}`,
+          `Distinct people: ${m.distinct != null ? m.distinct : '—'}`,
+          `Avg actual (min per person): ${avgActStr}`,
+        ].join('\n');
+        children.push({
+          type: 'card',
+          children: [{ type: 'text', content: cardLines, textStyle: { fontSize: 13 } }],
+        });
+      }
+      let td = 0;
+      let ts = 0;
+      let tf = 0;
+      let tfs = 0;
+      for (const m of metrics) {
+        td += m.demandMinutes;
+        ts += m.demandSlots;
+        tf += m.filledMinutes;
+        tfs += m.filledSlots;
+      }
+      const avgDemandTot = ts > 0 ? td / ts : 0;
+      const avgFilledSlot = tfs > 0 ? tf / tfs : null;
+      const totalLines = [
+        'Week total',
+        `Demand (person·min): ${td}`,
+        `Slots needed: ${ts}`,
+        `Avg demand (min per slot): ${avgDemandTot.toFixed(1)}`,
+        `Filled (person·min): ${tf}`,
+        `Avg filled (min per filled slot): ${avgFilledSlot != null ? avgFilledSlot.toFixed(1) : '—'}`,
+      ].join('\n');
+      children.push({
+        type: 'card',
+        children: [{ type: 'text', content: totalLines, textStyle: { fontSize: 13, fontWeight: 'semibold' } }],
+      });
+    }
+
+    children.push({
+      type: 'text',
+      content: `Open roles (deduped tasks, ${deduped.length})`,
+      textStyle: { fontSize: 15, fontWeight: 'semibold' },
+    });
+    if (!deduped.length) {
+      children.push({ type: 'text', content: 'Nothing scheduled for these seven days.', textStyle: { fontSize: 13 } });
+    } else {
+      for (const row of deduped.slice(0, 80)) {
+        const job = row.job || {};
+        const slot = row.slot || {};
+        const task = row.task || {};
+        const need = task.volunteersNeeded != null ? task.volunteersNeeded : job.volunteersNeeded;
+        const mins = job.estimatedMinutes != null ? `${job.estimatedMinutes}m` : '';
+        const assign = (row.assignments || [])
+          .map((a) => (a.volunteer && a.volunteer.displayName) || a.volunteerId)
+          .filter(Boolean);
+        const assignStr = assign.length ? ` · ${assign.join(', ')}` : '';
+        const when = slot.slotDate ? civilDayLabel(slot.slotDate) : '';
+        const line = `${slot.label || slot.timeBand || 'Slot'} — ${when} — ${job.title || 'Job'} (${need != null ? `${need}v` : '?'}${mins ? `, ${mins}` : ''})${assignStr}`;
+        children.push({
+          type: 'card',
+          children: [{ type: 'text', content: line, textStyle: { fontSize: 13 } }],
+        });
+      }
+      if (deduped.length > 80) {
+        children.push({
+          type: 'text',
+          content: `… and ${deduped.length - 80} more rows (trimmed for SDUI).`,
+          textStyle: { fontSize: 12 },
+        });
+      }
+    }
+  }
+
+  children.push({
+    type: 'button',
+    label: 'Back to retreat',
+    icon: 'chevron.left',
+    action: { type: 'navigate', target: 'retreat.home', payload: { retreatId } },
+  });
+
+  return {
+    schemaVersion: 1,
+    minAppVersion: '2.0.0',
+    screen: {
+      id: 'retreat.volunteer.week',
+      title: 'Volunteer week',
+      components: [
+        {
+          type: 'container',
+          layout: 'column',
+          spacing: 10,
           style: { padding: { all: 16 } },
           children,
         },
@@ -346,6 +707,14 @@ export async function sduiScreen(firebaseUid, body) {
     assertUuid(retreatId, 'retreatId');
     await acl.assertRetreatAccess(firebaseUid, retreatId);
     return retreatScheduleHubSdui(firebaseUid, retreatId);
+  }
+
+  if (screenId === 'retreat.volunteer.week') {
+    if (!retreatId) throw new HttpError(400, 'retreatId required for retreat.volunteer.week');
+    assertUuid(retreatId, 'retreatId');
+    await acl.assertRetreatAccess(firebaseUid, retreatId);
+    const wm = params?.weekMonday;
+    return retreatVolunteerWeekSdui(firebaseUid, retreatId, { weekMonday: wm });
   }
 
   if (screenId === 'retreat.schedule.day') {

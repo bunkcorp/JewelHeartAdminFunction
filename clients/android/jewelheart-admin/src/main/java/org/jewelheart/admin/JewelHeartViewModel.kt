@@ -67,10 +67,22 @@ class JewelHeartViewModel(
                     }
                 when (screenId) {
                     "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home" ->
-                        extraParams = extraParams.filterKeys { it != "day" }
+                        extraParams = extraParams.filterKeys { it != "day" && it != "weekMonday" }
                     "retreat.schedule.day" -> {
                         val d = action.payload?.get("day")?.takeIf { it.isNotBlank() }
-                        extraParams = if (d != null) extraParams + ("day" to d) else extraParams.filterKeys { it != "day" }
+                        extraParams = if (d != null) {
+                            extraParams.filterKeys { it != "weekMonday" } + ("day" to d)
+                        } else {
+                            extraParams.filterKeys { it != "day" }
+                        }
+                    }
+                    "retreat.volunteer.week" -> {
+                        val wm = action.payload?.get("weekMonday")?.takeIf { it.isNotBlank() }
+                        extraParams = if (wm != null) {
+                            extraParams.filterKeys { it != "day" } + ("weekMonday" to wm)
+                        } else {
+                            extraParams.filterKeys { it != "weekMonday" }
+                        }
                     }
                 }
                 action.payload?.get("date")?.takeIf { it.isNotBlank() }?.let { d ->
