@@ -803,6 +803,10 @@ paths:
     post:
       tags: [Assignments]
       summary: Assign volunteer to task (must be linked to retreat; capacity enforced)
+      description: |
+        Deployments may send transactional **email** (SendGrid) and/or **SMS** (Twilio) after a successful
+        create when `SENDGRID_API_KEY` / `TWILIO_*` are configured and the volunteer has `notify_email` /
+        `notify_sms` with contact info. See `integrations/private-server/jewelheart-volunteer-notify.fragment.js`.
       operationId: createAssignment
       requestBody:
         required: true

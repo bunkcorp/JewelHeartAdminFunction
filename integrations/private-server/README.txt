@@ -57,14 +57,21 @@ Server fragments (copy into buddhist-stone `private-server/src/jewelheart/` or m
 
 2. **Assignment confirmation (HTML + POST):** `jewelheart-assignment-confirmation.fragment.js`
    - Exports `createJewelHeartAssignmentConfirmationHandlers({ query })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`.
-   - Also exports `signAssignmentConfirmationToken(payload, secret)` for future email/SMS stubs.
+   - Also exports `signAssignmentConfirmationToken(payload, secret)` for email/SMS links (used by notify fragment).
 
-3. **TIME_BAND → wall-clock reference** (non-executable notes): `jewelheart-calendar-feed-notes.fragment.js`
+3. **Post-assignment email + SMS (optional):** `jewelheart-volunteer-notify.fragment.js`
+   - `createJewelHeartVolunteerNotify({ query })` → `notifyAfterAssignmentCreated({ retreatId, taskId, assignmentId, volunteerId })`.
+   - Call once after a successful `INSERT` into `jewelheart_assignments` (same transaction is fine). The helper **never throws** to the route; failures are returned in the result object or swallowed.
+   - Requires the confirmation fragment on disk as `jewelheart-assignment-confirmation.fragment.js` **or** `.cjs` (same directory).
+
+4. **TIME_BAND → wall-clock reference** (non-executable notes): `jewelheart-calendar-feed-notes.fragment.js`
 
 Env vars (production)
 ~~~~~~~~~~~~~~~~~~~~~
 - `JEWELHEART_PUBLIC_ORIGIN` — optional; canonical `https://…` origin for minted subscribe URLs (no trailing slash). Defaults to request Host when unset.
 - `CALENDAR_CONFIRM_SECRET` — HMAC key for sealed confirmation tokens (`assignment-confirmations` routes).
+- **SendGrid (email):** `SENDGRID_API_KEY`, and `SENDGRID_FROM_EMAIL` or `JEWELHEART_FROM_EMAIL`.
+- **Twilio (SMS):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (E.164). Optional `TWILIO_DEFAULT_COUNTRY_CODE` (default `1`) to normalize 10-digit US numbers to `+1…`.
 
 Express prerequisites
 ~~~~~~~~~~~~~~~~~~~~~
@@ -93,12 +100,23 @@ app.delete('/jewelheart/volunteers/:volunteerId/calendar-feed', cal.revokeVolunt
 const confirm = createJewelHeartAssignmentConfirmationHandlers({ query });
 app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
 app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
+
+const { createJewelHeartVolunteerNotify } = require('./jewelheart-volunteer-notify.fragment.js');
+const volunteerNotify = createJewelHeartVolunteerNotify({ query });
+// After INSERT jewelheart_assignments succeeds (you have retreatId, taskId, assignment row id, volunteerId):
+void volunteerNotify.notifyAfterAssignmentCreated({
+  retreatId,
+  taskId,
+  assignmentId: newAssignment.id,
+  volunteerId: body.volunteerId,
+});
 ```
 
 Sanity (from repo root)
 ~~~~~~~~~~~~~~~~~~~~~~~
   node --check integrations/private-server/jewelheart-calendar-feed.fragment.js
   node --check integrations/private-server/jewelheart-assignment-confirmation.fragment.js
+  node --check integrations/private-server/jewelheart-volunteer-notify.fragment.js
 
 Local fixture→ICS dev tool: scripts/generate_volunteer_calendar_ics.py + scripts/fixtures/volunteer_calendar_assignments.sample.json.
 
@@ -111,7 +129,7 @@ Use this when deploying KarmaDots private-server with JewelHeart routes.
 2. **Merge / sync fragments into `private-server/src/jewelheart/`** (or equivalent):
    - Task list wire format: `jewelheart-mappers-mapTaskRow.fragment.js`, `jewelheart-service-listTasks.fragment.js` (or `node scripts/apply-jewelheart-task-list-fragments.mjs` from JewelHeartAdminFunction repo root).
    - **SDUI screens:** `jewelheart-service-sdui.fragment.js` → must expose `sduiScreen` (and helpers) the same way as production `service.js`; on buddhist-stone, `sduiScreens.js` already routes screen IDs to those exports—verify your fork matches.
-   - **Calendar + confirmations:** `jewelheart-calendar-feed.fragment.js`, `jewelheart-assignment-confirmation.fragment.js` (notes: `jewelheart-calendar-feed-notes.fragment.js`).
+   - **Calendar + confirmations + notify:** `jewelheart-calendar-feed.fragment.js`, `jewelheart-assignment-confirmation.fragment.js`, `jewelheart-volunteer-notify.fragment.js` (notes: `jewelheart-calendar-feed-notes.fragment.js`).
    - **Express:** `express.json()` globally; for confirmation HTML POST, `express.urlencoded({ extended: false })` on that route or globally.
 
 3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):
@@ -119,7 +137,7 @@ Use this when deploying KarmaDots private-server with JewelHeart routes.
    - `POST /jewelheart/sdui/action` → optional; wire if your client uses SDUI actions (`postSduiAction`).
    Public (no Firebase): `HEAD`/`GET /jewelheart/calendar-feed/:feedToken`; `GET`/`POST /jewelheart/assignment-confirmations/:sealedConfirmationToken`. Unauthenticated probe: `GET /jewelheart/health`.
 
-4. **Environment:** `DATABASE_URL` (required). `CALENDAR_CONFIRM_SECRET` (required in production for sealed confirmation tokens). `JEWELHEART_PUBLIC_ORIGIN` (optional canonical `https://…` for minted subscribe URLs, no trailing slash). **Firebase:** use the same private-server Firebase Admin / bearer verification as existing KarmaDots routes (JewelHeart shares the project); no extra JewelHeart-only env name is defined in this repo.
+4. **Environment:** `DATABASE_URL` (required). `CALENDAR_CONFIRM_SECRET` (required in production for sealed confirmation tokens). `JEWELHEART_PUBLIC_ORIGIN` (optional canonical `https://…` for minted subscribe URLs, no trailing slash). **Transactional outbound:** set SendGrid and/or Twilio env vars (see “Env vars” above) when you want post-assignment email/SMS. **Firebase:** use the same private-server Firebase Admin / bearer verification as existing KarmaDots routes (JewelHeart shares the project); no extra JewelHeart-only env name is defined in this repo.
 
 5. **Restart order:** Apply DB migrations first (or before code that reads new columns). Deploy merged server code, then restart the Node process (or container/worker) so routes and env load.
 
