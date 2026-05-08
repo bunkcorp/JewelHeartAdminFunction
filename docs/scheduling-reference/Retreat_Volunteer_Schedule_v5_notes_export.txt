@@ -1,0 +1,12 @@
+Notes & Interpretations
+Retreat dates | July 20-26, 2026. Days 1-6 (Mon-Sat) are scheduled. Day 7 (Sun Jul 26) is the special-event day with retreatants and additional visitors — no volunteer tasks scheduled.
+'All day' slot | Tasks listed in the 'all day' slot have no fixed time. The volunteer manages timing per their instructions: doing the task at any chosen moment (e.g., front windows), monitoring throughout the day (e.g., urinals), or splitting it into parts (e.g., vacuuming several areas). In Sheet 3 the slot prefix is omitted for these tasks per the v5 formatting note.
+Tea & coffee — combined role | Per the prompt, the volunteer assigned to setup at start-of-day and breakdown at end-of-day is also responsible for tidying and replenishing throughout the day (handled via task instructions, not as a separate scheduled task).
+Break slots empty | Morning, lunch, afternoon, and dinner breaks have no scheduled tasks in v5 — they appear in Sheet 2 for time context only. Empty cells in Sheets 2 and 3 are left blank.
+End day variable length | Per the prompt: 7-8 PM on days without a social event, 9-10 PM otherwise. Same-slot, different clock window depending on the day.
+Combined-site tasks | Three tasks cover multiple sites under one (volunteers, minutes) spec: Kitchen & cafe (clean, 2v 20m), Unisex & Lama bathrooms (clean, 1v 10m), and Foyer & lobby (clean, 2v 10m). They are scheduled as single combined entries; per-site detail can be added in the volunteer instructions.
+Sheet 3 entry format | Per the v5 formatting rule:
+  • Fixed-slot tasks: 'Slot: task (Nv, Nm)' — e.g., 'Start day: Setup (2v, 15m)'
+  • All-day tasks: 'task (Nv, Nm)' (no slot prefix) — e.g., 'Clean (1v, 10m)'
+  • One task per line; empty cells stay blank.
+Glitches in v5 (terminology) | Minor inconsistencies between 'all day', 'any time', and 'self-scheduled' across the prompt — I used 'All day' as the slot label everywhere visible (matching the slot table). The body text's phrases like '@ any' and 'self-scheduled' all refer to this same slot. Worth unifying in v6 if edits continue. Also: 'Time –' line is missing a closing parenthesis ('after social event, if any').

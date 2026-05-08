@@ -26,6 +26,18 @@ psql "$DATABASE_URL" -f migrations/001_jewelheart_initial.sql
 
 **ACL tables:** `jewelheart_admins` (global Firebase UIDs), `jewelheart_retreat_admins` (per-retreat). Server policy: e.g. global admin **or** row in `jewelheart_retreat_admins` for that `retreat_id`.
 
+### Import July 2026 v5 workbook into Postgres
+
+From this repo (requires `openpyxl`, `DATABASE_URL`, and migration already applied):
+
+```bash
+python3 scripts/import_retreat_volunteer_schedule_v5.py --dry-run > /tmp/jh-v5.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/jh-v5.sql
+# or:  JEWELHEART_SEED_FIREBASE_UID='your-firebase-uid' python3 scripts/import_retreat_volunteer_schedule_v5.py --apply
+```
+
+See `docs/scheduling-reference/README.txt` for flags (`--merge-site-matrix`, `--verify-site-matrix`, `--export-notes`).
+
 ## Layout
 
 | Path | Purpose |
