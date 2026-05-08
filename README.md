@@ -38,6 +38,13 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/jh-v5.sql
 
 See `docs/scheduling-reference/README.txt` for flags (`--merge-site-matrix`, `--verify-site-matrix`, `--export-notes`).
 
+### Dev Mac → laptop Postgres (one live DB)
+
+To run **`private-server`** on the dev Mac against **laptop Postgres** (SSH tunnel, local port **5433**):
+
+- Script: [`scripts/karmadots-laptop-postgres-tunnel.sh`](scripts/karmadots-laptop-postgres-tunnel.sh)
+- Steps: [`docs/karmadots-dev-tunnel-laptop-postgres.md`](docs/karmadots-dev-tunnel-laptop-postgres.md)
+
 ## Layout
 
 | Path | Purpose |
