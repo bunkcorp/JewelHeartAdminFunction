@@ -203,7 +203,10 @@ actor JewelHeartAPI {
     }
 
     internal func jsonDecoder() -> JSONDecoder {
-        JSONDecoder()
+        let d = JSONDecoder()
+        // REST payloads may use camelCase (Node mappers) or snake_case; this keeps both decodable.
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        return d
     }
 
     private static func isTransient(_ e: URLError) -> Bool {

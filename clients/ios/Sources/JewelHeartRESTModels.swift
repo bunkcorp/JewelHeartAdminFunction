@@ -135,6 +135,8 @@ struct JHTask: Codable, Identifiable, Hashable {
     let retreatId: String
     let jobId: String
     let slotId: String
+    let jobTitle: String?
+    let slotLabel: String?
     let notes: String?
     let assignmentCount: Int?
     let volunteersNeeded: Int?
@@ -163,6 +165,8 @@ struct JHTaskDetail: Codable {
     let retreatId: String
     let jobId: String
     let slotId: String
+    let jobTitle: String?
+    let slotLabel: String?
     let notes: String?
     let assignmentCount: Int?
     let volunteersNeeded: Int?

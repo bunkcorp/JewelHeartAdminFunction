@@ -20,6 +20,11 @@ struct AdminRootTabView: View {
             .tabItem { Label("Directory", systemImage: "person.3.fill") }
 
             NavigationStack {
+                VolunteerSelfServiceRootView()
+            }
+            .tabItem { Label("Volunteer", systemImage: "calendar.badge.plus") }
+
+            NavigationStack {
                 MetaAdminView()
             }
             .tabItem { Label("Settings", systemImage: "wrench.and.screwdriver") }

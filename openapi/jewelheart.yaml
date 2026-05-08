@@ -1132,6 +1132,12 @@ components:
         slotId:
           type: string
           format: uuid
+        jobTitle:
+          type: string
+          description: Job title; included on list/detail when joined from jobs
+        slotLabel:
+          type: string
+          description: Slot label; included on list/detail when joined from slots
         notes:
           type: string
           nullable: true

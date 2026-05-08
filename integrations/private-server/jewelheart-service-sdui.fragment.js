@@ -3,6 +3,9 @@
  * (replace the previous `sduiScreen` export and add these helpers just above it).
  * Canonical copy is deployed with private-server; this file tracks the same logic for git.
  *
+ * Task list JSON (jobTitle / slotLabel for admin apps): see README.txt in this folder
+ * and jewelheart-service-listTasks.fragment.js + jewelheart-mappers-mapTaskRow.fragment.js.
+ *
  * Depends on: listRetreats, getRetreat, acl, assertUuid, HttpError (already in service.js).
  *
  * **KarmaDots / buddhist-stone-ios-app:** The deployed SDUI router is
