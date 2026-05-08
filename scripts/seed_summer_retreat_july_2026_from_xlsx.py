@@ -108,16 +108,16 @@ def build_sql(
         if key not in job_specs:
             job_specs[key] = _u5("JH:job", retreat_id, title, str(vn), str(em))
 
-    # Unique slots: (slot_date, slot_name, time) -> id, label, band, dow
-    slot_specs: dict[tuple[str, str, str], tuple[str, str, str, str]] = {}
-    for slot_date, slot_name, time_range, _, _, _, _ in parsed:
-        sk = (slot_date, slot_name, time_range)
+    # One slot row per spreadsheet site × time bucket (clients filter via slot.activityContext).
+    slot_specs: dict[tuple[str, str, str, str], tuple[str, str, str, str]] = {}
+    for slot_date, slot_name, time_range, site, _, _, _ in parsed:
+        sk = (slot_date, slot_name, time_range, site)
         if sk in slot_specs:
             continue
         band = SLOT_TO_BAND.get(slot_name)
         if not band:
             raise SystemExit(f"Unknown slot name (add mapping): {slot_name!r}")
-        sid = _u5("JH:slot", retreat_id, slot_date, slot_name, time_range)
+        sid = _u5("JH:slot", retreat_id, slot_date, slot_name, time_range, site)
         label = f"{slot_name} — {time_range}" if time_range else slot_name
         d = date.fromisoformat(slot_date)
         dow = d.strftime("%A")
@@ -164,12 +164,12 @@ def build_sql(
         )
     lines.append("")
     lines.append("-- slots")
-    for sk in sorted(slot_specs.keys(), key=lambda x: (x[0], x[1], x[2])):
+    for sk in sorted(slot_specs.keys(), key=lambda x: (x[0], x[1], x[2], x[3])):
         sid, label, band, dow = slot_specs[sk]
-        slot_date, _, _ = sk
+        slot_date, _, _, site = sk
         lines.append(
             "INSERT INTO jewelheart_slots (id, retreat_id, label, slot_date, day_of_week, activity_context, time_band, created_at, updated_at) "
-            f"VALUES ('{sid}'::uuid, '{retreat_id}'::uuid, '{_esc(label)}', '{slot_date}'::date, '{dow}', NULL, '{band}'::jewelheart_time_band, now(), now());"
+            f"VALUES ('{sid}'::uuid, '{retreat_id}'::uuid, '{_esc(label)}', '{slot_date}'::date, '{dow}', '{_esc(site)}', '{band}'::jewelheart_time_band, now(), now());"
         )
     lines.append("")
     lines.append("-- tasks (job × slot)")
@@ -177,7 +177,7 @@ def build_sql(
     for slot_date, slot_name, time_range, site, full_task, vn, em in parsed:
         title = _job_title(site, full_task)
         jid = job_specs[(title, vn, em)]
-        sk = (slot_date, slot_name, time_range)
+        sk = (slot_date, slot_name, time_range, site)
         sid = slot_specs[sk][0]
         pair = (jid, sid)
         if pair in seen_task:

@@ -1,6 +1,12 @@
 package org.jewelheart.admin
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +40,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -205,12 +213,32 @@ private fun volunteerLoadActualAvgLabel(m: VolunteerDayLoadMetrics): String {
     return if (m.usesSlotFallbackForAvg) "~$s" else s
 }
 
+/** Prefer API webcal URL; if https-only, derive webcal:// with the same host and path. */
+private fun webcalSubscribeUrl(webcal: String?, https: String?): String? {
+    fun toWebcal(raw: String): String {
+        val t = raw.trim()
+        val l = t.lowercase()
+        return when {
+            l.startsWith("webcal://") -> t
+            l.startsWith("https://") -> "webcal://" + t.drop(8)
+            l.startsWith("http://") -> "webcal://" + t.drop(7)
+            else -> t
+        }
+    }
+    val w = webcal?.trim().orEmpty()
+    if (w.isNotEmpty()) return toWebcal(w)
+    val h = https?.trim().orEmpty()
+    if (h.isEmpty()) return null
+    return toWebcal(h)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) {
     val ctx = LocalContext.current
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val prefs = remember(ctx) { ctx.volunteerPrefs() }
 
     var retreat by remember { mutableStateOf<Retreat?>(null) }
@@ -240,11 +268,19 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
 
     var volunteerMenuOpen by remember { mutableStateOf(false) }
 
+    var calendarHttps by remember { mutableStateOf<String?>(null) }
+    var calendarWebcal by remember { mutableStateOf<String?>(null) }
+    var calendarBusy by remember { mutableStateOf(false) }
+    var calendarErr by remember { mutableStateOf<String?>(null) }
+
     val zoneId: ZoneId = retreat?.let { retreatZoneId(it.timezone) } ?: retreatZoneId("UTC")
 
     fun persistSelfVolunteer(id: String) {
         prefs.edit().putString(SelfVolunteerIdPrefsKey, id).apply()
         selfVolunteerId = id
+        calendarHttps = null
+        calendarWebcal = null
+        calendarErr = null
     }
 
     suspend fun fetchWeekScheduleMerged(monday: LocalDate) {
@@ -365,6 +401,7 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
     val avgFilledPerSlot = if (tfs > 0) tf.toDouble() / tfs else null
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Week signup") },
@@ -387,6 +424,35 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            fun copyCal(label: String, text: String) {
+                val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText(label, text))
+            }
+
+            fun openCalendarOrSnackbar(webcalUrl: String) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(webcalUrl))
+                if (ctx !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                try {
+                    ctx.startActivity(intent)
+                } catch (_: ActivityNotFoundException) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("No app found to open this calendar link")
+                    }
+                }
+            }
+
+            fun openBrowserOrSnackbar(httpsUrl: String) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(httpsUrl))
+                if (ctx !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                try {
+                    ctx.startActivity(intent)
+                } catch (_: ActivityNotFoundException) {
+                    scope.launch {
+                        snackbarHostState.showSnackbar("No app found to open this link")
+                    }
+                }
+            }
+
             loadErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             actionErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
@@ -564,6 +630,62 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
                         color = MaterialTheme.colorScheme.tertiary,
                     )
                 }
+            }
+
+            Text("Calendar feed", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Subscribe in your calendar app. The HTTPS URL is a secret — don’t share it publicly.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (calendarBusy) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            }
+            calendarErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            Button(
+                onClick = {
+                    scope.launch {
+                        calendarBusy = true
+                        calendarErr = null
+                        try {
+                            val res = repo.mintVolunteerCalendarFeed(selfVolunteerId, regenerate = false)
+                            calendarHttps = res.subscribeHttpsUrl
+                            calendarWebcal = res.webcalSubscribeUrl
+                        } catch (e: Exception) {
+                            calendarErr = e.message
+                        } finally {
+                            calendarBusy = false
+                        }
+                    }
+                },
+                enabled = selfIsLinked && selfVolunteerId.isNotBlank() && !calendarBusy,
+            ) { Text("Show subscribe link") }
+            Button(
+                onClick = {
+                    scope.launch {
+                        calendarBusy = true
+                        calendarErr = null
+                        try {
+                            val res = repo.mintVolunteerCalendarFeed(selfVolunteerId, regenerate = true)
+                            calendarHttps = res.subscribeHttpsUrl
+                            calendarWebcal = res.webcalSubscribeUrl
+                        } catch (e: Exception) {
+                            calendarErr = e.message
+                        } finally {
+                            calendarBusy = false
+                        }
+                    }
+                },
+                enabled = selfIsLinked && selfVolunteerId.isNotBlank() && !calendarBusy,
+            ) { Text("Rotate link") }
+            calendarHttps?.let { url ->
+                Text(url, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { copyCal("JewelHeart calendar", url) }) { Text("Copy HTTPS URL") }
+                TextButton(onClick = { openBrowserOrSnackbar(url) }) { Text("Open in browser") }
+            }
+            webcalSubscribeUrl(calendarWebcal, calendarHttps)?.let { webcalUrl ->
+                Button(onClick = { openCalendarOrSnackbar(webcalUrl) }) { Text("Subscribe in Calendar") }
+                TextButton(onClick = { copyCal("JewelHeart subscribe", webcalUrl) }) { Text("Copy subscribe link") }
             }
 
             Text("Filters", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

@@ -128,6 +128,8 @@ data class JHTask(
     @SerializedName("slotId") val slotId: String,
     @SerializedName(value = "jobTitle", alternate = ["job_title"]) val jobTitle: String? = null,
     @SerializedName(value = "slotLabel", alternate = ["slot_label"]) val slotLabel: String? = null,
+    @SerializedName(value = "slotActivityContext", alternate = ["slot_activity_context"])
+    val slotActivityContext: String? = null,
     @SerializedName("notes") val notes: String?,
     @SerializedName("assignmentCount") val assignmentCount: Int?,
     @SerializedName("volunteersNeeded") val volunteersNeeded: Int?,
@@ -156,6 +158,8 @@ data class JHTaskDetail(
     @SerializedName("slotId") val slotId: String,
     @SerializedName(value = "jobTitle", alternate = ["job_title"]) val jobTitle: String? = null,
     @SerializedName(value = "slotLabel", alternate = ["slot_label"]) val slotLabel: String? = null,
+    @SerializedName(value = "slotActivityContext", alternate = ["slot_activity_context"])
+    val slotActivityContext: String? = null,
     @SerializedName("notes") val notes: String?,
     @SerializedName("assignmentCount") val assignmentCount: Int?,
     @SerializedName("volunteersNeeded") val volunteersNeeded: Int?,
@@ -175,6 +179,8 @@ data class Volunteer(
     @SerializedName("email") val email: String?,
     @SerializedName("phone") val phone: String?,
     @SerializedName("otherDuties") val otherDuties: String?,
+    @SerializedName("notifyEmail") val notifyEmail: Boolean? = null,
+    @SerializedName("notifySms") val notifySms: Boolean? = null,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("updatedAt") val updatedAt: String,
 )
@@ -184,6 +190,8 @@ data class VolunteerCreate(
     @SerializedName("email") val email: String? = null,
     @SerializedName("phone") val phone: String? = null,
     @SerializedName("otherDuties") val otherDuties: String? = null,
+    @SerializedName("notifyEmail") val notifyEmail: Boolean? = null,
+    @SerializedName("notifySms") val notifySms: Boolean? = null,
 )
 
 data class VolunteerPatch(
@@ -191,6 +199,8 @@ data class VolunteerPatch(
     @SerializedName("email") val email: String? = null,
     @SerializedName("phone") val phone: String? = null,
     @SerializedName("otherDuties") val otherDuties: String? = null,
+    @SerializedName("notifyEmail") val notifyEmail: Boolean? = null,
+    @SerializedName("notifySms") val notifySms: Boolean? = null,
 )
 
 data class VolunteerListResponse(@SerializedName("items") val items: List<Volunteer>)
@@ -214,6 +224,16 @@ data class VolunteerImportResult(
     @SerializedName("updated") val updated: Int,
     @SerializedName("linked") val linked: Int,
     @SerializedName("errors") val errors: List<VolunteerImportRowError>,
+)
+
+data class VolunteerCalendarFeedMintRequest(
+    @SerializedName("regenerate") val regenerate: Boolean? = null,
+)
+
+data class VolunteerCalendarFeedResponse(
+    @SerializedName("subscribeHttpsUrl") val subscribeHttpsUrl: String,
+    @SerializedName("webcalSubscribeUrl") val webcalSubscribeUrl: String? = null,
+    @SerializedName("lastRotatedAt") val lastRotatedAt: String? = null,
 )
 
 data class LinkRetreatVolunteerBody(@SerializedName("volunteerId") val volunteerId: String)

@@ -1,0 +1,131 @@
+JewelHeart private-server integration (canonical copy in git)
+=============================================================
+
+These fragments mirror the logic in KarmaDots / buddhist-stone-ios-app:
+
+  private-server/src/jewelheart/mappers.js   → mapTaskRow
+  private-server/src/jewelheart/service.js → taskRowWithMeta, listTasks
+
+Purpose
+-------
+Task list JSON includes human-readable jobTitle and slotLabel (camelCase on
+the wire) so iOS/Android can show "Job — Slot" instead of UUIDs.
+
+Automated apply (recommended)
+-------------------------------
+From the JewelHeartAdminFunction repo root:
+
+  node scripts/apply-jewelheart-task-list-fragments.mjs
+
+Default target: ../buddhist-stone-ios-app/private-server/src/jewelheart
+
+Override path:
+
+  JEWELHEART_PRIVATE_SERVER_SRC=/path/to/private-server/src/jewelheart \
+    node scripts/apply-jewelheart-task-list-fragments.mjs
+
+Then restart the Node server (or redeploy the worker).
+
+Manual merge (same result)
+--------------------------
+1. In your deployed private-server checkout, open the two files below.
+
+2. Replace `mapTaskRow` in mappers.js with the body from:
+     jewelheart-mappers-mapTaskRow.fragment.js
+
+3. Replace `taskRowWithMeta` and `listTasks` in service.js with the bodies from:
+     jewelheart-service-listTasks.fragment.js
+
+4. Restart the Node server (or redeploy the worker that runs this code).
+
+5. Rebuild the admin apps; iOS JSONDecoder uses convertFromSnakeCase so
+   job_title / jobTitle both decode.
+
+OpenAPI in this repo: openapi/jewelheart.yaml (Task schema documents jobTitle, slotLabel).
+
+Volunteer calendar ICS feed (webcal) + notification columns
+-----------------------------------------------------------
+- SQL: migrations/002_jewelheart_volunteer_notify_calendar_feed.sql (`notify_email`, `notify_sms`, `calendar_feed_token`).
+- Contract: OpenAPI tags **Calendar** / **Confirmations** (`GET/HEAD /jewelheart/calendar-feed/{feedToken}`, `POST/DELETE …/volunteers/{id}/calendar-feed`, `GET/POST …/assignment-confirmations/{sealedConfirmationToken}`).
+
+Server fragments (copy into buddhist-stone `private-server/src/jewelheart/` or merge into `service.js` routes)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. **ICS + mint/revoke:** `jewelheart-calendar-feed.fragment.js`
+   - Exports `createJewelHeartCalendarHandlers({ query, assertUuid, ensureVolunteerPatchAccess, publicOriginFromReq? })`.
+   - Handlers: `headVolunteerCalendarFeed`, `getCalendarFeedIcs`, `mintVolunteerCalendarFeed`, `revokeVolunteerCalendarFeed`.
+   - **ACL:** implement `ensureVolunteerPatchAccess(req, volunteerId)` to mirror Firebase bearer auth used for `PATCH /jewelheart/volunteers/{id}` (reject with same status as your existing volunteer routes).
+
+2. **Assignment confirmation (HTML + POST):** `jewelheart-assignment-confirmation.fragment.js`
+   - Exports `createJewelHeartAssignmentConfirmationHandlers({ query })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`.
+   - Also exports `signAssignmentConfirmationToken(payload, secret)` for future email/SMS stubs.
+
+3. **TIME_BAND → wall-clock reference** (non-executable notes): `jewelheart-calendar-feed-notes.fragment.js`
+
+Env vars (production)
+~~~~~~~~~~~~~~~~~~~~~
+- `JEWELHEART_PUBLIC_ORIGIN` — optional; canonical `https://…` origin for minted subscribe URLs (no trailing slash). Defaults to request Host when unset.
+- `CALENDAR_CONFIRM_SECRET` — HMAC key for sealed confirmation tokens (`assignment-confirmations` routes).
+
+Express prerequisites
+~~~~~~~~~~~~~~~~~~~~~
+- `express.json()` globally; for confirmation HTML forms also `express.urlencoded({ extended: false })` on the POST confirmation route (or globally).
+
+Example `service.js` wiring (adapt imports/paths to your tree):
+
+```javascript
+const { createJewelHeartCalendarHandlers } = require('./jewelheart-calendar-feed.fragment.js');
+const { createJewelHeartAssignmentConfirmationHandlers } = require('./jewelheart-assignment-confirmation.fragment.js');
+
+const cal = createJewelHeartCalendarHandlers({
+  query,
+  assertUuid,
+  async ensureVolunteerPatchAccess(req, volunteerId) {
+    const firebaseUid = req.jewelheartFirebaseUid; // however auth middleware sets this
+    await acl.assertVolunteerPatchAccess(firebaseUid, volunteerId, req.headers.authorization);
+  },
+});
+
+app.head('/jewelheart/calendar-feed/:feedToken', cal.headVolunteerCalendarFeed);
+app.get('/jewelheart/calendar-feed/:feedToken', cal.getCalendarFeedIcs);
+app.post('/jewelheart/volunteers/:volunteerId/calendar-feed', cal.mintVolunteerCalendarFeed);
+app.delete('/jewelheart/volunteers/:volunteerId/calendar-feed', cal.revokeVolunteerCalendarFeed);
+
+const confirm = createJewelHeartAssignmentConfirmationHandlers({ query });
+app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
+app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
+```
+
+Sanity (from repo root)
+~~~~~~~~~~~~~~~~~~~~~~~
+  node --check integrations/private-server/jewelheart-calendar-feed.fragment.js
+  node --check integrations/private-server/jewelheart-assignment-confirmation.fragment.js
+
+Local fixture→ICS dev tool: scripts/generate_volunteer_calendar_ics.py + scripts/fixtures/volunteer_calendar_assignments.sample.json.
+
+Operator checklist (api.karmadots.org + web SDUI)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Use this when deploying KarmaDots private-server with JewelHeart routes.
+
+1. **Postgres (order):** On a fresh DB run `migrations/001_jewelheart_initial.sql`, then `migrations/002_jewelheart_volunteer_notify_calendar_feed.sql`. On existing DBs that already have 001, apply 002 only. Optional: seed ACL (`jewelheart_admins` / create retreat for per-retreat admins); run `npm run db:jewelheart` in private-server if your project uses that helper.
+
+2. **Merge / sync fragments into `private-server/src/jewelheart/`** (or equivalent):
+   - Task list wire format: `jewelheart-mappers-mapTaskRow.fragment.js`, `jewelheart-service-listTasks.fragment.js` (or `node scripts/apply-jewelheart-task-list-fragments.mjs` from JewelHeartAdminFunction repo root).
+   - **SDUI screens:** `jewelheart-service-sdui.fragment.js` → must expose `sduiScreen` (and helpers) the same way as production `service.js`; on buddhist-stone, `sduiScreens.js` already routes screen IDs to those exports—verify your fork matches.
+   - **Calendar + confirmations:** `jewelheart-calendar-feed.fragment.js`, `jewelheart-assignment-confirmation.fragment.js` (notes: `jewelheart-calendar-feed-notes.fragment.js`).
+   - **Express:** `express.json()` globally; for confirmation HTML POST, `express.urlencoded({ extended: false })` on that route or globally.
+
+3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):
+   - `POST /jewelheart/sdui/screen` → handler calls `sduiScreen(firebaseUid, body)` (OpenAPI `postSduiScreen`).
+   - `POST /jewelheart/sdui/action` → optional; wire if your client uses SDUI actions (`postSduiAction`).
+   Public (no Firebase): `HEAD`/`GET /jewelheart/calendar-feed/:feedToken`; `GET`/`POST /jewelheart/assignment-confirmations/:sealedConfirmationToken`. Unauthenticated probe: `GET /jewelheart/health`.
+
+4. **Environment:** `DATABASE_URL` (required). `CALENDAR_CONFIRM_SECRET` (required in production for sealed confirmation tokens). `JEWELHEART_PUBLIC_ORIGIN` (optional canonical `https://…` for minted subscribe URLs, no trailing slash). **Firebase:** use the same private-server Firebase Admin / bearer verification as existing KarmaDots routes (JewelHeart shares the project); no extra JewelHeart-only env name is defined in this repo.
+
+5. **Restart order:** Apply DB migrations first (or before code that reads new columns). Deploy merged server code, then restart the Node process (or container/worker) so routes and env load.
+
+6. **Smoke checks (no secrets in logs):**
+   - `curl -sS -o /dev/null -w '%{http_code}' https://api.karmadots.org/jewelheart/health`
+   - After minting a feed token (authenticated): `curl -I` and `curl` on `https://api.karmadots.org/jewelheart/calendar-feed/<token>` (expect 200, `text/calendar` on GET).
+   - `POST https://api.karmadots.org/jewelheart/volunteers/{id}/calendar-feed` with `Authorization: Bearer <Firebase ID token>` (mint).
+   - SDUI: `POST .../jewelheart/sdui/screen` with Bearer and JSON body per `openapi/jewelheart.yaml` / `clients/README.md` (e.g. `screenId` `jewelheart.home` or `retreat.schedule`); repo helper `scripts/check-sdui-retreat-schedule.sh`.
+   - **Web (karmadots.org/login):** After sign-in, the web client uses the same Firebase ID token for `Authorization: Bearer` — nothing beyond private-server merge + correct API base is required for volunteer-week / calendar flows, as long as SDUI + calendar routes above are live.

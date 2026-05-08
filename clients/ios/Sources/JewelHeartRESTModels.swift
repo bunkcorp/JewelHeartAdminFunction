@@ -137,6 +137,7 @@ struct JHTask: Codable, Identifiable, Hashable {
     let slotId: String
     let jobTitle: String?
     let slotLabel: String?
+    let slotActivityContext: String?
     let notes: String?
     let assignmentCount: Int?
     let volunteersNeeded: Int?
@@ -167,6 +168,7 @@ struct JHTaskDetail: Codable {
     let slotId: String
     let jobTitle: String?
     let slotLabel: String?
+    let slotActivityContext: String?
     let notes: String?
     let assignmentCount: Int?
     let volunteersNeeded: Int?
@@ -190,15 +192,21 @@ struct Volunteer: Codable, Identifiable, Hashable {
     let email: String?
     let phone: String?
     let otherDuties: String?
+    /// Mirrors `notify_email`; absent legacy payloads behave as `true`.
+    let notifyEmail: Bool?
+    /// Mirrors `notify_sms`; absent legacy payloads behave as `false`.
+    let notifySms: Bool?
     let createdAt: String
     let updatedAt: String
 }
 
 struct VolunteerCreate: Codable {
     let displayName: String
-    var email: String?
-    var phone: String?
-    var otherDuties: String?
+    var email: String? = nil
+    var phone: String? = nil
+    var otherDuties: String? = nil
+    var notifyEmail: Bool? = nil
+    var notifySms: Bool? = nil
 }
 
 struct VolunteerPatch: Codable {
@@ -206,6 +214,18 @@ struct VolunteerPatch: Codable {
     var email: String?
     var phone: String?
     var otherDuties: String?
+    var notifyEmail: Bool?
+    var notifySms: Bool?
+}
+
+struct VolunteerCalendarFeedMintRequest: Codable {
+    var regenerate: Bool?
+}
+
+struct VolunteerCalendarFeedResponse: Codable {
+    let subscribeHttpsUrl: String
+    let webcalSubscribeUrl: String?
+    let lastRotatedAt: String?
 }
 
 struct VolunteerListResponse: Codable {

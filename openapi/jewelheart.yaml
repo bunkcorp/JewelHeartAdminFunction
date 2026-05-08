@@ -9,6 +9,11 @@ info:
     `Authorization: Bearer <firebase_id_token>`.
 
     **ACL:** The server must verify the token and enforce JewelHeart admin / per-retreat access (implementation detail; not expressed in this contract).
+
+    **Volunteer calendar feeds** (webcal/ICS) and **assignment confirmation** payloads are specified under
+    `/jewelheart/calendar-feed/{feedToken}` and `/jewelheart/assignment-confirmations/...` (see tags Calendar, Confirmations).
+
+    **Reminder policy:** native calendar clients apply `VALARM`/alarms from subscribed ICS; do not rely on server push for calendar-specific alerts.
   version: 0.1.0
   license:
     name: Proprietary
@@ -28,6 +33,8 @@ tags:
   - name: Schedule
   - name: Reports
   - name: SDUI
+  - name: Calendar
+  - name: Confirmations
 
 paths:
   /jewelheart/health:
@@ -619,6 +626,176 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /jewelheart/volunteers/{volunteerId}/calendar-feed:
+    parameters:
+      - $ref: "#/components/parameters/VolunteerId"
+    post:
+      tags: [Calendar]
+      summary: Ensure calendar feed exists and return HTTPS + webcal subscribe URLs
+      description: >
+        Generates `jewelheart_volunteers.calendar_feed_token` when missing (Firebase-authenticated caller with the same ACL as PATCH volunteer).
+
+        Tokens are irrevocable bearer secrets; treat revoked tokens as Gone (410) on the public ICS route via empty lookup.
+
+        `regenerate:true` rotates the opaque token atomically — previous subscribe links stop updating after clients refresh TTL.
+      operationId: mintVolunteerCalendarFeed
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VolunteerCalendarFeedMintRequest"
+      responses:
+        "200":
+          description: Current or freshly minted feed metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VolunteerCalendarFeedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Calendar]
+      summary: Revoke calendar feed token for volunteer
+      description: Deletes `calendar_feed_token`; existing subscriptions stale out on next publisher refresh cycle.
+      operationId: revokeVolunteerCalendarFeed
+      responses:
+        "204":
+          description: Feed revoked (noop if absent)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jewelheart/calendar-feed/{feedToken}:
+    parameters:
+      - $ref: "#/components/parameters/FeedToken"
+    head:
+      tags: [Calendar]
+      summary: Probe feed availability (validators / cache priming)
+      description: Mirrors GET caching semantics without transferring the ICS payload.
+      operationId: headVolunteerCalendarFeed
+      security: []
+      responses:
+        "200":
+          description: Feed exists for token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                description: Typical `private, max-age=0, must-revalidate`; SHOULD mirror GET `ETag`/`Last-Modified`.
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+                format: http-date
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: Former token revoked
+    get:
+      tags: [Calendar]
+      summary: Subscribable ICS document for assignments visible to volunteer
+      description: >
+        Anonymous bearer-protected endpoint; security depends entirely on `feedToken` entropy.
+
+        **Refresh behavior:** Returning clients poll with `If-None-Match`; respond `304 Not Modified` when assignment set unchanged.
+
+        **Invalidation cues:** Bump `SEQUENCE`/UID stability per assignment UUID (see ICS notes in `jewelheart-calendar-feed-notes.fragment.js`).
+
+
+        Responses SHOULD include stable `SUMMARY`/slot copy + twin `DISPLAY` alarms (e.g., -PT24H, -PT3H) encoded as `VALARM`
+        entries so subscribing calendar apps synthesize alarms without Firebase push notifications.
+      operationId: getVolunteerCalendarIcsFeed
+      security: []
+      responses:
+        "200":
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+            ETag:
+              schema:
+                type: string
+            Last-Modified:
+              schema:
+                type: string
+                format: http-date
+          content:
+            text/calendar:
+              schema:
+                type: string
+                format: binary
+                description: |
+                  RFC 5545 document with one `VEVENT` per assignment (JOIN tasks/slots/jobs/retreats). Each event SHOULD include reminders as `VALARM`.
+        "304":
+          description: Conditional GET satisfied
+        "404":
+          description: Unknown or mistyped token
+        "410":
+          description: Token rotated away or volunteer removed
+
+  /jewelheart/assignment-confirmations/{sealedConfirmationToken}:
+    parameters:
+      - $ref: "#/components/parameters/SealedConfirmationToken"
+    get:
+      tags: [Confirmations]
+      summary: Hosted confirmation splash (tiny HTML fallback)
+      description: >
+        Serves minimalist HTML referencing two POST targets or inline forms so SMS/email deep-links work without bespoke mobile builds.
+
+        This route is OPTIONAL if deployment instead deep-links straight to an SPA/web property; reserve path for portability.
+      operationId: assignmentConfirmationLanding
+      security: []
+      responses:
+        "200":
+          description: HTML hint page
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: Signature invalid/expired assignment
+        "410":
+          description: Assignment already finalized or removed
+    post:
+      tags: [Confirmations]
+      summary: Record volunteer intent for an upcoming assignment
+      description: >
+        Parses `sealedConfirmationToken`, validates MAC/expiry bound to `{assignmentId, volunteerId}`.
+
+        **`committed`** (or omission of response body / separate keep-alive webhook) SHOULD be a durable no-op: assignment remains.
+
+        **`withdrawn`** instructs backend to DELETE the assignment row (preferred) OR enqueue moderator review depending on parish policy —
+        MUST be explicit in changelog when choosing non-deleting flows.
+
+        **Push/SMS/email nudges MUST NOT implicitly cancel** when user ignores prompts; unanswered prompts keep DB rows untouched.
+      operationId: assignmentConfirmationRespond
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignmentConfirmationRespondRequest"
+      responses:
+        "200":
+          description: Intent persisted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentConfirmationRespondResult"
+        "409":
+          description: Intent conflicts with staffing policy (capacity / locked retreat)
+        "404":
+          description: Signature invalid/expired assignment
+        "410":
+          description: Assignment unavailable
+
   /jewelheart/retreats/{retreatId}/tasks/{taskId}/assignments:
     parameters:
       - $ref: "#/components/parameters/RetreatId"
@@ -836,6 +1013,26 @@ components:
       schema:
         type: string
         format: uuid
+    FeedToken:
+      name: feedToken
+      in: path
+      required: true
+      description: |
+        Opaque high-entropy secret stored on `jewelheart_volunteers.calendar_feed_token`.
+        Subscribers may suffix `.ics` or use `webcal://` — server should treat token with or without `.ics` suffix if desired.
+      schema:
+        type: string
+        minLength: 24
+    SealedConfirmationToken:
+      name: sealedConfirmationToken
+      in: path
+      required: true
+      description: |
+        URL-safe signed token (JWT or HMAC envelope) binding assignment id + volunteer id + expiry.
+        Implemented in deployment; MUST NOT be derivable without server secret key.
+      schema:
+        type: string
+        minLength: 32
     Cursor:
       name: cursor
       in: query
@@ -871,6 +1068,17 @@ components:
     TimeBand:
       type: string
       enum: [early, lunchtime, dinnertime, allday, anytime]
+      description: |
+        Slot-relative band feeding calendar generation. ICS `DTSTART`/`DTEND` are not stored in Postgres;
+        private-server MUST map bands to retreat-local civil times in the retreat timezone (same convention as volunteer week views).
+
+        **Default ICS mapping contract** (deployment may override with config):
+          Each VEVENT uses the job’s **`estimatedMinutes`** for `DTEND − DTSTART` (falls back to **30** if missing).
+          - `early`: `DTSTART` at **07:00** local; `DTEND` = start + `estimatedMinutes`
+          - `lunchtime`: **11:30** + duration
+          - `dinnertime`: **17:00** + duration
+          - `anytime`: **12:00** + duration (narrow placeholder — document visibly for schedulers if changed)
+          - `allday` (or unknown band): **12:00** local anchor + duration (avoids misleading full-day blocks)
 
     RetreatStatus:
       type: string
@@ -1138,6 +1346,10 @@ components:
         slotLabel:
           type: string
           description: Slot label; included on list/detail when joined from slots
+        slotActivityContext:
+          type: string
+          nullable: true
+          description: Slot activity/site context when joined from slots (duplicate of slot.activityContext)
         notes:
           type: string
           nullable: true
@@ -1222,6 +1434,16 @@ components:
         otherDuties:
           type: string
           nullable: true
+        notifyEmail:
+          type: boolean
+          description: |
+            Mirrors `jewelheart_volunteers.notify_email`: allow transactional messaging on email addresses (SendGrid/other).
+            Omitted legacy responses should be treated by clients as `true`.
+        notifySms:
+          type: boolean
+          description: |
+            Mirrors `jewelheart_volunteers.notify_sms`: allow transactional SMS where phone populated (Twilio/other).
+            Omitted legacy responses should be treated by clients as `false`.
         createdAt:
           type: string
           format: date-time
@@ -1242,6 +1464,12 @@ components:
           type: string
         otherDuties:
           type: string
+        notifyEmail:
+          type: boolean
+          description: Defaults to true server-side when absent.
+        notifySms:
+          type: boolean
+          description: Defaults to false server-side when absent.
 
     VolunteerPatch:
       type: object
@@ -1257,6 +1485,12 @@ components:
           nullable: true
         otherDuties:
           type: string
+          nullable: true
+        notifyEmail:
+          type: boolean
+          nullable: true
+        notifySms:
+          type: boolean
           nullable: true
 
     VolunteerListResponse:
@@ -1329,6 +1563,9 @@ components:
         volunteer:
           $ref: "#/components/schemas/Volunteer"
           description: Optional embed
+        createdAt:
+          type: string
+          format: date-time
 
     AssignmentCreate:
       type: object
@@ -1361,6 +1598,52 @@ components:
                 type: array
                 items:
                   $ref: "#/components/schemas/Assignment"
+
+    VolunteerCalendarFeedMintRequest:
+      type: object
+      properties:
+        regenerate:
+          type: boolean
+          default: false
+
+    VolunteerCalendarFeedResponse:
+      type: object
+      required: [subscribeHttpsUrl]
+      properties:
+        subscribeHttpsUrl:
+          type: string
+          format: uri
+          description: Canonical https://…/jewelheart/calendar-feed/{token} subscriber link.
+        webcalSubscribeUrl:
+          type: string
+          description: Convenience `webcal://` scheme substitution for Apple Calendar onboarding.
+          example: webcal://api.karmadots.org/jewelheart/calendar-feed/…
+        lastRotatedAt:
+          type: string
+          format: date-time
+
+    AssignmentConfirmationRespondRequest:
+      type: object
+      required: [intent]
+      properties:
+        intent:
+          type: string
+          enum: [committed, withdrawn]
+          description: >
+            `committed` acknowledges coverage; persistence optional.
+            `withdrawn` SHOULD delete assignment (implementation default) pending staffing policy tweaks.
+
+    AssignmentConfirmationRespondResult:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+        assignmentRemoved:
+          type: boolean
+          description: True when withdrawn path deleted the JewelHeart assignment row.
 
     SduiScreenRequest:
       type: object

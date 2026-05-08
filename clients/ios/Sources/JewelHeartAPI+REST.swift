@@ -300,6 +300,26 @@ extension JewelHeartAPI {
         )
     }
 
+    // MARK: - Calendar feed
+
+    func mintVolunteerCalendarFeed(volunteerId: String, regenerate: Bool = false) async throws -> VolunteerCalendarFeedResponse {
+        let enc = try jsonEncoder().encode(VolunteerCalendarFeedMintRequest(regenerate: regenerate))
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteers/\(volunteerId)/calendar-feed",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+        return try jsonDecoder().decode(VolunteerCalendarFeedResponse.self, from: data)
+    }
+
+    func revokeVolunteerCalendarFeed(volunteerId: String) async throws {
+        let (_, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteers/\(volunteerId)/calendar-feed",
+            method: "DELETE"
+        )
+    }
+
     // MARK: - Assignments
 
     func createAssignment(retreatId: String, taskId: String, body: AssignmentCreate) async throws -> Assignment {

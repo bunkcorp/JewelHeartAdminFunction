@@ -869,15 +869,23 @@ struct JHTaskListView: View {
         let sFromTask = t.slotLabel?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let jFromLookup = jobTitleByJobId[t.jobId]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let sFromLookup = slotLabelBySlotId[t.slotId]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let j = jFromTask.isEmpty ? jFromLookup : jFromTask
         let s = sFromTask.isEmpty ? sFromLookup : sFromTask
-        if !j.isEmpty, !s.isEmpty { return "\(j) — \(s)" }
-        if !j.isEmpty { return j }
-        if !s.isEmpty { return s }
-        if let n = t.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
-            return n.count > 56 ? String(n.prefix(56)) + "…" : n
+        let j = jFromTask.isEmpty ? jFromLookup : jFromTask
+        var primary: String = {
+            if !j.isEmpty, !s.isEmpty { return "\(j) — \(s)" }
+            if !j.isEmpty { return j }
+            if !s.isEmpty { return s }
+            if let n = t.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty {
+                return n.count > 56 ? String(n.prefix(56)) + "…" : n
+            }
+            return "Volunteer task"
+        }()
+        if let ctx = t.slotActivityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !ctx.isEmpty {
+            if !primary.localizedCaseInsensitiveContains(ctx) {
+                primary = "\(primary) · \(ctx)"
+            }
         }
-        return "Volunteer task"
+        return primary
     }
 
     private static func taskListSubtitle(_ t: JHTask) -> String? {
@@ -914,6 +922,11 @@ struct JHTaskDetailView: View {
                         Section("Slot") {
                             Text(slot.label)
                             Text("\(slot.slotDate) · \(slot.timeBand.rawValue)")
+                            if let ctx = slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !ctx.isEmpty {
+                                Text("Site / context: \(ctx)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     Section("Notes") {
@@ -1609,6 +1622,8 @@ struct VolunteerEditFormView: View {
     @State private var email: String
     @State private var phone: String
     @State private var other: String
+    @State private var notifyEmail: Bool
+    @State private var notifySms: Bool
     @State private var error: String?
     @State private var busy = false
 
@@ -1619,6 +1634,8 @@ struct VolunteerEditFormView: View {
         _email = State(initialValue: volunteer.email ?? "")
         _phone = State(initialValue: volunteer.phone ?? "")
         _other = State(initialValue: volunteer.otherDuties ?? "")
+        _notifyEmail = State(initialValue: volunteer.notifyEmail ?? true)
+        _notifySms = State(initialValue: volunteer.notifySms ?? false)
     }
 
     var body: some View {
@@ -1627,6 +1644,8 @@ struct VolunteerEditFormView: View {
             TextField("Email", text: $email)
             TextField("Phone", text: $phone)
             TextField("Other duties", text: $other)
+            Toggle("Notify via email", isOn: $notifyEmail)
+            Toggle("Notify via SMS", isOn: $notifySms)
             if let error { Text(error).foregroundStyle(.red) }
         }
         .navigationTitle("Edit volunteer")
@@ -1647,6 +1666,8 @@ struct VolunteerEditFormView: View {
             patch.email = email.isEmpty ? nil : email
             patch.phone = phone.isEmpty ? nil : phone
             patch.otherDuties = other.isEmpty ? nil : other
+            patch.notifyEmail = notifyEmail
+            patch.notifySms = notifySms
             _ = try await api.updateVolunteer(volunteerId: volunteer.id, patch: patch)
             await MainActor.run { onDone(); dismiss() }
         } catch {
@@ -2450,6 +2471,7 @@ private func volunteerDayLoadMetrics(rows: [ScheduleDayItem], weekDates: [String
 struct RetreatVolunteerWeekSignupView: View {
     let retreatId: String
     private let api = JewelHeartAPI()
+    @Environment(\.openURL) private var openURL
     @AppStorage(VolunteerSelfServiceStorage.selfVolunteerIdKey) private var selfVolunteerId: String = ""
 
     @State private var retreat: Retreat?
@@ -2460,6 +2482,11 @@ struct RetreatVolunteerWeekSignupView: View {
     @State private var actionError: String?
     @State private var busy = false
     @State private var actingTaskIds: Set<String> = []
+
+    @State private var calendarHttpsUrl: String?
+    @State private var calendarWebcalUrl: String?
+    @State private var calendarFeedBusy = false
+    @State private var calendarFeedError: String?
 
     @State private var includedSlotLabels: Set<String> = []
     @State private var includedWeekDates: Set<String> = []
@@ -2660,6 +2687,43 @@ struct RetreatVolunteerWeekSignupView: View {
                 }
             }
 
+            Section("Calendar feed") {
+                Text("Subscribe in Apple Calendar. The HTTPS URL is a secret — don’t share it publicly.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if calendarFeedBusy {
+                    ProgressView()
+                }
+                if let calendarFeedError {
+                    Text(calendarFeedError).foregroundStyle(.red).font(.caption)
+                }
+                Button("Show subscribe link") {
+                    Task { await mintCalendarFeed(regenerate: false) }
+                }
+                .disabled(!selfIsLinked || selfVolunteerId.isEmpty || calendarFeedBusy)
+                Button("Rotate link (invalidate old subscriptions)", role: .destructive) {
+                    Task { await mintCalendarFeed(regenerate: true) }
+                }
+                .disabled(!selfIsLinked || selfVolunteerId.isEmpty || calendarFeedBusy)
+                if let https = calendarHttpsUrl {
+                    Text(https).font(.caption).textSelection(.enabled)
+                    Button("Copy HTTPS URL") {
+                        UIPasteboard.general.string = https
+                    }
+                    Button("Open in Safari") {
+                        if let u = URL(string: https) { openURL(u) }
+                    }
+                }
+                if let subscribe = calendarSubscribeWebcalURL() {
+                    Button("Subscribe in Calendar") {
+                        openURL(subscribe)
+                    }
+                    Button("Copy subscribe link") {
+                        UIPasteboard.general.string = subscribe.absoluteString
+                    }
+                }
+            }
+
             Section("Filters") {
                 Text("Leave a group empty to show all. Otherwise only rows matching every active filter are shown.")
                     .font(.caption)
@@ -2734,6 +2798,11 @@ struct RetreatVolunteerWeekSignupView: View {
         }
         .task(id: retreatId) { await reloadAll() }
         .refreshable { await reloadAll() }
+        .onChange(of: selfVolunteerId) { _, _ in
+            calendarHttpsUrl = nil
+            calendarWebcalUrl = nil
+            calendarFeedError = nil
+        }
         if let error { Text(error).foregroundStyle(.red).padding(.horizontal) }
     }
 
@@ -2957,6 +3026,46 @@ struct RetreatVolunteerWeekSignupView: View {
             try await fetchWeekScheduleMerged()
         } catch {
             await MainActor.run { self.error = error.localizedDescription }
+        }
+    }
+
+    /// Prefer API `webcalSubscribeUrl`; if it is https or missing, derive `webcal://` from the HTTPS feed URL.
+    private func calendarSubscribeWebcalURL() -> URL? {
+        let w = calendarWebcalUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let h = calendarHttpsUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let w, !w.isEmpty {
+            if w.lowercased().hasPrefix("webcal://") { return URL(string: w) }
+            if w.lowercased().hasPrefix("https://"), var c = URLComponents(string: w) {
+                c.scheme = "webcal"
+                return c.url
+            }
+            if w.lowercased().hasPrefix("http://"), var c = URLComponents(string: w) {
+                c.scheme = "webcal"
+                return c.url
+            }
+        }
+        if let h, (h.lowercased().hasPrefix("https://") || h.lowercased().hasPrefix("http://")), var c = URLComponents(string: h) {
+            c.scheme = "webcal"
+            return c.url
+        }
+        return nil
+    }
+
+    private func mintCalendarFeed(regenerate: Bool) async {
+        guard selfIsLinked, !selfVolunteerId.isEmpty else {
+            await MainActor.run { calendarFeedError = "Choose a linked volunteer profile first." }
+            return
+        }
+        await MainActor.run { calendarFeedBusy = true; calendarFeedError = nil }
+        defer { Task { @MainActor in calendarFeedBusy = false } }
+        do {
+            let res = try await api.mintVolunteerCalendarFeed(volunteerId: selfVolunteerId, regenerate: regenerate)
+            await MainActor.run {
+                calendarHttpsUrl = res.subscribeHttpsUrl
+                calendarWebcalUrl = res.webcalSubscribeUrl
+            }
+        } catch {
+            await MainActor.run { calendarFeedError = error.localizedDescription }
         }
     }
 

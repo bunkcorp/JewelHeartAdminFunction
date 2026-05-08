@@ -290,6 +290,19 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
         voidRequest("DELETE", "jewelheart/retreats/$retreatId/volunteers/$volunteerId")
     }
 
+    suspend fun mintVolunteerCalendarFeed(volunteerId: String, regenerate: Boolean = false): VolunteerCalendarFeedResponse {
+        val bytes = jsonRequest(
+            "POST",
+            "jewelheart/volunteers/$volunteerId/calendar-feed",
+            jsonBody = VolunteerCalendarFeedMintRequest(regenerate = regenerate),
+        )
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), VolunteerCalendarFeedResponse::class.java)
+    }
+
+    suspend fun revokeVolunteerCalendarFeed(volunteerId: String) {
+        voidRequest("DELETE", "jewelheart/volunteers/$volunteerId/calendar-feed")
+    }
+
     suspend fun createAssignment(retreatId: String, taskId: String, volunteerId: String): Assignment {
         val bytes = jsonRequest(
             "POST",
