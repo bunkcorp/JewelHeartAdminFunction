@@ -56,7 +56,7 @@ Server fragments (copy into buddhist-stone `private-server/src/jewelheart/` or m
    - **ACL:** implement `ensureVolunteerPatchAccess(req, volunteerId)` to mirror Firebase bearer auth used for `PATCH /jewelheart/volunteers/{id}` (reject with same status as your existing volunteer routes).
 
 2. **Assignment confirmation (HTML + POST):** `jewelheart-assignment-confirmation.fragment.js`
-   - Exports `createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify? })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`. When `volunteerNotify` is set, **withdraw** posts call `notifyAfterAssignmentRemoved` before `DELETE` (same as admin `DELETE …/assignments/:id`).
+   - Exports `createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify? })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`, `getVolunteerAssignmentConfirmedGif`. **Keep assignment** (POST `intent=committed`) returns **HTML** with an embedded thank-you GIF for normal browser form posts; clients sending `Accept: application/json` (without `text/html`) still receive `{ ok, message: "committed", assignmentRemoved: false }`. Public **GET** ` /jewelheart/static/volunteer-assignment-confirmed.gif ` streams the GIF (resolved from repo `assets/volunteer-assignment-confirmed.gif` beside the fragment, or `JEWELHEART_CONFIRM_SUCCESS_GIF_PATH`). When `volunteerNotify` is set, **withdraw** posts call `notifyAfterAssignmentRemoved` before `DELETE` (same as admin `DELETE …/assignments/:id`).
    - Also exports `signAssignmentConfirmationToken(payload, secret)` for email/SMS links (used by notify fragment).
 
 3. **Volunteer email + SMS (optional):** `jewelheart-volunteer-notify.fragment.js`
@@ -132,6 +132,7 @@ app.post('/jewelheart/internal/day-before-reminders', async (req, res) => {
 const confirm = createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify });
 app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
 app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
+app.get('/jewelheart/static/volunteer-assignment-confirmed.gif', confirm.getVolunteerAssignmentConfirmedGif);
 
 // After INSERT jewelheart_assignments succeeds (you have retreatId, taskId, assignment row id, volunteerId):
 void volunteerNotify.notifyAfterAssignmentCreated({
@@ -173,7 +174,7 @@ Use this when deploying KarmaDots private-server with JewelHeart routes.
 3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations + internal day-before cron. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):
    - `POST /jewelheart/sdui/screen` → handler calls `sduiScreen(firebaseUid, body)` (OpenAPI `postSduiScreen`).
    - `POST /jewelheart/sdui/action` → optional; wire if your client uses SDUI actions (`postSduiAction`).
-   Public (no Firebase): `HEAD`/`GET /jewelheart/calendar-feed/:feedToken`; `GET`/`POST /jewelheart/assignment-confirmations/:sealedConfirmationToken`. Unauthenticated probe: `GET /jewelheart/health`.
+   Public (no Firebase): `HEAD`/`GET /jewelheart/calendar-feed/:feedToken`; `GET`/`POST /jewelheart/assignment-confirmations/:sealedConfirmationToken`; `GET /jewelheart/static/volunteer-assignment-confirmed.gif` (success animation for confirmation page). Unauthenticated probe: `GET /jewelheart/health`.
 
 4. **Environment:** `DATABASE_URL` (required). `CALENDAR_CONFIRM_SECRET` (required in production for sealed confirmation tokens). `JEWELHEART_PUBLIC_ORIGIN` (optional canonical `https://…` for minted subscribe URLs, no trailing slash). **Transactional outbound:** set SendGrid and/or Twilio env vars (see “Env vars” above) when you want post-assignment email/SMS. **Firebase:** use the same private-server Firebase Admin / bearer verification as existing KarmaDots routes (JewelHeart shares the project); no extra JewelHeart-only env name is defined in this repo.
 

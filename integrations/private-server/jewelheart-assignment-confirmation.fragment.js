@@ -14,6 +14,7 @@
  *   const confirm = createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify });
  *   app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
  *   app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
+ *   app.get('/jewelheart/static/volunteer-assignment-confirmed.gif', confirm.getVolunteerAssignmentConfirmedGif);
  *
  * Use `express.urlencoded({ extended: false })` so HTML forms work alongside `express.json()`.
  *
@@ -23,6 +24,32 @@
 'use strict';
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+/** Public path (same host as API) for the success GIF; register GET in Express. */
+const VOLUNTEER_CONFIRM_GIF_URL_PATH = '/jewelheart/static/volunteer-assignment-confirmed.gif';
+
+/**
+ * @returns {string|null} absolute path to GIF on disk, or null
+ */
+function resolveConfirmSuccessGifPath() {
+  const envP = process.env.JEWELHEART_CONFIRM_SUCCESS_GIF_PATH;
+  if (envP && fs.existsSync(envP)) return envP;
+  const candidates = [
+    path.join(__dirname, 'volunteer-assignment-confirmed.gif'),
+    path.join(__dirname, '..', '..', 'assets', 'volunteer-assignment-confirmed.gif'),
+    path.join(__dirname, '..', 'assets', 'volunteer-assignment-confirmed.gif'),
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) return c;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
 
 function b64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
@@ -161,7 +188,30 @@ function createJewelHeartAssignmentConfirmationHandlers(deps) {
     }
 
     if (intent === 'committed') {
-      res.status(200).json({ ok: true, message: 'committed', assignmentRemoved: false });
+      const wantsJson =
+        typeof req.get === 'function' &&
+        String(req.get('accept') || '')
+          .toLowerCase()
+          .includes('application/json') &&
+        !String(req.get('accept') || '')
+          .toLowerCase()
+          .includes('text/html');
+      if (wantsJson) {
+        res.status(200).json({ ok: true, message: 'committed', assignmentRemoved: false });
+        return;
+      }
+      const gifPath = resolveConfirmSuccessGifPath();
+      const imgBlock =
+        gifPath != null
+          ? `<p style="margin-top:1rem"><img src="${VOLUNTEER_CONFIRM_GIF_URL_PATH}" alt="" width="560" style="max-width:100%;height:auto;border-radius:8px"/></p>`
+          : '';
+      const html =
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<title>Confirmed</title></head><body style="font-family:system-ui,sans-serif;padding:1rem">' +
+        '<p>Thank you — your volunteer assignment is confirmed.</p>' +
+        imgBlock +
+        '</body></html>';
+      res.status(200).type('text/html').send(html);
       return;
     }
 
@@ -178,9 +228,25 @@ function createJewelHeartAssignmentConfirmationHandlers(deps) {
     res.status(200).json({ ok: true, message: 'withdrawn', assignmentRemoved: true });
   }
 
+  async function getVolunteerAssignmentConfirmedGif(req, res) {
+    try {
+      const p = resolveConfirmSuccessGifPath();
+      if (!p) {
+        res.status(404).type('text/plain').send('volunteer_confirm_gif_not_found');
+        return;
+      }
+      res.setHeader('Content-Type', 'image/gif');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      fs.createReadStream(p).pipe(res);
+    } catch (e) {
+      res.status(500).type('text/plain').send(String(e && e.message));
+    }
+  }
+
   return {
     getAssignmentConfirmationLanding,
     postAssignmentConfirmationRespond,
+    getVolunteerAssignmentConfirmedGif,
     signAssignmentConfirmationToken,
     verifyConfirmationToken,
   };
@@ -190,4 +256,6 @@ module.exports = {
   createJewelHeartAssignmentConfirmationHandlers,
   signAssignmentConfirmationToken,
   verifyConfirmationToken,
+  VOLUNTEER_CONFIRM_GIF_URL_PATH,
+  resolveConfirmSuccessGifPath,
 };

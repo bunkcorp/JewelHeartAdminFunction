@@ -36,7 +36,7 @@ struct RetreatAdminListView: View {
                     NavigationLink(value: r) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(r.name).font(.headline)
-                            Text("\(r.status.rawValue) · \(r.timezone)").font(.caption).foregroundStyle(.secondary)
+                            Text(r.status.rawValue).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -87,7 +87,6 @@ struct RetreatCreateFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
-    @State private var timezone = "America/New_York"
     @State private var status: RetreatStatus = .draft
     @State private var includeDates = false
     @State private var startDate = Date()
@@ -98,7 +97,6 @@ struct RetreatCreateFormView: View {
     var body: some View {
         Form {
             TextField("Name", text: $name)
-            TextField("IANA timezone", text: $timezone)
             Picker("Status", selection: $status) {
                 ForEach(RetreatStatus.allCases) { s in
                     Text(s.rawValue).tag(s)
@@ -124,7 +122,7 @@ struct RetreatCreateFormView: View {
         await MainActor.run { busy = true; error = nil }
         defer { Task { @MainActor in busy = false } }
         do {
-            var body = RetreatCreate(name: name, timezone: timezone, startDate: nil, endDate: nil, status: status)
+            var body = RetreatCreate(name: name, timezone: JewelHeartConfig.jewelheartDefaultTimeZoneId, startDate: nil, endDate: nil, status: status)
             if includeDates {
                 body.startDate = AdminDayFormat.api.string(from: startDate)
                 body.endDate = AdminDayFormat.api.string(from: endDate)
@@ -155,7 +153,6 @@ struct RetreatDetailView: View {
         List {
             Section("Summary") {
                 LabeledContent("Status") { Text(r.status.rawValue) }
-                LabeledContent("Timezone") { Text(r.timezone) }
                 if let s = r.startDate { LabeledContent("Start") { Text(s) } }
                 if let e = r.endDate { LabeledContent("End") { Text(e) } }
                 LabeledContent("id") { Text(r.id).font(.caption.monospaced()) }
@@ -219,7 +216,6 @@ struct RetreatEditFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String
-    @State private var timezone: String
     @State private var status: RetreatStatus
     @State private var startDate: Date
     @State private var endDate: Date
@@ -232,7 +228,6 @@ struct RetreatEditFormView: View {
         self.retreat = retreat
         self.onSaved = onSaved
         _name = State(initialValue: retreat.name)
-        _timezone = State(initialValue: retreat.timezone)
         _status = State(initialValue: retreat.status)
         let df = AdminDayFormat.api
         _hasStart = State(initialValue: retreat.startDate != nil)
@@ -244,7 +239,6 @@ struct RetreatEditFormView: View {
     var body: some View {
         Form {
             TextField("Name", text: $name)
-            TextField("Timezone", text: $timezone)
             Picker("Status", selection: $status) {
                 ForEach(RetreatStatus.allCases) { s in
                     Text(s.rawValue).tag(s)
@@ -272,7 +266,7 @@ struct RetreatEditFormView: View {
             let df = AdminDayFormat.api
             var patch = RetreatPatch()
             patch.name = name
-            patch.timezone = timezone
+            patch.timezone = JewelHeartConfig.jewelheartDefaultTimeZoneId
             patch.status = status
             patch.startDate = hasStart ? df.string(from: startDate) : nil
             patch.endDate = hasEnd ? df.string(from: endDate) : nil
@@ -937,8 +931,10 @@ struct JHTaskDetailView: View {
                             ForEach(assigns) { a in
                                 HStack {
                                     VStack(alignment: .leading) {
-                                        Text(a.volunteer?.displayName ?? a.volunteerId)
-                                        Text(a.id).font(.caption2.monospaced()).foregroundStyle(.secondary)
+                                        Text(
+                                            (a.volunteer?.displayName).flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+                                                ?? "Unnamed volunteer"
+                                        )
                                     }
                                     Spacer()
                                     Button("Remove", role: .destructive) {
@@ -2311,7 +2307,9 @@ struct VolunteerSelfServiceRootView: View {
 
 private func retreatCalendar(timezoneId: String) -> Calendar {
     var c = Calendar(identifier: .gregorian)
-    c.timeZone = TimeZone(identifier: timezoneId) ?? .gmt
+    c.timeZone = TimeZone(identifier: timezoneId)
+        ?? TimeZone(identifier: JewelHeartConfig.jewelheartDefaultTimeZoneId)
+        ?? .gmt
     return c
 }
 
@@ -2475,7 +2473,7 @@ struct RetreatVolunteerWeekSignupView: View {
     @AppStorage(VolunteerSelfServiceStorage.selfVolunteerIdKey) private var selfVolunteerId: String = ""
 
     @State private var retreat: Retreat?
-    @State private var weekMonday: Date = volunteerWeekMonday(containing: Date(), calendar: retreatCalendar(timezoneId: "UTC"))
+    @State private var weekMonday: Date = volunteerWeekMonday(containing: Date(), calendar: retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId))
     @State private var rows: [ScheduleDayItem] = []
     @State private var linkedVolunteers: [RetreatVolunteer] = []
     @State private var error: String?
@@ -2495,7 +2493,7 @@ struct RetreatVolunteerWeekSignupView: View {
     @State private var includedDurationMinutes: Set<Int> = []
 
     private var calendar: Calendar {
-        retreatCalendar(timezoneId: retreat?.timezone ?? TimeZone.current.identifier)
+        retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId)
     }
 
     private var weekIsoDays: [String] { volunteerWeekDayStrings(monday: weekMonday, calendar: calendar) }
@@ -2509,9 +2507,18 @@ struct RetreatVolunteerWeekSignupView: View {
         Array(Set(rows.map(\.slot.label))).sorted()
     }
 
+    /// Site/context for filters and row copy: `slot.activityContext`, then `task.slotActivityContext` (schedule JSON often omits context on the nested slot while the task still carries the matrix site); no `Job` field matches this semantic.
+    private func effectiveActivityContext(for item: ScheduleDayItem) -> String {
+        if let s = item.slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty { return s }
+        if let s = item.task.slotActivityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty { return s }
+        return ""
+    }
+
     private var uniqueSites: [String] {
-        let raw = rows.map { $0.slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "" }
-        let tags = Set(raw.map { $0.isEmpty ? "—" : $0 })
+        let tags = Set(rows.map { item in
+            let raw = effectiveActivityContext(for: item)
+            return raw.isEmpty ? "—" : raw
+        })
         return Array(tags).sorted()
     }
 
@@ -2524,9 +2531,8 @@ struct RetreatVolunteerWeekSignupView: View {
         rows.filter { item in
             if !includedSlotLabels.isEmpty, !includedSlotLabels.contains(item.slot.label) { return false }
             if !includedWeekDates.isEmpty, !includedWeekDates.contains(item.slot.slotDate) { return false }
-            let siteTag = (item.slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "").isEmpty
-                ? "—"
-                : item.slot.activityContext!.trimmingCharacters(in: .whitespacesAndNewlines)
+            let siteRaw = effectiveActivityContext(for: item)
+            let siteTag = siteRaw.isEmpty ? "—" : siteRaw
             if !includedSites.isEmpty, !includedSites.contains(siteTag) { return false }
             if !includedTimeBands.isEmpty, !includedTimeBands.contains(item.slot.timeBand) { return false }
             if !includedDurationMinutes.isEmpty, !includedDurationMinutes.contains(item.job.estimatedMinutes) { return false }
@@ -2557,7 +2563,7 @@ struct RetreatVolunteerWeekSignupView: View {
                     ProgressView()
                 } else if let r = retreat {
                     Text(r.name).font(.headline)
-                    Text("Week is interpreted in the retreat timezone (\(r.timezone)).")
+                    Text("Week boundaries use Eastern Time (US).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -2853,6 +2859,135 @@ struct RetreatVolunteerWeekSignupView: View {
     }
 
     @ViewBuilder
+    private func volunteerDayByDayMetricsCard(_ m: VolunteerDayLoadMetrics) -> some View {
+        let maxPersonMin = max(m.totalVolunteerMinutesDemand, m.assignedPersonMinutes, 1)
+        let slotCap = max(m.volunteerSlotsDemand, 1)
+        let slotFillRatio = min(Double(m.filledSlotCount) / Double(slotCap), 1)
+        let demandCap = max(m.totalVolunteerMinutesDemand, 1)
+        let personMinFillRatio = min(Double(m.assignedPersonMinutes) / Double(demandCap), 1)
+
+        VStack(alignment: .leading, spacing: 8) {
+            Text(m.displayLabel)
+                .font(.subheadline.weight(.semibold))
+
+            Text("Person·min (demand vs filled)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Chart {
+                BarMark(
+                    x: .value("Person·min", m.totalVolunteerMinutesDemand),
+                    y: .value("Series", "Demand")
+                )
+                .foregroundStyle(Color.indigo.opacity(0.55))
+                BarMark(
+                    x: .value("Person·min", m.assignedPersonMinutes),
+                    y: .value("Series", "Filled")
+                )
+                .foregroundStyle(Color.teal)
+            }
+            .chartXScale(domain: 0 ... maxPersonMin)
+            .chartLegend(.hidden)
+            .chartYAxis {
+                AxisMarks { value in
+                    AxisValueLabel(anchor: .trailing) {
+                        if let s = value.as(String.self) {
+                            Text(s).font(.caption2)
+                        }
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(preset: .extended, position: .bottom) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let n = value.as(Int.self) {
+                            Text("\(n)").font(.caption2)
+                        }
+                    }
+                }
+            }
+            .frame(height: 52)
+
+            Text("\(m.totalVolunteerMinutesDemand) demand · \(m.assignedPersonMinutes) filled")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            Text("Fill ratio (person·min)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color(uiColor: .tertiarySystemFill))
+                    Capsule()
+                        .fill(Color.teal.opacity(0.85))
+                        .frame(width: geo.size.width * personMinFillRatio)
+                }
+            }
+            .frame(height: 6)
+            .accessibilityLabel("Person-minute fill ratio")
+            .accessibilityValue(String(format: "%.0f percent", personMinFillRatio * 100))
+
+            Text("Slots filled \(m.filledSlotCount) / \(m.volunteerSlotsDemand)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color(uiColor: .tertiarySystemFill))
+                    Capsule()
+                        .fill(Color.orange.opacity(0.7))
+                        .frame(width: geo.size.width * slotFillRatio)
+                }
+            }
+            .frame(height: 6)
+            .accessibilityLabel("Slot fill ratio")
+            .accessibilityValue(String(format: "%.0f percent", slotFillRatio * 100))
+
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Avg demand (min / slot)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.1f", m.avgMinutesPerSlotDemand))
+                        .font(.caption)
+                }
+                Spacer(minLength: 12)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Slots needed")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("\(m.volunteerSlotsDemand)")
+                        .font(.caption)
+                }
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Distinct people")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(m.distinctVolunteersAssigned.map(String.init) ?? "—")
+                        .font(.caption)
+                }
+                Spacer(minLength: 12)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Avg actual (min / person)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(volunteerLoadActualAvgLabel(m))
+                        .font(.caption)
+                }
+            }
+        }
+        .font(.caption)
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
     private var volunteerLoadMetricsTable: some View {
         let totals = dayLoadMetrics.reduce(into: (demand: 0, slots: 0, filled: 0, fslots: 0)) { a, m in
             a.demand += m.totalVolunteerMinutesDemand
@@ -2867,33 +3002,7 @@ struct RetreatVolunteerWeekSignupView: View {
             Text("By day")
                 .font(.caption.weight(.semibold))
             ForEach(dayLoadMetrics) { m in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(m.displayLabel)
-                        .font(.subheadline.weight(.semibold))
-                    LabeledContent("Demand (person·min)") {
-                        Text("\(m.totalVolunteerMinutesDemand)")
-                    }
-                    LabeledContent("Slots needed") {
-                        Text("\(m.volunteerSlotsDemand)")
-                    }
-                    LabeledContent("Avg demand (min per slot)") {
-                        Text(String(format: "%.1f", m.avgMinutesPerSlotDemand))
-                    }
-                    LabeledContent("Filled (person·min)") {
-                        Text("\(m.assignedPersonMinutes)")
-                    }
-                    LabeledContent("Distinct people") {
-                        Text(m.distinctVolunteersAssigned.map(String.init) ?? "—")
-                    }
-                    LabeledContent("Avg actual (min per person)") {
-                        Text(volunteerLoadActualAvgLabel(m))
-                    }
-                }
-                .font(.caption)
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                volunteerDayByDayMetricsCard(m)
             }
 
             VStack(alignment: .leading, spacing: 8) {
@@ -2954,7 +3063,7 @@ struct RetreatVolunteerWeekSignupView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            let site = item.slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let site = effectiveActivityContext(for: item)
             if !site.isEmpty {
                 Text("Site / context: \(site)")
                     .font(.caption2)
@@ -3004,7 +3113,7 @@ struct RetreatVolunteerWeekSignupView: View {
 
     private func jumpToRetreatStartWeek() {
         guard let r = retreat else { return }
-        let cal = retreatCalendar(timezoneId: r.timezone)
+        let cal = retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId)
         weekMonday = volunteerSignupInitialWeekMonday(retreat: r, calendar: cal)
         Task { await loadWeekRows() }
     }
@@ -3016,7 +3125,7 @@ struct RetreatVolunteerWeekSignupView: View {
             async let r = api.getRetreat(retreatId: retreatId)
             async let v = api.listRetreatVolunteers(retreatId: retreatId)
             let (ret, vols) = try await (r, v)
-            let cal = retreatCalendar(timezoneId: ret.timezone)
+            let cal = retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId)
             let initialMonday = volunteerSignupInitialWeekMonday(retreat: ret, calendar: cal)
             await MainActor.run {
                 retreat = ret
@@ -3070,8 +3179,7 @@ struct RetreatVolunteerWeekSignupView: View {
     }
 
     private func fetchWeekScheduleMerged() async throws {
-        let tzId = await MainActor.run { retreat?.timezone ?? TimeZone.current.identifier }
-        let cal = retreatCalendar(timezoneId: tzId)
+        let cal = retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId)
         let anchor = await MainActor.run { weekMonday }
         let monday = volunteerWeekMonday(containing: anchor, calendar: cal)
         let days = volunteerWeekDayStrings(monday: monday, calendar: cal)
@@ -3190,8 +3298,15 @@ struct ScheduleDayView: View {
                                 Text(notes).font(.caption).foregroundStyle(.secondary)
                             }
                             if let assigns = item.assignments, !assigns.isEmpty {
-                                Text(assigns.compactMap { $0.volunteer?.displayName ?? $0.volunteerId }.joined(separator: ", "))
-                                    .font(.caption2)
+                                let names = assigns.compactMap { a -> String? in
+                                    guard let v = a.volunteer else { return nil }
+                                    let n = v.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    return n.isEmpty ? nil : n
+                                }
+                                if !names.isEmpty {
+                                    Text(names.joined(separator: ", "))
+                                        .font(.caption2)
+                                }
                             }
                         }
                         .padding(.vertical, 4)

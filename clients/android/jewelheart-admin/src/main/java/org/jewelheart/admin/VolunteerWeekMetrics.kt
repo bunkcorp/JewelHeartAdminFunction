@@ -17,7 +17,7 @@ fun volunteerWeekDayStringsFromMonday(monday: LocalDate): List<String> =
     (0..6).map { monday.plusDays(it.toLong()).toString() }
 
 fun retreatZoneId(timezone: String): ZoneId =
-    runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.of("UTC"))
+    runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.of(JewelHeartConfig.jewelheartDefaultTimeZoneId))
 
 fun todayLocalDateInZone(zoneId: ZoneId): LocalDate =
     ZonedDateTime.now(zoneId).toLocalDate()
@@ -133,6 +133,13 @@ private val timeBandSortOrder: List<TimeBand> = listOf(
     TimeBand.anytime,
 )
 
+/** Site/context: `slot.activityContext`, then `task.slotActivityContext` when the nested slot omits it (parity with iOS). */
+fun effectiveActivityContext(item: ScheduleDayItem): String {
+    val slot = item.slot.activityContext?.trim().orEmpty()
+    if (slot.isNotEmpty()) return slot
+    return item.task.slotActivityContext?.trim().orEmpty()
+}
+
 fun filteredVolunteerRows(
     rows: List<ScheduleDayItem>,
     includedSlotLabels: Set<String>,
@@ -145,7 +152,7 @@ fun filteredVolunteerRows(
         .filter { item ->
             if (includedSlotLabels.isNotEmpty() && item.slot.label !in includedSlotLabels) return@filter false
             if (includedWeekDates.isNotEmpty() && item.slot.slotDate !in includedWeekDates) return@filter false
-            val siteRaw = item.slot.activityContext?.trim().orEmpty()
+            val siteRaw = effectiveActivityContext(item)
             val siteTag = if (siteRaw.isEmpty()) "—" else siteRaw
             if (includedSites.isNotEmpty() && siteTag !in includedSites) return@filter false
             if (includedTimeBands.isNotEmpty() && item.slot.timeBand !in includedTimeBands) return@filter false

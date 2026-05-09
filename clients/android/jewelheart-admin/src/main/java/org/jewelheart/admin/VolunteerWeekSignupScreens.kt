@@ -155,7 +155,7 @@ private fun VolunteerRetreatListScreen(nav: NavHostController) {
                             ) {
                                 Column(Modifier.padding(12.dp)) {
                                     Text(r.name, style = MaterialTheme.typography.titleMedium)
-                                    Text("${r.status.name} · ${r.timezone}", style = MaterialTheme.typography.bodySmall)
+                                    Text(r.status.name, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -197,6 +197,49 @@ private fun MiniBarRow(
         }
         Spacer(Modifier.width(8.dp))
         Text("$value", style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun RatioCapsuleRow(
+    label: String,
+    valueCaption: String,
+    fraction: Float,
+    barColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                valueCaption,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            val f = fraction.coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(f)
+                    .background(barColor.copy(alpha = 0.85f)),
+            )
+        }
     }
 }
 
@@ -273,7 +316,7 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
     var calendarBusy by remember { mutableStateOf(false) }
     var calendarErr by remember { mutableStateOf<String?>(null) }
 
-    val zoneId: ZoneId = retreat?.let { retreatZoneId(it.timezone) } ?: retreatZoneId("UTC")
+    val zoneId: ZoneId = ZoneId.of(JewelHeartConfig.jewelheartDefaultTimeZoneId)
 
     fun persistSelfVolunteer(id: String) {
         prefs.edit().putString(SelfVolunteerIdPrefsKey, id).apply()
@@ -321,7 +364,7 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
                 val vols = repo.listRetreatVolunteers(retreatId)
                 retreat = r
                 linkedVolunteers = vols.items
-                val z = retreatZoneId(r.timezone)
+                val z = ZoneId.of(JewelHeartConfig.jewelheartDefaultTimeZoneId)
                 val initial = volunteerSignupInitialWeekMonday(r, z)
                 weekMonday = initial
                 fetchWeekScheduleMerged(initial)
@@ -365,7 +408,7 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
 
     val uniqueSlotLabels = rows.map { it.slot.label }.toSet().sorted()
     val uniqueSites = rows.map { item ->
-        val raw = item.slot.activityContext?.trim().orEmpty()
+        val raw = effectiveActivityContext(item)
         if (raw.isEmpty()) "—" else raw
     }.toSet().sorted()
 
@@ -459,7 +502,7 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
             retreat?.let { r ->
                 Text(r.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Week is interpreted in the retreat timezone (${r.timezone}).",
+                    "Week boundaries use Eastern Time (US).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -549,18 +592,98 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
 
                 Text("By day", style = MaterialTheme.typography.labelLarge)
                 dayLoadMetrics.forEach { m ->
+                    val maxPm = maxOf(m.totalVolunteerMinutesDemand, m.assignedPersonMinutes, 1)
+                    val slotCap = maxOf(m.volunteerSlotsDemand, 1)
+                    val slotFill = (m.filledSlotCount.toFloat() / slotCap).coerceIn(0f, 1f)
+                    val demandCap = maxOf(m.totalVolunteerMinutesDemand, 1)
+                    val personMinFill = (m.assignedPersonMinutes.toFloat() / demandCap).coerceIn(0f, 1f)
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(m.displayLabel, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                            Text("Demand (person·min): ${m.totalVolunteerMinutesDemand}", style = MaterialTheme.typography.bodySmall)
-                            Text("Slots needed: ${m.volunteerSlotsDemand}", style = MaterialTheme.typography.bodySmall)
-                            Text("Avg demand (min per slot): ${String.format("%.1f", m.avgMinutesPerSlotDemand)}", style = MaterialTheme.typography.bodySmall)
-                            Text("Filled (person·min): ${m.assignedPersonMinutes}", style = MaterialTheme.typography.bodySmall)
                             Text(
-                                "Distinct people: ${m.distinctVolunteersAssigned?.toString() ?: "—"}",
-                                style = MaterialTheme.typography.bodySmall,
+                                "Person·min (demand vs filled)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text("Avg actual (min per person): ${volunteerLoadActualAvgLabel(m)}", style = MaterialTheme.typography.bodySmall)
+                            MiniBarRow("Demand", m.totalVolunteerMinutesDemand, maxPm, Color(0xFF4F46E5))
+                            MiniBarRow("Filled", m.assignedPersonMinutes, maxPm, Color(0xFF0D9488))
+                            Text(
+                                "${m.totalVolunteerMinutesDemand} demand · ${m.assignedPersonMinutes} filled",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            RatioCapsuleRow(
+                                label = "Fill ratio (person·min)",
+                                valueCaption = "${(personMinFill * 100).toInt()}%",
+                                fraction = personMinFill,
+                                barColor = Color(0xFF0D9488),
+                            )
+                            RatioCapsuleRow(
+                                label = "Slots filled",
+                                valueCaption = "${m.filledSlotCount} / ${m.volunteerSlotsDemand}",
+                                fraction = slotFill,
+                                barColor = Color(0xFFEA580C),
+                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        "Avg demand (min / slot)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        String.format("%.1f", m.avgMinutesPerSlotDemand),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        "Slots needed",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        "${m.volunteerSlotsDemand}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        "Distinct people",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        m.distinctVolunteersAssigned?.toString() ?: "—",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        "Avg actual (min / person)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        volunteerLoadActualAvgLabel(m),
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -890,7 +1013,7 @@ private fun VolunteerTaskRow(
                 Text("${item.job.estimatedMinutes} min", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("$filled/$need filled", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            item.slot.activityContext?.trim().orEmpty().takeIf { it.isNotEmpty() }?.let { site ->
+            effectiveActivityContext(item).takeIf { it.isNotEmpty() }?.let { site ->
                 Text("Site / context: $site", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item.task.notes?.trim().orEmpty().takeIf { it.isNotEmpty() }?.let { n ->

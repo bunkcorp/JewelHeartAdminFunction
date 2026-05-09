@@ -142,7 +142,6 @@ private fun RetreatListScreen(nav: NavHostController) {
     var loading by remember { mutableStateOf(true) }
     var showCreate by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var tz by remember { mutableStateOf("America/New_York") }
 
     fun load() {
         scope.launch {
@@ -183,7 +182,7 @@ private fun RetreatListScreen(nav: NavHostController) {
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(r.name, style = MaterialTheme.typography.titleMedium)
-                                Text("${r.status.name} · ${r.timezone}", style = MaterialTheme.typography.bodySmall)
+                                Text(r.status.name, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -199,7 +198,6 @@ private fun RetreatListScreen(nav: NavHostController) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = tz, onValueChange = { tz = it }, label = { Text("IANA timezone") }, modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {
@@ -207,7 +205,9 @@ private fun RetreatListScreen(nav: NavHostController) {
                     onClick = {
                         scope.launch {
                             try {
-                                repo.createRetreat(RetreatCreate(name = name.trim(), timezone = tz.trim()))
+                                repo.createRetreat(
+                                    RetreatCreate(name = name.trim(), timezone = JewelHeartConfig.jewelheartDefaultTimeZoneId),
+                                )
                                 showCreate = false
                                 name = ""
                                 load()
@@ -262,7 +262,6 @@ private fun RetreatDetailScreen(nav: NavHostController, retreatId: String) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             retreat?.let { r ->
                 Text("Status: ${r.status.name}")
-                Text("Timezone: ${r.timezone}")
                 Spacer(Modifier.height(8.dp))
                 NavButton("Jobs") { nav.navigate("rjobs/$retreatId") }
                 NavButton("Slots") { nav.navigate("rslots/$retreatId") }
@@ -802,7 +801,7 @@ private fun RetreatVolunteersScreen(nav: NavHostController, retreatId: String) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             importSummary?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(value = linkId, onValueChange = { linkId = it }, label = { Text("Volunteer UUID") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = linkId, onValueChange = { linkId = it }, label = { Text("Volunteer to link") }, modifier = Modifier.weight(1f))
                 Button(
                     onClick = {
                         scope.launch {
@@ -907,10 +906,11 @@ private fun ScheduleScreen(nav: NavHostController, retreatId: String) {
                                 val need = row.task.volunteersNeeded ?: row.job.volunteersNeeded
                                 Text("Assigned $ac / $need", style = MaterialTheme.typography.labelSmall)
                                 row.assignments?.takeIf { it.isNotEmpty() }?.let { assigns ->
-                                    Text(
-                                        assigns.mapNotNull { it.volunteer?.displayName ?: it.volunteerId }.joinToString(", "),
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
+                                    val line =
+                                        assigns.mapNotNull { it.volunteer?.displayName?.takeIf { n -> n.isNotBlank() } }.joinToString(", ")
+                                    if (line.isNotEmpty()) {
+                                        Text(line, style = MaterialTheme.typography.bodySmall)
+                                    }
                                 }
                             }
                         }
@@ -1269,7 +1269,10 @@ private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: 
                 d.assignments?.takeIf { it.isNotEmpty() }?.let { list ->
                     Text("Volunteers", style = MaterialTheme.typography.labelLarge)
                     list.forEach { a ->
-                        Text(a.volunteer?.displayName ?: a.volunteerId, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            a.volunteer?.displayName?.takeIf { it.isNotBlank() } ?: "Unnamed volunteer",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }

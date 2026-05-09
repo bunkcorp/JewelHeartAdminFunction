@@ -53,6 +53,7 @@ function mountJewelHeartNotifyCalendarAndCron(app, deps) {
   const confirm = createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify });
   app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
   app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
+  app.get('/jewelheart/static/volunteer-assignment-confirmed.gif', confirm.getVolunteerAssignmentConfirmedGif);
 
   return { volunteerNotify, cal, confirm };
 }

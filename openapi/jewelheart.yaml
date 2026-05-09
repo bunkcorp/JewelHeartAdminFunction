@@ -1074,7 +1074,7 @@ components:
       enum: [early, lunchtime, dinnertime, allday, anytime]
       description: |
         Slot-relative band feeding calendar generation. ICS `DTSTART`/`DTEND` are not stored in Postgres;
-        private-server MUST map bands to retreat-local civil times in the retreat timezone (same convention as volunteer week views).
+        private-server MUST map bands to civil times in **America/New_York** (JewelHeart default; same convention as volunteer week views in this repo’s clients).
 
         **Default ICS mapping contract** (deployment may override with config):
           Each VEVENT uses the job’s **`estimatedMinutes`** for `DTEND − DTSTART` (falls back to **30** if missing).
@@ -1099,7 +1099,7 @@ components:
           type: string
         timezone:
           type: string
-          description: IANA tz, e.g. America/New_York
+          description: IANA tz stored for the retreat; JewelHeart UIs treat schedules as **America/New_York**. API clients may still read/write this field.
         startDate:
           type: string
           format: date
@@ -1119,12 +1119,13 @@ components:
 
     RetreatCreate:
       type: object
-      required: [name, timezone]
+      required: [name]
       properties:
         name:
           type: string
         timezone:
           type: string
+          description: Optional. When omitted, servers SHOULD persist **America/New_York** (JewelHeart product default).
         startDate:
           type: string
           format: date
@@ -1141,6 +1142,7 @@ components:
           type: string
         timezone:
           type: string
+          description: Optional. When omitted on PATCH, the stored value is unchanged; clients that omit it on create receive the server default (**America/New_York**).
         startDate:
           type: string
           format: date

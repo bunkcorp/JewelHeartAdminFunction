@@ -1,0 +1,88 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="jewelClip">
+      <circle cx="256" cy="260" r="87"/>
+    </clipPath>
+    <linearGradient id="flameGrad" x1="256" y1="28" x2="256" y2="298" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffb899"/>
+      <stop offset="45%" stop-color="#e85c3a"/>
+      <stop offset="100%" stop-color="#c73a24"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Back: flame -->
+  <path id="flame"
+    fill="url(#flameGrad)"
+    stroke="#7a1f12"
+    stroke-width="2.5"
+    stroke-linejoin="round"
+    d="
+      M 256 34
+      C 198 52 158 108 168 158
+      C 172 182 188 200 210 212
+      C 198 228 192 248 204 268
+      C 218 288 242 296 256 278
+      C 270 296 294 288 308 268
+      C 320 248 314 228 302 212
+      C 324 200 340 182 344 158
+      C 354 108 314 52 256 34
+      Z"/>
+
+  <!-- Inner flame highlights -->
+  <path fill="#ffb199" fill-opacity="0.85" d="
+    M 256 88
+    C 236 118 236 152 256 172
+    C 276 152 276 118 256 88 Z"/>
+  <path fill="#ffb199" fill-opacity="0.7" d="
+    M 210 188
+    C 198 205 208 228 228 220
+    C 238 210 232 195 210 188 Z"/>
+  <path fill="#ffb199" fill-opacity="0.7" d="
+    M 302 188
+    C 314 205 304 228 284 220
+    C 274 210 280 195 302 188 Z"/>
+
+  <!-- Lotus (under jewel) -->
+  <g id="lotus" fill="#f4f4f4" stroke="#5a5a5a" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M 256 308 C 246 288 266 288 256 308 C 266 322 246 322 256 308"/>
+    <path d="M 220 318 C 208 298 232 298 238 318 C 232 332 214 328 220 318"/>
+    <path d="M 292 318 C 304 298 280 298 274 318 C 280 332 298 328 292 318"/>
+    <path d="M 186 328 C 172 302 212 302 222 328 C 210 338 192 334 186 328"/>
+    <path d="M 326 328 C 340 302 300 302 290 328 C 302 338 320 334 326 328"/>
+    <path d="M 200 342 C 218 308 248 312 256 338 C 248 352 212 348 200 342"/>
+    <path d="M 312 342 C 294 308 264 312 256 338 C 264 352 300 348 312 342"/>
+    <path d="M 188 358 C 210 330 236 338 228 362 C 214 368 196 368 188 358"/>
+    <path d="M 324 358 C 302 330 276 338 284 362 C 298 368 316 368 324 358"/>
+    <path d="M 256 358 C 232 368 232 396 256 404 C 280 396 280 368 256 358 Z"/>
+    <ellipse cx="256" cy="398" rx="118" ry="26" fill="#ececec"/>
+  </g>
+
+  <!-- Jewel rim + Gakyil (clipped, non-overlapping wedges) -->
+  <circle cx="256" cy="260" r="90" fill="#f2f2f2" stroke="#2b2b2b" stroke-width="2"/>
+
+  <g clip-path="url(#jewelClip)">
+    <!-- Wedges: 120� each, center (256,260), r=88; angles 0� = east, 90� = south (SVG y-down) -->
+    <!-- Yellow: 210� � 330� through top (270�) -->
+    <path fill="#fbc02d" d="
+      M 256 260
+      L 179.79 216
+      A 88 88 0 0 1 332.21 216
+      Z"/>
+    <!-- Red: 90� � 210� through left (180�) -->
+    <path fill="#d32f2f" d="
+      M 256 260
+      L 256 348
+      A 88 88 0 0 1 179.79 216
+      Z"/>
+    <!-- Blue: 330� � 90� through east (0�) -->
+    <path fill="#1976d2" d="
+      M 256 260
+      L 332.21 216
+      A 88 88 0 0 1 256 348
+      Z"/>
+    <!-- Soft green blend at lower triple junction -->
+    <circle cx="256" cy="288" r="22" fill="#43a047" fill-opacity="0.22"/>
+    <!-- Gloss highlight -->
+    <ellipse cx="256" cy="218" rx="38" ry="28" fill="#ffffff" fill-opacity="0.35"/>
+  </g>
+</svg>

@@ -17,6 +17,9 @@
  * (same signatures as GET schedule / list slots / list tasks).
  */
 
+/** JewelHeart default IANA zone (Eastern, DST-aware); SDUI volunteer views use this (no per-retreat tz in UI). */
+const jewelheartDefaultTimeZoneId = 'America/New_York';
+
 /** SDUI envelope aligned with clients/ios SDUIModels + shared/sdui-schema/examples/jewelheart-home.json */
 function jewelheartHomeSdui() {
   return {
@@ -126,7 +129,7 @@ async function retreatHomeSdui(firebaseUid, retreatId) {
             },
             {
               type: 'text',
-              content: `Status: ${r.status}${r.timezone ? ` · ${r.timezone}` : ''}`,
+              content: `Status: ${r.status}`,
               textStyle: { fontSize: 14 },
             },
             {
@@ -273,7 +276,7 @@ function addDaysIsoYmd(ymd, delta) {
 }
 
 function todayYmdInTimeZone(timeZone) {
-  const tz = timeZone || 'UTC';
+  const tz = timeZone || jewelheartDefaultTimeZoneId;
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
     .formatToParts(new Date())
     .filter((p) => p.type !== 'literal')
@@ -286,7 +289,7 @@ function weekStringsFromMonday(mondayYmd) {
 }
 
 function volunteerSignupInitialWeekMonday(retreat, timeZone) {
-  const tz = timeZone || 'UTC';
+  const tz = timeZone || jewelheartDefaultTimeZoneId;
   if (retreat.startDate && isIsoDate(retreat.startDate)) return mondayContainingIsoYmd(retreat.startDate);
   if (retreat.endDate && isIsoDate(retreat.endDate)) return mondayContainingIsoYmd(retreat.endDate);
   return mondayContainingIsoYmd(todayYmdInTimeZone(tz));
@@ -377,7 +380,7 @@ function barLine(widthChars, frac) {
 async function retreatVolunteerWeekSdui(firebaseUid, retreatId, params) {
   const r = await getRetreat(firebaseUid, retreatId);
   const sch = scheduleDeps();
-  const tz = r.timezone || 'UTC';
+  const tz = jewelheartDefaultTimeZoneId;
   let wmRaw = params?.weekMonday != null ? String(params.weekMonday) : '';
   let monday =
     wmRaw && isIsoDate(wmRaw)
@@ -392,11 +395,6 @@ async function retreatVolunteerWeekSdui(firebaseUid, retreatId, params) {
       type: 'text',
       content: `Volunteer week · ${weekTitle}`,
       textStyle: { fontSize: 16, fontWeight: 'semibold' },
-    },
-    {
-      type: 'text',
-      content: `Timezone: ${tz}`,
-      textStyle: { fontSize: 13 },
     },
   ];
 
@@ -554,7 +552,7 @@ async function retreatVolunteerWeekSdui(firebaseUid, retreatId, params) {
         const need = task.volunteersNeeded != null ? task.volunteersNeeded : job.volunteersNeeded;
         const mins = job.estimatedMinutes != null ? `${job.estimatedMinutes}m` : '';
         const assign = (row.assignments || [])
-          .map((a) => (a.volunteer && a.volunteer.displayName) || a.volunteerId)
+          .map((a) => (a.volunteer && a.volunteer.displayName) || null)
           .filter(Boolean);
         const assignStr = assign.length ? ` · ${assign.join(', ')}` : '';
         const when = slot.slotDate ? civilDayLabel(slot.slotDate) : '';
@@ -640,7 +638,7 @@ async function retreatScheduleDaySdui(firebaseUid, retreatId, day) {
       const need = task.volunteersNeeded != null ? task.volunteersNeeded : job.volunteersNeeded;
       const mins = job.estimatedMinutes != null ? `${job.estimatedMinutes}m` : '';
       const assign = (row.assignments || [])
-        .map((a) => (a.volunteer && a.volunteer.displayName) || a.volunteerId)
+        .map((a) => (a.volunteer && a.volunteer.displayName) || null)
         .filter(Boolean);
       const assignStr = assign.length ? ` · ${assign.join(', ')}` : '';
       const line = `${slot.label || slot.timeBand || 'Slot'} — ${job.title || 'Job'} (${need != null ? `${need}v` : '?'}${mins ? `, ${mins}` : ''})${assignStr}`;
