@@ -297,6 +297,57 @@ struct SduiActionResponse: Codable {
     let refreshScreenId: String?
 }
 
+// MARK: - Messaging (in-app MVP)
+
+enum ConversationKind: String, Codable, CaseIterable, Hashable {
+    case direct
+    case retreat_room
+}
+
+struct ConversationSummary: Codable, Identifiable, Hashable {
+    let id: String
+    let retreatId: String
+    let kind: ConversationKind
+    let updatedAt: String
+    let lastReadAt: String?
+    let peerVolunteerId: String?
+    let peerDisplayName: String?
+}
+
+struct ConversationListResponse: Codable {
+    let items: [ConversationSummary]
+}
+
+struct ChatMessage: Codable, Identifiable, Hashable {
+    let id: String
+    let conversationId: String
+    let senderVolunteerId: String
+    let senderDisplayName: String?
+    let body: String
+    let createdAt: String
+    /// Present when a global admin lists messages with `include_deleted=true`.
+    let deletedAt: String?
+}
+
+struct MessageListResponse: Codable {
+    let items: [ChatMessage]
+    let nextCursor: String?
+}
+
+struct ConversationCreateRequest: Codable {
+    let kind: ConversationKind
+    var peerVolunteerId: String?
+}
+
+struct MessageSendRequest: Codable {
+    let body: String
+}
+
+struct ConversationReadResponse: Codable {
+    let ok: Bool
+    let lastReadAt: String
+}
+
 // MARK: - Binary downloads
 
 struct JewelHeartDownload {

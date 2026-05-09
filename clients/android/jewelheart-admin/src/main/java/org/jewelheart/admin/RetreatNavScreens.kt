@@ -23,7 +23,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,9 +41,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,9 +57,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -1394,7 +1402,28 @@ private fun ReportsScreen(nav: NavHostController, retreatId: String) {
 }
 
 @Composable
-fun DirectoryTabContent() {
+fun DirectoryNavHost(navController: NavHostController) {
+    NavHost(navController = navController, startDestination = "dlist", modifier = Modifier.fillMaxSize()) {
+        composable("dlist") { GlobalVolunteersListScreen(navController) }
+        composable(
+            "dvol/{vid}",
+            arguments = listOf(navArgument("vid") { type = NavType.StringType }),
+        ) { entry ->
+            VolunteerDetailScreen(navController, volunteerId = entry.arguments!!.getString("vid")!!)
+        }
+        composable("dcreate") { VolunteerCreateScreen(navController) }
+        composable(
+            "dedit/{vid}",
+            arguments = listOf(navArgument("vid") { type = NavType.StringType }),
+        ) { entry ->
+            VolunteerEditScreen(navController, volunteerId = entry.arguments!!.getString("vid")!!)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GlobalVolunteersListScreen(nav: NavHostController) {
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
     var q by remember { mutableStateOf("") }
@@ -1402,37 +1431,426 @@ fun DirectoryTabContent() {
     var err by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Global directory", style = MaterialTheme.typography.titleLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(value = q, onValueChange = { q = it }, label = { Text("Search") }, modifier = Modifier.weight(1f))
-            Button(
-                onClick = {
-                    scope.launch {
-                        loading = true
-                        err = null
-                        try {
-                            items = repo.searchVolunteers(q = q.takeIf { it.isNotBlank() }, limit = 100).items
-                        } catch (e: Exception) {
-                            err = e.message
-                        } finally {
-                            loading = false
-                        }
+    fun submitSearch() {
+        scope.launch {
+            loading = true
+            err = null
+            try {
+                val trimmed = q.trim()
+                items = repo.searchVolunteers(q = trimmed.takeIf { it.isNotEmpty() }, limit = 100).items
+            } catch (e: Exception) {
+                err = e.message
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { submitSearch() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.directory_nav_title)) },
+                actions = {
+                    TextButton(onClick = { submitSearch() }, enabled = !loading) {
+                        Text(stringResource(R.string.action_search))
                     }
                 },
-            ) { Text("Search") }
-        }
-        err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (loading) CircularProgressIndicator()
-        LazyColumn(Modifier.weight(1f)) {
-            items(items, key = { it.id }) { v ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(v.displayName, style = MaterialTheme.typography.titleSmall)
-                        Text(v.email ?: "—")
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { nav.navigate("dcreate") }) {
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.volunteer_new_title))
+            }
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = q,
+                onValueChange = { q = it },
+                label = { Text(stringResource(R.string.volunteer_search_prompt)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
+            )
+            if (loading) {
+                CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+            }
+            when {
+                err != null -> Text(err!!, color = MaterialTheme.colorScheme.error)
+                else -> {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = true),
+                    ) {
+                        items(items, key = { it.id }) { v ->
+                            ListItem(
+                                headlineContent = {
+                                    Text(v.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                supportingContent =
+                                    if (v.email != null) {
+                                        {
+                                            Text(
+                                                v.email,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                modifier = Modifier.clickable { nav.navigate("dvol/${v.id}") },
+                            )
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VolunteerDetailScreen(nav: NavHostController, volunteerId: String) {
+    val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
+    var volunteer by remember { mutableStateOf<Volunteer?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    fun load() {
+        scope.launch {
+            busy = true
+            err = null
+            try {
+                volunteer = repo.getVolunteer(volunteerId)
+            } catch (e: Exception) {
+                err = e.message
+                volunteer = null
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    LaunchedEffect(volunteerId) { load() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        volunteer?.displayName ?: stringResource(R.string.directory_nav_title),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            when {
+                busy && volunteer == null -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+                err != null -> Text(err!!, color = MaterialTheme.colorScheme.error)
+                volunteer != null -> {
+                    val v = volunteer!!
+                    v.email?.let { labeledRow(stringResource(R.string.label_email), it) }
+                    v.phone?.let { labeledRow(stringResource(R.string.label_phone), it) }
+                    v.otherDuties?.let { labeledRow(stringResource(R.string.label_other), it) }
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { nav.navigate("dedit/${v.id}") },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(stringResource(R.string.action_edit)) }
+                    Button(
+                        onClick = { confirmDelete = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                    ) { Text(stringResource(R.string.label_delete)) }
+                }
+            }
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.volunteer_delete_title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        scope.launch {
+                            try {
+                                repo.deleteVolunteer(volunteerId)
+                                nav.popBackStack()
+                            } catch (e: Exception) {
+                                err = e.message
+                            }
+                        }
+                    },
+                ) { Text(stringResource(R.string.label_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun labeledRow(label: String, value: String) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VolunteerCreateScreen(nav: NavHostController) {
+    val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
+    var displayName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var other by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.volunteer_new_title)) },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                err = null
+                                try {
+                                    val body =
+                                        VolunteerCreate(
+                                            displayName = displayName.trim(),
+                                            email = email.trim().takeIf { it.isNotEmpty() },
+                                            phone = phone.trim().takeIf { it.isNotEmpty() },
+                                            otherDuties = other.trim().takeIf { it.isNotEmpty() },
+                                        )
+                                    repo.createVolunteer(body)
+                                    nav.popBackStack()
+                                } catch (e: Exception) {
+                                    err = e.message
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy && displayName.isNotBlank(),
+                    ) { Text(stringResource(R.string.action_create)) }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = { Text(stringResource(R.string.label_display_name)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(stringResource(R.string.label_email_optional)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = { Text(stringResource(R.string.label_phone_optional)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = other,
+                onValueChange = { other = it },
+                label = { Text(stringResource(R.string.label_other_duties_optional)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VolunteerEditScreen(nav: NavHostController, volunteerId: String) {
+    val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
+    var displayName by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var other by remember { mutableStateOf("") }
+    var notifyEmail by remember { mutableStateOf(true) }
+    var notifySms by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var loaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(volunteerId) {
+        try {
+            val v = repo.getVolunteer(volunteerId)
+            displayName = v.displayName
+            email = v.email ?: ""
+            phone = v.phone ?: ""
+            other = v.otherDuties ?: ""
+            notifyEmail = v.notifyEmail ?: true
+            notifySms = v.notifySms ?: false
+            loaded = true
+        } catch (e: Exception) {
+            err = e.message
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.volunteer_edit_title)) },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                busy = true
+                                err = null
+                                try {
+                                    val patch =
+                                        VolunteerPatch(
+                                            displayName = displayName.trim(),
+                                            email = email.trim().takeIf { it.isNotEmpty() },
+                                            phone = phone.trim().takeIf { it.isNotEmpty() },
+                                            otherDuties = other.trim().takeIf { it.isNotEmpty() },
+                                            notifyEmail = notifyEmail,
+                                            notifySms = notifySms,
+                                        )
+                                    repo.updateVolunteer(volunteerId, patch)
+                                    nav.popBackStack()
+                                } catch (e: Exception) {
+                                    err = e.message
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = loaded && !busy,
+                    ) { Text(stringResource(R.string.action_save)) }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            OutlinedTextField(
+                value = displayName,
+                onValueChange = { displayName = it },
+                label = { Text(stringResource(R.string.label_display_name)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(stringResource(R.string.label_email)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = phone,
+                onValueChange = { phone = it },
+                label = { Text(stringResource(R.string.label_phone)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            OutlinedTextField(
+                value = other,
+                onValueChange = { other = it },
+                label = { Text(stringResource(R.string.label_other_duties)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.notify_via_email))
+                Switch(checked = notifyEmail, onCheckedChange = { notifyEmail = it })
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.notify_via_sms))
+                Switch(checked = notifySms, onCheckedChange = { notifySms = it })
+            }
+            if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
         }
     }
 }

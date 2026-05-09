@@ -2278,8 +2278,13 @@ struct VolunteerSelfServiceRootView: View {
                 ContentUnavailableView("No retreats", systemImage: "mountain.2", description: Text("Pull to refresh after an admin grants access."))
             } else {
                 List(retreats) { r in
-                    NavigationLink(r.name) {
-                        RetreatVolunteerWeekSignupView(retreatId: r.id)
+                    Section(r.name) {
+                        NavigationLink("Volunteer week") {
+                            RetreatVolunteerWeekSignupView(retreatId: r.id)
+                        }
+                        NavigationLink("Messages") {
+                            RetreatMessagingListView(retreatId: r.id)
+                        }
                     }
                 }
             }
@@ -2466,6 +2471,34 @@ private func volunteerDayLoadMetrics(rows: [ScheduleDayItem], weekDates: [String
     }
 }
 
+/// Segments for a stacked vertical bar chart (one bar per day; total height = demand).
+private struct VolunteerWeekPersonMinuteStackSegment: Identifiable {
+    let id: String
+    let chartAxisLabel: String
+    let segment: String
+    let minutes: Int
+}
+
+private func volunteerWeekPersonMinuteStackSegments(_ metrics: [VolunteerDayLoadMetrics]) -> [VolunteerWeekPersonMinuteStackSegment] {
+    metrics.flatMap { m -> [VolunteerWeekPersonMinuteStackSegment] in
+        let remaining = max(0, m.totalVolunteerMinutesDemand - m.assignedPersonMinutes)
+        return [
+            VolunteerWeekPersonMinuteStackSegment(
+                id: "\(m.id)-filled",
+                chartAxisLabel: m.chartAxisLabel,
+                segment: "Filled",
+                minutes: m.assignedPersonMinutes
+            ),
+            VolunteerWeekPersonMinuteStackSegment(
+                id: "\(m.id)-need",
+                chartAxisLabel: m.chartAxisLabel,
+                segment: "Still needed",
+                minutes: remaining
+            )
+        ]
+    }
+}
+
 struct RetreatVolunteerWeekSignupView: View {
     let retreatId: String
     private let api = JewelHeartAPI()
@@ -2602,15 +2635,19 @@ struct RetreatVolunteerWeekSignupView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Person-minutes needed (jobs still want people)")
+                            Text("Person-minutes by day (filled vs still needed)")
                                 .font(.caption.weight(.semibold))
-                            Chart(dayLoadMetrics) { m in
+                            Chart(volunteerWeekPersonMinuteStackSegments(dayLoadMetrics)) { row in
                                 BarMark(
-                                    x: .value("Day", m.chartAxisLabel),
-                                    y: .value("Minutes", m.totalVolunteerMinutesDemand)
+                                    x: .value("Day", row.chartAxisLabel),
+                                    y: .value("Minutes", row.minutes)
                                 )
-                                .foregroundStyle(Color.indigo.opacity(0.55))
+                                .foregroundStyle(by: .value("Layer", row.segment))
                             }
+                            .chartForegroundStyleScale([
+                                "Filled": Color.teal,
+                                "Still needed": Color.indigo.opacity(0.4)
+                            ])
                             .chartXAxis {
                                 AxisMarks(preset: .aligned) { value in
                                     AxisGridLine()
@@ -2628,43 +2665,11 @@ struct RetreatVolunteerWeekSignupView: View {
                                 }
                             }
                             .chartYAxis(.automatic)
+                            .chartLegend(position: .bottom, spacing: 6)
                             .chartPlotStyle { plot in
-                                plot.padding(.bottom, 4)
+                                plot.padding(.bottom, 2)
                             }
-                            .frame(height: 200)
-                        }
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Person-minutes filled (assignments so far)")
-                                .font(.caption.weight(.semibold))
-                            Chart(dayLoadMetrics) { m in
-                                BarMark(
-                                    x: .value("Day", m.chartAxisLabel),
-                                    y: .value("Minutes", m.assignedPersonMinutes)
-                                )
-                                .foregroundStyle(Color.teal)
-                            }
-                            .chartXAxis {
-                                AxisMarks(preset: .aligned) { value in
-                                    AxisGridLine()
-                                    AxisTick()
-                                    AxisValueLabel(centered: true) {
-                                        if let s = value.as(String.self) {
-                                            Text(s)
-                                                .font(.caption2)
-                                                .lineLimit(2)
-                                                .minimumScaleFactor(0.85)
-                                                .multilineTextAlignment(.center)
-                                                .frame(maxWidth: 44)
-                                        }
-                                    }
-                                }
-                            }
-                            .chartYAxis(.automatic)
-                            .chartPlotStyle { plot in
-                                plot.padding(.bottom, 4)
-                            }
-                            .frame(height: 200)
+                            .frame(height: 228)
                         }
 
                         volunteerLoadMetricsTable
@@ -2860,42 +2865,42 @@ struct RetreatVolunteerWeekSignupView: View {
 
     @ViewBuilder
     private func volunteerDayByDayMetricsCard(_ m: VolunteerDayLoadMetrics) -> some View {
-        let maxPersonMin = max(m.totalVolunteerMinutesDemand, m.assignedPersonMinutes, 1)
-        let slotCap = max(m.volunteerSlotsDemand, 1)
-        let slotFillRatio = min(Double(m.filledSlotCount) / Double(slotCap), 1)
+        let demandPm = m.totalVolunteerMinutesDemand
+        let filledPm = m.assignedPersonMinutes
         let demandCap = max(m.totalVolunteerMinutesDemand, 1)
         let personMinFillRatio = min(Double(m.assignedPersonMinutes) / Double(demandCap), 1)
+        let filledPmCapped = min(filledPm, max(demandPm, filledPm))
+        let unfilledPm = max(0, demandPm - filledPmCapped)
+        let slotsFilledVis = min(m.filledSlotCount, m.volunteerSlotsDemand)
+        let slotsForPeopleBar = max(m.volunteerSlotsDemand, 1)
+        let distinctRaw = m.distinctVolunteersAssigned ?? 0
+        let distinctCapped = min(max(distinctRaw, 0), m.volunteerSlotsDemand)
 
         VStack(alignment: .leading, spacing: 8) {
             Text(m.displayLabel)
                 .font(.subheadline.weight(.semibold))
 
-            Text("Person·min (demand vs filled)")
+            Text("Person·min (bar = demand; teal = filled)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Chart {
-                BarMark(
-                    x: .value("Person·min", m.totalVolunteerMinutesDemand),
-                    y: .value("Series", "Demand")
-                )
-                .foregroundStyle(Color.indigo.opacity(0.55))
-                BarMark(
-                    x: .value("Person·min", m.assignedPersonMinutes),
-                    y: .value("Series", "Filled")
-                )
-                .foregroundStyle(Color.teal)
-            }
-            .chartXScale(domain: 0 ... maxPersonMin)
-            .chartLegend(.hidden)
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisValueLabel(anchor: .trailing) {
-                        if let s = value.as(String.self) {
-                            Text(s).font(.caption2)
-                        }
-                    }
+                if demandPm > 0 {
+                    BarMark(
+                        xStart: .value("Start", 0),
+                        xEnd: .value("Filled end", filledPmCapped),
+                        y: .value("Row", "pm")
+                    )
+                    .foregroundStyle(Color.teal)
+                    BarMark(
+                        xStart: .value("Filled end", filledPmCapped),
+                        xEnd: .value("Demand end", demandPm),
+                        y: .value("Row", "pm")
+                    )
+                    .foregroundStyle(Color.indigo.opacity(0.4))
                 }
             }
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
             .chartXAxis {
                 AxisMarks(preset: .extended, position: .bottom) { value in
                     AxisGridLine()
@@ -2906,43 +2911,130 @@ struct RetreatVolunteerWeekSignupView: View {
                     }
                 }
             }
-            .frame(height: 52)
+            .chartXScale(domain: 0 ... max(demandPm, 1))
+            .frame(height: 28)
+            .padding(.vertical, 2)
 
-            Text("\(m.totalVolunteerMinutesDemand) demand · \(m.assignedPersonMinutes) filled")
+            Text("\(demandPm) demand · \(filledPm) filled")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text("Fill ratio (person·min)")
+            HStack(alignment: .center, spacing: 10) {
+                if demandPm > 0 {
+                    Chart {
+                        SectorMark(
+                            angle: .value("Filled", Double(filledPmCapped)),
+                            innerRadius: .ratio(0.58),
+                            angularInset: 0.8
+                        )
+                        .foregroundStyle(Color.teal)
+                        if unfilledPm > 0 {
+                            SectorMark(
+                                angle: .value("Unfilled", Double(unfilledPm)),
+                                innerRadius: .ratio(0.58),
+                                angularInset: 0.8
+                            )
+                            .foregroundStyle(Color.indigo.opacity(0.38))
+                        }
+                    }
+                    .chartLegend(.hidden)
+                    .frame(width: 48, height: 48)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Person-minute fill")
+                    .accessibilityValue(String(format: "%.0f percent", personMinFillRatio * 100))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Fill (person·min)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(String(format: "%.0f%%", personMinFillRatio * 100))
+                        .font(.caption.weight(.semibold))
+                }
+                Spacer(minLength: 0)
+            }
+
+            Text("Slots (bar = slots needed; orange = filled)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(uiColor: .tertiarySystemFill))
-                    Capsule()
-                        .fill(Color.teal.opacity(0.85))
-                        .frame(width: geo.size.width * personMinFillRatio)
+            Chart {
+                if m.volunteerSlotsDemand > 0 {
+                    BarMark(
+                        xStart: .value("s0", 0),
+                        xEnd: .value("s1", slotsFilledVis),
+                        y: .value("Row", "slots")
+                    )
+                    .foregroundStyle(Color.orange.opacity(0.78))
+                    BarMark(
+                        xStart: .value("s1", slotsFilledVis),
+                        xEnd: .value("s2", m.volunteerSlotsDemand),
+                        y: .value("Row", "slots")
+                    )
+                    .foregroundStyle(Color(uiColor: .tertiarySystemFill))
                 }
             }
-            .frame(height: 6)
-            .accessibilityLabel("Person-minute fill ratio")
-            .accessibilityValue(String(format: "%.0f percent", personMinFillRatio * 100))
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
+            .chartXAxis {
+                AxisMarks(preset: .automatic, position: .bottom) { value in
+                    AxisValueLabel {
+                        if let n = value.as(Int.self) {
+                            Text("\(n)").font(.caption2)
+                        }
+                    }
+                }
+            }
+            .chartXScale(domain: 0 ... max(m.volunteerSlotsDemand, 1))
+            .frame(height: 28)
+            .padding(.vertical, 2)
 
             Text("Slots filled \(m.filledSlotCount) / \(m.volunteerSlotsDemand)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color(uiColor: .tertiarySystemFill))
-                    Capsule()
-                        .fill(Color.orange.opacity(0.7))
-                        .frame(width: geo.size.width * slotFillRatio)
+
+            if m.volunteerSlotsDemand > 0 {
+                Text("Distinct people vs slots (bar = slots needed; purple = distinct)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Chart {
+                    BarMark(
+                        xStart: .value("p0", 0),
+                        xEnd: .value("p1", distinctCapped),
+                        y: .value("Row", "people")
+                    )
+                    .foregroundStyle(Color.purple.opacity(0.78))
+                    BarMark(
+                        xStart: .value("p1", distinctCapped),
+                        xEnd: .value("p2", m.volunteerSlotsDemand),
+                        y: .value("Row", "people")
+                    )
+                    .foregroundStyle(Color(uiColor: .tertiarySystemFill))
                 }
+                .chartYAxis(.hidden)
+                .chartLegend(.hidden)
+                .chartXAxis {
+                    AxisMarks(preset: .automatic, position: .bottom) { value in
+                        AxisValueLabel {
+                            if let n = value.as(Int.self) {
+                                Text("\(n)").font(.caption2)
+                            }
+                        }
+                    }
+                }
+                .chartXScale(domain: 0 ... slotsForPeopleBar)
+                .frame(height: 28)
+                .padding(.vertical, 2)
+
+                Text(
+                    (m.distinctVolunteersAssigned.map { "\($0) distinct" } ?? "— distinct")
+                        + " · \(m.volunteerSlotsDemand) slots",
+                )
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            } else {
+                Text("Distinct people: \(m.distinctVolunteersAssigned.map(String.init) ?? "—")")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            .frame(height: 6)
-            .accessibilityLabel("Slot fill ratio")
-            .accessibilityValue(String(format: "%.0f percent", slotFillRatio * 100))
 
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -2963,14 +3055,7 @@ struct RetreatVolunteerWeekSignupView: View {
             }
 
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Distinct people")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(m.distinctVolunteersAssigned.map(String.init) ?? "—")
-                        .font(.caption)
-                }
-                Spacer(minLength: 12)
+                Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Avg actual (min / person)")
                         .font(.caption2)

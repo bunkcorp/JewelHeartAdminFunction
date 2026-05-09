@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,9 +57,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -90,6 +95,7 @@ fun VolunteerNavHost(navController: NavHostController) {
                 retreatId = entry.arguments!!.getString("rid")!!,
             )
         }
+        volunteerMessagingRoutes(navController)
     }
 }
 
@@ -149,13 +155,26 @@ private fun VolunteerRetreatListScreen(nav: NavHostController) {
                             Card(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable { nav.navigate("vweek/${r.id}") },
+                                    .padding(vertical = 4.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(r.name, style = MaterialTheme.typography.titleMedium)
-                                    Text(r.status.name, style = MaterialTheme.typography.bodySmall)
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Column(
+                                        Modifier
+                                            .weight(1f)
+                                            .clickable { nav.navigate("vweek/${r.id}") },
+                                    ) {
+                                        Text(r.name, style = MaterialTheme.typography.titleMedium)
+                                        Text(r.status.name, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    TextButton(onClick = { nav.navigate("vmessages/${r.id}") }) {
+                                        Text("Messages")
+                                    }
                                 }
                             }
                         }
@@ -166,80 +185,87 @@ private fun VolunteerRetreatListScreen(nav: NavHostController) {
     }
 }
 
+/** One horizontal track: full width = `demand`; leading segment = `filled` (capped at demand). */
 @Composable
-private fun MiniBarRow(
-    axisLabel: String,
-    value: Int,
-    maxVal: Int,
-    barColor: Color,
+private fun DemandFilledStackedBarRow(
+    leftLabel: String,
+    demand: Int,
+    filled: Int,
+    filledColor: Color,
+    remainderColor: Color,
     modifier: Modifier = Modifier,
+    labelWidth: Dp = 44.dp,
+    barHeight: Dp = 18.dp,
+    rightCaption: String? = null,
 ) {
+    val d = demand.coerceAtLeast(0)
+    val f = if (d > 0) filled.coerceIn(0, d) else filled.coerceAtLeast(0)
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            axisLabel,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.width(52.dp),
-        )
+        if (leftLabel.isNotEmpty()) {
+            Text(
+                leftLabel,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.width(labelWidth),
+            )
+        }
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .height(16.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .height(barHeight)
+                .clip(RoundedCornerShape(4.dp)),
         ) {
-            val frac = if (maxVal > 0) value.coerceAtMost(maxVal).toFloat() / maxVal else 0f
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(frac)
-                    .background(barColor.copy(alpha = 0.58f)),
-            )
+            if (d <= 0) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            } else {
+                Box(Modifier.fillMaxSize().background(remainderColor))
+                val frac = f.toFloat() / d
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(frac)
+                        .background(filledColor.copy(alpha = 0.88f)),
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
-        Text("$value", style = MaterialTheme.typography.labelSmall)
+        Text(
+            rightCaption ?: if (d > 0) "$f/$d" else "0",
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
 @Composable
-private fun RatioCapsuleRow(
-    label: String,
-    valueCaption: String,
+private fun PersonMinFillDonut(
     fraction: Float,
-    barColor: Color,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.size(48.dp),
+    filledColor: Color = Color(0xFF0D9488),
+    trackColor: Color = Color(0xFF4F46E5),
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                valueCaption,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        BoxWithConstraints(
-            Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            val f = fraction.coerceIn(0f, 1f)
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(f)
-                    .background(barColor.copy(alpha = 0.85f)),
-            )
-        }
+    val f = fraction.coerceIn(0f, 1f)
+    Canvas(modifier) {
+        val stroke = size.minDimension * 0.14f
+        val arcSize = size.minDimension - stroke
+        val topLeft = Offset(stroke / 2f, stroke / 2f)
+        val arc = Size(arcSize, arcSize)
+        drawArc(
+            color = trackColor.copy(alpha = 0.32f),
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arc,
+            style = Stroke(width = stroke),
+        )
+        drawArc(
+            color = filledColor.copy(alpha = 0.9f),
+            startAngle = -90f,
+            sweepAngle = 360f * f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arc,
+            style = Stroke(width = stroke),
+        )
     }
 }
 
@@ -422,8 +448,6 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
         includedDurationMinutes,
     )
     val dayLoadMetrics = volunteerDayLoadMetrics(rows, weekIsoDays, zoneId)
-    val maxDemand = dayLoadMetrics.maxOfOrNull { it.totalVolunteerMinutesDemand } ?: 0
-    val maxFilled = dayLoadMetrics.maxOfOrNull { it.assignedPersonMinutes } ?: 0
 
     val selfIsLinked = selfVolunteerId.isNotBlank() && linkedVolunteers.any { it.volunteerId == selfVolunteerId }
     val hasAnyFilter =
@@ -566,64 +590,96 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
-                Text("Person-minutes needed (jobs still want people)", style = MaterialTheme.typography.labelLarge)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Person-minutes by day (filled vs still needed)", style = MaterialTheme.typography.labelLarge)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     dayLoadMetrics.forEach { m ->
-                        MiniBarRow(
-                            m.chartAxisLabel,
-                            m.totalVolunteerMinutesDemand,
-                            maxOf(maxDemand, 1),
-                            Color(0xFF4F46E5),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text("Person-minutes filled (assignments so far)", style = MaterialTheme.typography.labelLarge)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    dayLoadMetrics.forEach { m ->
-                        MiniBarRow(
-                            m.chartAxisLabel,
-                            m.assignedPersonMinutes,
-                            maxOf(maxFilled, 1),
-                            Color(0xFF0D9488),
+                        DemandFilledStackedBarRow(
+                            leftLabel = m.chartAxisLabel,
+                            demand = m.totalVolunteerMinutesDemand,
+                            filled = m.assignedPersonMinutes,
+                            filledColor = Color(0xFF0D9488),
+                            remainderColor = Color(0xFF4F46E5).copy(alpha = 0.35f),
                         )
                     }
                 }
 
                 Text("By day", style = MaterialTheme.typography.labelLarge)
                 dayLoadMetrics.forEach { m ->
-                    val maxPm = maxOf(m.totalVolunteerMinutesDemand, m.assignedPersonMinutes, 1)
-                    val slotCap = maxOf(m.volunteerSlotsDemand, 1)
-                    val slotFill = (m.filledSlotCount.toFloat() / slotCap).coerceIn(0f, 1f)
                     val demandCap = maxOf(m.totalVolunteerMinutesDemand, 1)
                     val personMinFill = (m.assignedPersonMinutes.toFloat() / demandCap).coerceIn(0f, 1f)
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(m.displayLabel, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "Person·min (demand vs filled)",
+                                "Person·min (bar = demand; teal = filled)",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            MiniBarRow("Demand", m.totalVolunteerMinutesDemand, maxPm, Color(0xFF4F46E5))
-                            MiniBarRow("Filled", m.assignedPersonMinutes, maxPm, Color(0xFF0D9488))
+                            DemandFilledStackedBarRow(
+                                leftLabel = "",
+                                demand = m.totalVolunteerMinutesDemand,
+                                filled = m.assignedPersonMinutes,
+                                filledColor = Color(0xFF0D9488),
+                                remainderColor = Color(0xFF4F46E5).copy(alpha = 0.35f),
+                                labelWidth = 0.dp,
+                                rightCaption = "${m.totalVolunteerMinutesDemand} demand · ${m.assignedPersonMinutes} filled",
+                            )
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                if (m.totalVolunteerMinutesDemand > 0) {
+                                    PersonMinFillDonut(fraction = personMinFill)
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        "Fill (person·min)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        "${(personMinFill * 100).toInt()}%",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
                             Text(
-                                "${m.totalVolunteerMinutesDemand} demand · ${m.assignedPersonMinutes} filled",
+                                "Slots (bar = slots needed; orange = filled)",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            RatioCapsuleRow(
-                                label = "Fill ratio (person·min)",
-                                valueCaption = "${(personMinFill * 100).toInt()}%",
-                                fraction = personMinFill,
-                                barColor = Color(0xFF0D9488),
+                            DemandFilledStackedBarRow(
+                                leftLabel = "",
+                                demand = m.volunteerSlotsDemand,
+                                filled = m.filledSlotCount.coerceAtMost(m.volunteerSlotsDemand),
+                                filledColor = Color(0xFFEA580C),
+                                remainderColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelWidth = 0.dp,
+                                rightCaption = "${m.filledSlotCount} / ${m.volunteerSlotsDemand}",
                             )
-                            RatioCapsuleRow(
-                                label = "Slots filled",
-                                valueCaption = "${m.filledSlotCount} / ${m.volunteerSlotsDemand}",
-                                fraction = slotFill,
-                                barColor = Color(0xFFEA580C),
-                            )
+                            if (m.volunteerSlotsDemand > 0) {
+                                Text(
+                                    "Distinct people vs slots (bar = slots; purple = distinct)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                DemandFilledStackedBarRow(
+                                    leftLabel = "",
+                                    demand = m.volunteerSlotsDemand,
+                                    filled = (m.distinctVolunteersAssigned ?: 0).coerceIn(0, m.volunteerSlotsDemand),
+                                    filledColor = Color(0xFF9333EA),
+                                    remainderColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelWidth = 0.dp,
+                                    rightCaption = buildString {
+                                        append(m.distinctVolunteersAssigned?.toString() ?: "—")
+                                        append(" distinct · ")
+                                        append(m.volunteerSlotsDemand)
+                                        append(" slots")
+                                    },
+                                )
+                            }
                             Row(
                                 Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -656,19 +712,8 @@ fun RetreatVolunteerWeekSignupScreen(nav: NavHostController, retreatId: String) 
                             }
                             Row(
                                 Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.End,
                             ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        "Distinct people",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        m.distinctVolunteersAssigned?.toString() ?: "—",
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
                                 Column(
                                     horizontalAlignment = Alignment.End,
                                     verticalArrangement = Arrangement.spacedBy(2.dp),

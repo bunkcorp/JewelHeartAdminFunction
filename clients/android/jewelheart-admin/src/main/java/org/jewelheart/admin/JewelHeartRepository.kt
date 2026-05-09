@@ -360,4 +360,62 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
         val bytes = jsonRequest("POST", "jewelheart/sdui/action", jsonBody = jo)
         return gson.fromJson(bytes.toString(Charsets.UTF_8), SduiActionResponse::class.java)
     }
+
+    // --- Messaging (see openapi/jewelheart.yaml tag Messaging) ---
+
+    suspend fun ensureRetreatRoomConversation(retreatId: String): ConversationSummary {
+        val bytes = jsonRequest(
+            "POST",
+            "jewelheart/retreats/$retreatId/conversations",
+            jsonBody = ConversationCreateRequest(kind = "retreat_room"),
+        )
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+    }
+
+    suspend fun createDirectConversation(retreatId: String, peerVolunteerId: String): ConversationSummary {
+        val bytes = jsonRequest(
+            "POST",
+            "jewelheart/retreats/$retreatId/conversations",
+            jsonBody = ConversationCreateRequest(kind = "direct", peerVolunteerId = peerVolunteerId),
+        )
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+    }
+
+    suspend fun listRetreatConversations(retreatId: String): ConversationListResponse {
+        val bytes = jsonRequest("GET", "jewelheart/retreats/$retreatId/conversations")
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationListResponse::class.java)
+    }
+
+    suspend fun listConversationMessages(
+        conversationId: String,
+        limit: Int? = null,
+        cursor: String? = null,
+        includeDeleted: Boolean = false,
+    ): MessageListResponse {
+        val q = buildMap<String, String> {
+            limit?.let { put("limit", it.toString()) }
+            cursor?.let { put("cursor", it) }
+            if (includeDeleted) put("include_deleted", "true")
+        }
+        val bytes = jsonRequest("GET", "jewelheart/conversations/$conversationId/messages", query = q)
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), MessageListResponse::class.java)
+    }
+
+    suspend fun sendConversationMessage(conversationId: String, body: String): JHMessage {
+        val bytes = jsonRequest(
+            "POST",
+            "jewelheart/conversations/$conversationId/messages",
+            jsonBody = ConversationMessageSendBody(body = body),
+        )
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), JHMessage::class.java)
+    }
+
+    suspend fun markConversationRead(conversationId: String): ConversationReadResponse {
+        val bytes = jsonRequest("POST", "jewelheart/conversations/$conversationId/read")
+        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationReadResponse::class.java)
+    }
+
+    suspend fun deleteJewelHeartMessage(messageId: String) {
+        voidRequest("DELETE", "jewelheart/messages/$messageId")
+    }
 }

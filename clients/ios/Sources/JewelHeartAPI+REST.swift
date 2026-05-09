@@ -396,4 +396,77 @@ extension JewelHeartAPI {
         )
         return try jsonDecoder().decode(SduiActionResponse.self, from: data)
     }
+
+    // MARK: - Messaging
+
+    func ensureRetreatRoomConversation(retreatId: String) async throws -> ConversationSummary {
+        let enc = try jsonEncoder().encode(ConversationCreateRequest(kind: .retreat_room, peerVolunteerId: nil))
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/retreats/\(retreatId)/conversations",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+        return try jsonDecoder().decode(ConversationSummary.self, from: data)
+    }
+
+    func createDirectConversation(retreatId: String, peerVolunteerId: String) async throws -> ConversationSummary {
+        let enc = try jsonEncoder().encode(ConversationCreateRequest(kind: .direct, peerVolunteerId: peerVolunteerId))
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/retreats/\(retreatId)/conversations",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+        return try jsonDecoder().decode(ConversationSummary.self, from: data)
+    }
+
+    func listRetreatConversations(retreatId: String) async throws -> ConversationListResponse {
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/retreats/\(retreatId)/conversations",
+            method: "GET"
+        )
+        return try jsonDecoder().decode(ConversationListResponse.self, from: data)
+    }
+
+    func listConversationMessages(
+        conversationId: String,
+        limit: Int? = nil,
+        cursor: String? = nil,
+        includeDeleted: Bool = false
+    ) async throws -> MessageListResponse {
+        var q: [URLQueryItem] = []
+        if let limit { q.append(URLQueryItem(name: "limit", value: String(limit))) }
+        if let cursor, !cursor.isEmpty { q.append(URLQueryItem(name: "cursor", value: cursor)) }
+        if includeDeleted { q.append(URLQueryItem(name: "include_deleted", value: "true")) }
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/conversations/\(conversationId)/messages",
+            method: "GET",
+            queryItems: q
+        )
+        return try jsonDecoder().decode(MessageListResponse.self, from: data)
+    }
+
+    func sendConversationMessage(conversationId: String, body: String) async throws -> ChatMessage {
+        let enc = try jsonEncoder().encode(MessageSendRequest(body: body))
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/conversations/\(conversationId)/messages",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+        return try jsonDecoder().decode(ChatMessage.self, from: data)
+    }
+
+    func markConversationRead(conversationId: String) async throws -> ConversationReadResponse {
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/conversations/\(conversationId)/read",
+            method: "POST"
+        )
+        return try jsonDecoder().decode(ConversationReadResponse.self, from: data)
+    }
+
+    func deleteJewelHeartMessage(messageId: String) async throws {
+        let (_, _) = try await authorizedDataRequest(path: "jewelheart/messages/\(messageId)", method: "DELETE")
+    }
 }

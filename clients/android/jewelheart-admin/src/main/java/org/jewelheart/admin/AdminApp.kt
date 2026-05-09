@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -238,6 +238,7 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
 private fun AdminTabShell() {
     var tab by remember { mutableIntStateOf(0) }
     val retreatNav = rememberNavController()
+    val directoryNav = rememberNavController()
     val volunteerNav = rememberNavController()
     val sduiVm: JewelHeartViewModel = viewModel()
 
@@ -259,7 +260,7 @@ private fun AdminTabShell() {
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.AccountCircle, contentDescription = null) },
+                    icon = { Icon(Icons.Filled.Groups, contentDescription = null) },
                     label = { Text("Directory") },
                 )
                 NavigationBarItem(
@@ -281,7 +282,7 @@ private fun AdminTabShell() {
             when (tab) {
                 0 -> SduiTabContent(vm = sduiVm)
                 1 -> RetreatNavHost(navController = retreatNav)
-                2 -> DirectoryTabContent()
+                2 -> DirectoryNavHost(navController = directoryNav)
                 3 -> VolunteerNavHost(navController = volunteerNav)
                 4 -> MetaTabContent()
             }

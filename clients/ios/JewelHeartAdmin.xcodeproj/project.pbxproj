@@ -30,6 +30,7 @@
 		B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */; };
 		E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
+		F1A2B3C4D5E6F708091A2B3C /* JewelHeartMessagingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -55,6 +56,7 @@
 		C64887F96267A1539C6F04B6 /* JewelHeartRESTModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartRESTModels.swift; sourceTree = "<group>"; };
 		DA254DD62D9077915714E370 /* SDUIRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIRenderer.swift; sourceTree = "<group>"; };
 		FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAdminResourceViews.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartMessagingViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -96,6 +98,7 @@
 				980A596320DA31A5DA3067E4 /* Bundle+GoogleService.swift */,
 				7AACD0A60804A7B0160A6162 /* JewelHeartAdmin-Bridging-Header.h */,
 				FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */,
+				F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */,
 				24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */,
 				9E61DCB552040A77C886AFAB /* JewelHeartAPI+REST.swift */,
 				80A884B38D25B77F9522043C /* JewelHeartAppDelegate.swift */,
@@ -199,6 +202,7 @@
 				3CD64DEC1C4C0980303AB06C /* JewelHeartAPI+REST.swift in Sources */,
 				E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */,
 				5A2820E7BAEEC0EF12B4F8B5 /* JewelHeartAdminResourceViews.swift in Sources */,
+				F1A2B3C4D5E6F708091A2B3C /* JewelHeartMessagingViews.swift in Sources */,
 				7BABC1A1F952325D6886956C /* JewelHeartAppDelegate.swift in Sources */,
 				97DCCCC3F0D1A4882B8B66E8 /* JewelHeartAuthState.swift in Sources */,
 				0FD978D3B0907FDEFEA4B205 /* JewelHeartConfig.swift in Sources */,

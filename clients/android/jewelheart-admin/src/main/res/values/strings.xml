@@ -9,4 +9,27 @@
     <string name="firebase_project_id" translatable="false">gettingstoned-4aee3</string>
     <string name="firebase_gcm_sender_id" translatable="false">120549448949</string>
     <string name="firebase_storage_bucket" translatable="false">gettingstoned-4aee3.firebasestorage.app</string>
+
+    <!-- Directory (global volunteers) — mirrors iOS GlobalVolunteersAdminView / VolunteerDetailView -->
+    <string name="directory_nav_title">Volunteers</string>
+    <string name="volunteer_search_prompt">Name or email</string>
+    <string name="action_search">Search</string>
+    <string name="volunteer_new_title">New volunteer</string>
+    <string name="volunteer_edit_title">Edit volunteer</string>
+    <string name="label_display_name">Display name</string>
+    <string name="label_email_optional">Email (optional)</string>
+    <string name="label_phone_optional">Phone (optional)</string>
+    <string name="label_other_duties_optional">Other duties (optional)</string>
+    <string name="label_email">Email</string>
+    <string name="label_phone">Phone</string>
+    <string name="label_other_duties">Other duties</string>
+    <string name="label_other">Other</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_create">Create</string>
+    <string name="action_save">Save</string>
+    <string name="action_edit">Edit</string>
+    <string name="label_delete">Delete</string>
+    <string name="volunteer_delete_title">Delete volunteer?</string>
+    <string name="notify_via_email">Notify via email</string>
+    <string name="notify_via_sms">Notify via SMS</string>
 </resources>

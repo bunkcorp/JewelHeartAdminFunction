@@ -48,6 +48,40 @@ Volunteer calendar ICS feed (webcal) + notification columns
 - SQL: migrations/002_jewelheart_volunteer_notify_calendar_feed.sql (`notify_email`, `notify_sms`, `calendar_feed_token`).
 - Contract: OpenAPI tags **Calendar** / **Confirmations** (`GET/HEAD /jewelheart/calendar-feed/{feedToken}`, `POST/DELETE …/volunteers/{id}/calendar-feed`, `GET/POST …/assignment-confirmations/{sealedConfirmationToken}`).
 
+In-app messaging (MVP)
+----------------------
+- **SQL (order):** `001`, `002`, `003`, **`004_jewelheart_messaging.sql`**, **`005_jewelheart_messages_deleted_at.sql`** (`deleted_at` soft-delete), **`006_jewelheart_volunteer_firebase_uid.sql`** (optional `firebase_uid` on `jewelheart_volunteers` for Bearer → volunteer mapping; email fallback still supported in routes).
+- **Fragment:** `jewelheart-messaging.fragment.js` exports `createJewelHeartMessagingHandlers({ query, assertUuid, ensureMessagingAccess, isGlobalJewelHeartAdmin? })`.
+  - **`ensureMessagingAccess`** — production: global `jewelheart_admins` **or** row in `jewelheart_retreat_volunteers` for `(retreatId, volunteerId)` (see `ensureJewelHeartMessagingAccess` in buddhist-stone `private-server/src/jewelheart/acl.js`).
+  - **`isGlobalJewelHeartAdmin(req)`** — optional; default never true. Used so global admins can open the retreat room without being on the roster (participant row is added on first room POST) and for message delete / `include_deleted`.
+  - Routes expect **`req.volunteerId`**: set in Express from Firebase/Keycloak uid → `jewelheart_volunteers.firebase_uid`, else **lower(trim(email))** match on the volunteer row.
+  - **DELETE** `DELETE /jewelheart/messages/:messageId` — sender within **15 minutes** or global admin; **204**; list/get hide `deleted_at` rows unless admin passes **`?include_deleted=true`** on GET messages.
+  - **Email:** after POST message, if **`JEWELHEART_MESSAGE_EMAIL_NOTIFY`** is truthy, other participants may receive SendGrid mail (`notify_email` on volunteer rows, same keys as assignment notify). Fire-and-forget; HTTP always succeeds if insert succeeded.
+  - **FCM:** env **`JEWELHEART_MESSAGE_FCM_ENABLED`** is reserved. There is **no** `fcm_token` column in the current schema — handler is a **no-op**. **TODO:** add device registry + tokens, then wire `firebase-admin` `messaging().sendEachForMulticast` (or equivalent).
+
+**Route registration example (production)**
+
+```javascript
+const { createJewelHeartMessagingHandlers } = require('./jewelheart-messaging.fragment.cjs');
+const messaging = createJewelHeartMessagingHandlers({
+  query,
+  assertUuid,
+  ensureMessagingAccess: async (req, { retreatId, volunteerId }) => {
+    await acl.ensureJewelHeartMessagingAccess(req.uid, retreatId, volunteerId);
+  },
+  isGlobalJewelHeartAdmin: async (req) => acl.isGlobalAdmin(req.uid),
+});
+// After requireAuthDual + middleware that sets req.volunteerId:
+app.post('/jewelheart/retreats/:retreatId/conversations', attachJewelheartVolunteerProfile, messaging.postRetreatConversation);
+app.get('/jewelheart/retreats/:retreatId/conversations', attachJewelheartVolunteerProfile, messaging.getRetreatConversations);
+app.get('/jewelheart/conversations/:conversationId/messages', attachJewelheartVolunteerProfile, messaging.getConversationMessages);
+app.post('/jewelheart/conversations/:conversationId/messages', attachJewelheartVolunteerProfile, messaging.postConversationMessage);
+app.post('/jewelheart/conversations/:conversationId/read', attachJewelheartVolunteerProfile, messaging.postConversationRead);
+app.delete('/jewelheart/messages/:messageId', attachJewelheartVolunteerProfile, messaging.deleteJewelHeartMessage);
+```
+
+OpenAPI: tag **Messaging** and paths under `/jewelheart/retreats/{retreatId}/conversations` and `/jewelheart/conversations/{conversationId}/…` in `openapi/jewelheart.yaml`.
+
 Server fragments (copy into buddhist-stone `private-server/src/jewelheart/` or merge into `service.js` routes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 1. **ICS + mint/revoke:** `jewelheart-calendar-feed.fragment.js`
@@ -79,6 +113,8 @@ Env vars (production)
 - `JEWELHEART_CRON_SECRET` — shared secret for `POST /jewelheart/internal/day-before-reminders` (header `x-jewelheart-cron-secret`, or query `secret=` as fallback). Must match on every request or the server returns **401**. Used by Cloud Scheduler / cron to trigger `notifyDayBeforeShiftReminders()` without Firebase auth.
 - **SendGrid (email):** `SENDGRID_API_KEY`, and `SENDGRID_FROM_EMAIL` or `JEWELHEART_FROM_EMAIL`.
 - **Twilio (SMS):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (E.164). Optional `TWILIO_DEFAULT_COUNTRY_CODE` (default `1`) to normalize 10-digit US numbers to `+1…`.
+- **Messaging email:** `JEWELHEART_MESSAGE_EMAIL_NOTIFY` — truthy to send SendGrid mail to other thread participants after each POST message (still needs `SENDGRID_API_KEY` + from-address envs above).
+- **Messaging FCM (placeholder):** `JEWELHEART_MESSAGE_FCM_ENABLED` — reserved; no device tokens in DB yet (no-op in fragment).
 
 Express prerequisites
 ~~~~~~~~~~~~~~~~~~~~~
@@ -156,6 +192,7 @@ Sanity (from repo root)
   node --check integrations/private-server/jewelheart-assignment-confirmation.fragment.js
   node --check integrations/private-server/jewelheart-volunteer-notify.fragment.js
   node --check integrations/private-server/jewelheart-routes-wiring.fragment.js
+  node --check integrations/private-server/jewelheart-messaging.fragment.js
 
 Local fixture→ICS dev tool: scripts/generate_volunteer_calendar_ics.py + scripts/fixtures/volunteer_calendar_assignments.sample.json.
 
@@ -163,12 +200,13 @@ Operator checklist (api.karmadots.org + web SDUI)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Use this when deploying KarmaDots private-server with JewelHeart routes.
 
-1. **Postgres (order):** Run `001`, then `002`, then `003_jewelheart_assignment_day_before_reminder.sql` (adds `day_before_reminder_sent_at` for reminder idempotency). On partially migrated DBs, apply only missing files. Optional: seed ACL (`jewelheart_admins` / create retreat for per-retreat admins); run `npm run db:jewelheart` in private-server if your project uses that helper.
+1. **Postgres (order):** Run `001`, `002`, `003_jewelheart_assignment_day_before_reminder.sql`, **`004_jewelheart_messaging.sql`**, **`005_jewelheart_messages_deleted_at.sql`**, **`006_jewelheart_volunteer_firebase_uid.sql`**. On partially migrated DBs, apply only missing files. Optional: seed ACL (`jewelheart_admins` / create retreat for per-retreat admins); run `npm run db:jewelheart` or `npm run db:jewelheart:node` in private-server.
 
 2. **Merge / sync fragments into `private-server/src/jewelheart/`** (or equivalent):
    - Task list wire format: `jewelheart-mappers-mapTaskRow.fragment.js`, `jewelheart-service-listTasks.fragment.js` (or `node scripts/apply-jewelheart-task-list-fragments.mjs` from JewelHeartAdminFunction repo root).
    - **SDUI screens:** `jewelheart-service-sdui.fragment.js` → must expose `sduiScreen` (and helpers) the same way as production `service.js`; on buddhist-stone, `sduiScreens.js` already routes screen IDs to those exports—verify your fork matches.
    - **Calendar + confirmations + notify:** `jewelheart-calendar-feed.fragment.js`, `jewelheart-assignment-confirmation.fragment.js`, `jewelheart-volunteer-notify.fragment.js` (notes: `jewelheart-calendar-feed-notes.fragment.js`).
+   - **Messaging (volunteer tab):** `jewelheart-messaging.fragment.js` (see “In-app messaging” above).
    - **Express:** `express.json()` globally; for confirmation HTML POST, `express.urlencoded({ extended: false })` on that route or globally.
 
 3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations + internal day-before cron. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):

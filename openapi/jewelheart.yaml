@@ -14,6 +14,10 @@ info:
     `/jewelheart/calendar-feed/{feedToken}` and `/jewelheart/assignment-confirmations/...` (see tags Calendar, Confirmations).
 
     **Reminder policy:** native calendar clients apply `VALARM`/alarms from subscribed ICS; do not rely on server push for calendar-specific alerts.
+
+    **Messaging:** tag **Messaging** — retreat-scoped conversations (`direct`, `retreat_room`), keyset pagination,
+    optional **SendGrid** email to other participants (`JEWELHEART_MESSAGE_EMAIL_NOTIFY`), soft-delete + admin-only `include_deleted`.
+    **FCM:** reserved env `JEWELHEART_MESSAGE_FCM_ENABLED` — no device token column yet (see repo README).
   version: 0.1.0
   license:
     name: Proprietary
@@ -35,6 +39,7 @@ tags:
   - name: SDUI
   - name: Calendar
   - name: Confirmations
+  - name: Messaging
 
 paths:
   /jewelheart/health:
@@ -925,6 +930,159 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /jewelheart/retreats/{retreatId}/conversations:
+    parameters:
+      - $ref: "#/components/parameters/RetreatId"
+    get:
+      tags: [Messaging]
+      summary: List conversations for the current volunteer in this retreat
+      description: >
+        Returns conversations where the caller is a participant (direct threads and the shared retreat room).
+        Callers typically POST `{ "kind": "retreat_room" }` once first to find-or-create the shared room and sync participants.
+      operationId: listRetreatConversations
+      responses:
+        "200":
+          description: Conversation summaries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Messaging]
+      summary: Find or create a conversation (direct or retreat room)
+      operationId: createRetreatConversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationCreateRequest"
+      responses:
+        "200":
+          description: Existing or newly created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /jewelheart/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/ConversationId"
+    get:
+      tags: [Messaging]
+      summary: List messages (newest first, keyset pagination)
+      operationId: listConversationMessages
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          description: Message id from `nextCursor` of the previous page (older messages).
+          schema:
+            type: string
+            format: uuid
+        - name: include_deleted
+          in: query
+          description: >
+            When `true`, **JewelHeart global admins only** may include soft-deleted messages (`deleted_at` set).
+            Non-admins must omit this or receive the same payload as when false.
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Messaging]
+      summary: Send a message (caller must be a participant)
+      operationId: postConversationMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageCreateRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jewelheart/conversations/{conversationId}/read:
+    parameters:
+      - $ref: "#/components/parameters/ConversationId"
+    post:
+      tags: [Messaging]
+      summary: Mark conversation read for the current volunteer (updates participant last_read_at)
+      operationId: postConversationRead
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationReadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /jewelheart/messages/{messageId}:
+    parameters:
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Messaging]
+      summary: Soft-delete a message (sender within 15 minutes, or JewelHeart global admin)
+      operationId: deleteJewelHeartMessage
+      responses:
+        "204":
+          description: Message marked deleted (`deleted_at`)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /jewelheart/sdui/screen:
     post:
       tags: [SDUI]
@@ -1017,6 +1175,13 @@ components:
       schema:
         type: string
         format: uuid
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     FeedToken:
       name: feedToken
       in: path
@@ -1056,6 +1221,10 @@ components:
       description: Missing or invalid Firebase token
     NotFound:
       description: Resource not found
+    Forbidden:
+      description: Authenticated caller is not allowed to perform this action
+    BadRequest:
+      description: Invalid request body or parameters
 
   schemas:
     HealthResponse:
@@ -1625,6 +1794,114 @@ components:
           description: Convenience `webcal://` scheme substitution for Apple Calendar onboarding.
           example: webcal://api.karmadots.org/jewelheart/calendar-feed/…
         lastRotatedAt:
+          type: string
+          format: date-time
+
+    ConversationCreateRequest:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [direct, retreat_room]
+        peerVolunteerId:
+          type: string
+          format: uuid
+          description: Required when `kind` is `direct`; the other volunteer (both must be linked to the retreat).
+
+    ConversationSummary:
+      type: object
+      required: [id, retreatId, kind, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        retreatId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [direct, retreat_room]
+        updatedAt:
+          type: string
+          format: date-time
+        lastReadAt:
+          type: string
+          format: date-time
+          nullable: true
+        peerVolunteerId:
+          type: string
+          format: uuid
+          nullable: true
+        peerDisplayName:
+          type: string
+          nullable: true
+
+    ConversationListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConversationSummary"
+
+    MessageCreateRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          description: Non-empty message text after trim.
+
+    Message:
+      type: object
+      required: [id, conversationId, senderVolunteerId, body, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        senderVolunteerId:
+          type: string
+          format: uuid
+        senderDisplayName:
+          type: string
+          nullable: true
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Present only for global admins when `include_deleted=true` on list messages.
+
+    MessageListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        nextCursor:
+          type: string
+          format: uuid
+          nullable: true
+          description: Pass as `cursor` to fetch the next (older) page; null when no more pages.
+
+    ConversationReadResponse:
+      type: object
+      required: [ok, lastReadAt]
+      properties:
+        ok:
+          type: boolean
+        lastReadAt:
           type: string
           format: date-time
 

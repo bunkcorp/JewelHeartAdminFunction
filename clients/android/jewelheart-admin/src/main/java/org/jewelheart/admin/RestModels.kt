@@ -267,6 +267,47 @@ data class SduiActionResponse(
     @SerializedName("refreshScreenId") val refreshScreenId: String?,
 )
 
+// --- Messaging (in-app MVP; server must set req.volunteerId for volunteer routes) ---
+
+data class ConversationSummary(
+    @SerializedName("id") val id: String,
+    @SerializedName("retreatId") val retreatId: String,
+    @SerializedName("kind") val kind: String,
+    @SerializedName("updatedAt") val updatedAt: String,
+    @SerializedName("lastReadAt") val lastReadAt: String? = null,
+    @SerializedName("peerVolunteerId") val peerVolunteerId: String? = null,
+    @SerializedName("peerDisplayName") val peerDisplayName: String? = null,
+)
+
+data class ConversationListResponse(@SerializedName("items") val items: List<ConversationSummary>)
+
+data class JHMessage(
+    @SerializedName("id") val id: String,
+    @SerializedName("conversationId") val conversationId: String,
+    @SerializedName("senderVolunteerId") val senderVolunteerId: String,
+    @SerializedName("senderDisplayName") val senderDisplayName: String?,
+    @SerializedName("body") val body: String,
+    @SerializedName("createdAt") val createdAt: String,
+    @SerializedName("deletedAt") val deletedAt: String? = null,
+)
+
+data class MessageListResponse(
+    @SerializedName("items") val items: List<JHMessage>,
+    @SerializedName("nextCursor") val nextCursor: String? = null,
+)
+
+data class ConversationCreateRequest(
+    @SerializedName("kind") val kind: String,
+    @SerializedName("peerVolunteerId") val peerVolunteerId: String? = null,
+)
+
+data class ConversationMessageSendBody(@SerializedName("body") val body: String)
+
+data class ConversationReadResponse(
+    @SerializedName("ok") val ok: Boolean,
+    @SerializedName("lastReadAt") val lastReadAt: String,
+)
+
 data class DownloadResult(
     val data: ByteArray,
     val mimeType: String,
