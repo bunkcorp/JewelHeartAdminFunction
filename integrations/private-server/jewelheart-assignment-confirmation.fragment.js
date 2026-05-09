@@ -11,7 +11,7 @@
  *
  * Express wiring:
  *
- *   const confirm = createJewelHeartAssignmentConfirmationHandlers({ query });
+ *   const confirm = createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify });
  *   app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
  *   app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
  *
@@ -79,9 +79,12 @@ function readIntent(req) {
 /**
  * @param {object} deps
  * @param {(text:string, params?:any[]) => Promise<{ rows: any[] }>} deps.query
+ * @param {{ notifyAfterAssignmentRemoved?: (p: { volunteerId: string, assignmentId: string }) => Promise<unknown> }} [deps.volunteerNotify]
  */
 function createJewelHeartAssignmentConfirmationHandlers(deps) {
   const { query } = deps;
+  /** @type {{ notifyAfterAssignmentRemoved?: (p: { volunteerId: string, assignmentId: string }) => Promise<unknown> } | null | undefined} */
+  const volunteerNotify = deps.volunteerNotify || null;
 
   function confirmSecret() {
     const s = process.env.CALENDAR_CONFIRM_SECRET;
@@ -162,6 +165,15 @@ function createJewelHeartAssignmentConfirmationHandlers(deps) {
       return;
     }
 
+    if (
+      volunteerNotify &&
+      typeof volunteerNotify.notifyAfterAssignmentRemoved === 'function'
+    ) {
+      await volunteerNotify.notifyAfterAssignmentRemoved({
+        volunteerId: parsed.volunteerId,
+        assignmentId: parsed.assignmentId,
+      });
+    }
     await query(`DELETE FROM jewelheart_assignments WHERE id = $1`, [parsed.assignmentId]);
     res.status(200).json({ ok: true, message: 'withdrawn', assignmentRemoved: true });
   }

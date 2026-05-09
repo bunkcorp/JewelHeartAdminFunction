@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -39,7 +39,7 @@
 		17F6F2F6419DCAF26426F64C /* JewelHeartConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartConfig.swift; sourceTree = "<group>"; };
 		1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = JewelHeartFirebaseEarlyConfigure.m; sourceTree = "<group>"; };
 		24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAPI.swift; sourceTree = "<group>"; };
-		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2C7DD6B9B60EB579EDD3BBD4 /* JewelHeartAdmin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JewelHeartAdmin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		433923B95ABD412F2853CA40 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5FE2C87396BD4169305A414D /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		74E4A7FD0C98E6AEE8FD1C53 /* JewelHeartLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartLog.swift; sourceTree = "<group>"; };
@@ -147,7 +147,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					8D2E7856F97DE68B4486D2B7 = {
 						DevelopmentTeam = 7YLNYUAHS3;
@@ -169,7 +169,6 @@
 				9D174E4566C467CC12A6D10C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				A8B1F8EC3794040A27549438 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -227,7 +226,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne";
@@ -263,7 +261,6 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 3;
-				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.120549448949-lncqvpqrf30hrk72jrnictbjn6srsjne";
@@ -326,6 +323,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -341,6 +339,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -382,6 +381,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7YLNYUAHS3;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -404,6 +404,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;

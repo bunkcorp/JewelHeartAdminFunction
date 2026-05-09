@@ -12,6 +12,7 @@
  *     assertUuid,
  *     ensureVolunteerPatchAccess,    // async (req, volunteerId) => void; throws/403 like PATCH /volunteers/:id
  *     publicOriginFromReq,           // (req) => 'https://api.example.org' (see env note below)
+ *     volunteerNotify,              // optional: createJewelHeartVolunteerNotify({ query }) — mint/rotate/revoke emails
  *   });
  *   app.head('/jewelheart/calendar-feed/:feedToken', cal.headVolunteerCalendarFeed);
  *   app.get('/jewelheart/calendar-feed/:feedToken', cal.getCalendarFeedIcs);
@@ -347,6 +348,8 @@ ORDER BY s.slot_date ASC, s.time_band::text ASC, j.title ASC`;
 function createJewelHeartCalendarHandlers(deps) {
   const { query, assertUuid, ensureVolunteerPatchAccess } = deps;
   const originFn = deps.publicOriginFromReq || publicOriginFromReqDefault;
+  /** @type {{ notifyAfterCalendarFeedChanged?: (p: Record<string, unknown>) => Promise<unknown> } | null | undefined} */
+  const volunteerNotify = deps.volunteerNotify || null;
 
   async function loadFeedRows(feedToken) {
     const { rows } = await query(ASSIGNMENTS_SQL, [feedToken]);
@@ -432,6 +435,7 @@ function createJewelHeartCalendarHandlers(deps) {
         res.status(404).json({ error: 'volunteer_not_found' });
         return;
       }
+      const hadToken = Boolean(existing[0].calendar_feed_token);
       let token = existing[0].calendar_feed_token;
       let rotated = false;
       if (!token || regenerate) {
@@ -451,6 +455,15 @@ function createJewelHeartCalendarHandlers(deps) {
       const payload = { subscribeHttpsUrl, webcalSubscribeUrl };
       if (rotated) payload.lastRotatedAt = new Date().toISOString();
       res.status(200).json(payload);
+      if (rotated && volunteerNotify && typeof volunteerNotify.notifyAfterCalendarFeedChanged === 'function') {
+        const action = hadToken ? 'rotated' : 'minted';
+        void volunteerNotify.notifyAfterCalendarFeedChanged({
+          volunteerId,
+          action,
+          subscribeHttpsUrl,
+          webcalSubscribeUrl,
+        });
+      }
     } catch (e) {
       const code = e && e.statusCode;
       if (code) res.status(code).json({ error: String(e.message || 'forbidden') });
@@ -463,15 +476,26 @@ function createJewelHeartCalendarHandlers(deps) {
       const volunteerId = req.params.volunteerId;
       assertUuid(volunteerId, 'volunteerId');
       await ensureVolunteerPatchAccess(req, volunteerId);
-      const { rows: exists } = await query(`SELECT id FROM jewelheart_volunteers WHERE id = $1`, [volunteerId]);
+      const { rows: exists } = await query(
+        `SELECT id, calendar_feed_token FROM jewelheart_volunteers WHERE id = $1`,
+        [volunteerId],
+      );
       if (!exists.length) {
         res.status(404).end();
         return;
       }
+      const hadFeed = Boolean(exists[0].calendar_feed_token);
       await query(`UPDATE jewelheart_volunteers SET calendar_feed_token = NULL, updated_at = now() WHERE id = $1`, [
         volunteerId,
       ]);
       res.status(204).end();
+      if (
+        hadFeed &&
+        volunteerNotify &&
+        typeof volunteerNotify.notifyAfterCalendarFeedChanged === 'function'
+      ) {
+        void volunteerNotify.notifyAfterCalendarFeedChanged({ volunteerId, action: 'revoked' });
+      }
     } catch (e) {
       const code = e && e.statusCode;
       if (code) res.status(code).json({ error: String(e.message || 'forbidden') });

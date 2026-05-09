@@ -51,25 +51,32 @@ Volunteer calendar ICS feed (webcal) + notification columns
 Server fragments (copy into buddhist-stone `private-server/src/jewelheart/` or merge into `service.js` routes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 1. **ICS + mint/revoke:** `jewelheart-calendar-feed.fragment.js`
-   - Exports `createJewelHeartCalendarHandlers({ query, assertUuid, ensureVolunteerPatchAccess, publicOriginFromReq? })`.
+   - Exports `createJewelHeartCalendarHandlers({ query, assertUuid, ensureVolunteerPatchAccess, publicOriginFromReq?, volunteerNotify? })` — pass the same `createJewelHeartVolunteerNotify({ query })` instance used for assignments so mint/rotate/revoke calendar sends email/SMS.
    - Handlers: `headVolunteerCalendarFeed`, `getCalendarFeedIcs`, `mintVolunteerCalendarFeed`, `revokeVolunteerCalendarFeed`.
    - **ACL:** implement `ensureVolunteerPatchAccess(req, volunteerId)` to mirror Firebase bearer auth used for `PATCH /jewelheart/volunteers/{id}` (reject with same status as your existing volunteer routes).
 
 2. **Assignment confirmation (HTML + POST):** `jewelheart-assignment-confirmation.fragment.js`
-   - Exports `createJewelHeartAssignmentConfirmationHandlers({ query })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`.
+   - Exports `createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify? })` → `getAssignmentConfirmationLanding`, `postAssignmentConfirmationRespond`. When `volunteerNotify` is set, **withdraw** posts call `notifyAfterAssignmentRemoved` before `DELETE` (same as admin `DELETE …/assignments/:id`).
    - Also exports `signAssignmentConfirmationToken(payload, secret)` for email/SMS links (used by notify fragment).
 
-3. **Post-assignment email + SMS (optional):** `jewelheart-volunteer-notify.fragment.js`
-   - `createJewelHeartVolunteerNotify({ query })` → `notifyAfterAssignmentCreated({ retreatId, taskId, assignmentId, volunteerId })`.
-   - Call once after a successful `INSERT` into `jewelheart_assignments` (same transaction is fine). The helper **never throws** to the route; failures are returned in the result object or swallowed.
-   - Requires the confirmation fragment on disk as `jewelheart-assignment-confirmation.fragment.js` **or** `.cjs` (same directory).
+3. **Volunteer email + SMS (optional):** `jewelheart-volunteer-notify.fragment.js`
+   - `createJewelHeartVolunteerNotify({ query })` returns:
+     - `notifyAfterAssignmentCreated({ retreatId, taskId, assignmentId, volunteerId })` — after successful `INSERT` into `jewelheart_assignments`.
+     - `notifyAfterAssignmentRemoved({ volunteerId, assignmentId })` — **await** before `DELETE` removes the row (loads slot/job labels from the assignment; fire-and-forget would race the delete).
+     - `notifyAfterCalendarFeedChanged({ volunteerId, action: 'minted'|'rotated'|'revoked', subscribeHttpsUrl?, webcalSubscribeUrl? })` — usually not called by hand; pass the same `volunteerNotify` object into `createJewelHeartCalendarHandlers({ …, volunteerNotify })` so mint/rotate/revoke send mail/SMS.
+     - `notifyDayBeforeShiftReminders()` — scheduled job (cron / Cloud Scheduler): emails/SMS for shifts whose **slot date is tomorrow in each retreat’s `timezone`**, idempotent via `jewelheart_assignments.day_before_reminder_sent_at` (`migrations/003_jewelheart_assignment_day_before_reminder.sql`).
+   - Helpers **never throw** to route handlers; failures are returned in the result object or swallowed.
+   - Assignment-create + day-before reminders require the confirmation fragment on disk as `jewelheart-assignment-confirmation.fragment.js` **or** `.cjs` (same directory) for sealed links.
 
 4. **TIME_BAND → wall-clock reference** (non-executable notes): `jewelheart-calendar-feed-notes.fragment.js`
+
+5. **Consolidated paste-in (optional):** `jewelheart-routes-wiring.fragment.js` exports `mountJewelHeartNotifyCalendarAndCron(app, deps)` — calendar + confirmation + cron route in one helper when your main server file is not in this repo.
 
 Env vars (production)
 ~~~~~~~~~~~~~~~~~~~~~
 - `JEWELHEART_PUBLIC_ORIGIN` — optional; canonical `https://…` origin for minted subscribe URLs (no trailing slash). Defaults to request Host when unset.
 - `CALENDAR_CONFIRM_SECRET` — HMAC key for sealed confirmation tokens (`assignment-confirmations` routes).
+- `JEWELHEART_CRON_SECRET` — shared secret for `POST /jewelheart/internal/day-before-reminders` (header `x-jewelheart-cron-secret`, or query `secret=` as fallback). Must match on every request or the server returns **401**. Used by Cloud Scheduler / cron to trigger `notifyDayBeforeShiftReminders()` without Firebase auth.
 - **SendGrid (email):** `SENDGRID_API_KEY`, and `SENDGRID_FROM_EMAIL` or `JEWELHEART_FROM_EMAIL`.
 - **Twilio (SMS):** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (E.164). Optional `TWILIO_DEFAULT_COUNTRY_CODE` (default `1`) to normalize 10-digit US numbers to `+1…`.
 
@@ -83,9 +90,13 @@ Example `service.js` wiring (adapt imports/paths to your tree):
 const { createJewelHeartCalendarHandlers } = require('./jewelheart-calendar-feed.fragment.js');
 const { createJewelHeartAssignmentConfirmationHandlers } = require('./jewelheart-assignment-confirmation.fragment.js');
 
+const { createJewelHeartVolunteerNotify } = require('./jewelheart-volunteer-notify.fragment.js');
+const volunteerNotify = createJewelHeartVolunteerNotify({ query });
+
 const cal = createJewelHeartCalendarHandlers({
   query,
   assertUuid,
+  volunteerNotify,
   async ensureVolunteerPatchAccess(req, volunteerId) {
     const firebaseUid = req.jewelheartFirebaseUid; // however auth middleware sets this
     await acl.assertVolunteerPatchAccess(firebaseUid, volunteerId, req.headers.authorization);
@@ -97,12 +108,31 @@ app.get('/jewelheart/calendar-feed/:feedToken', cal.getCalendarFeedIcs);
 app.post('/jewelheart/volunteers/:volunteerId/calendar-feed', cal.mintVolunteerCalendarFeed);
 app.delete('/jewelheart/volunteers/:volunteerId/calendar-feed', cal.revokeVolunteerCalendarFeed);
 
-const confirm = createJewelHeartAssignmentConfirmationHandlers({ query });
+// Secured cron (no Firebase): set JEWELHEART_CRON_SECRET; call daily (e.g. Cloud Scheduler).
+app.post('/jewelheart/internal/day-before-reminders', async (req, res) => {
+  const expected = process.env.JEWELHEART_CRON_SECRET;
+  const provided =
+    req.get('x-jewelheart-cron-secret') ||
+    (typeof req.query.secret === 'string' ? req.query.secret : '');
+  if (!expected || typeof expected !== 'string' || provided !== expected) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+  const summary = await volunteerNotify.notifyDayBeforeShiftReminders();
+  res.json({
+    ok: !summary.error,
+    candidates: summary.candidates ?? 0,
+    marked: summary.marked ?? 0,
+    skipped: Boolean(summary.skipped),
+    reason: summary.reason,
+    error: summary.error,
+  });
+});
+
+const confirm = createJewelHeartAssignmentConfirmationHandlers({ query, volunteerNotify });
 app.get('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.getAssignmentConfirmationLanding);
 app.post('/jewelheart/assignment-confirmations/:sealedConfirmationToken', confirm.postAssignmentConfirmationRespond);
 
-const { createJewelHeartVolunteerNotify } = require('./jewelheart-volunteer-notify.fragment.js');
-const volunteerNotify = createJewelHeartVolunteerNotify({ query });
 // After INSERT jewelheart_assignments succeeds (you have retreatId, taskId, assignment row id, volunteerId):
 void volunteerNotify.notifyAfterAssignmentCreated({
   retreatId,
@@ -110,6 +140,13 @@ void volunteerNotify.notifyAfterAssignmentCreated({
   assignmentId: newAssignment.id,
   volunteerId: body.volunteerId,
 });
+
+// Before DELETE …/assignments/:assignmentId: SELECT `a.volunteer_id` with JOIN verifying `t.retreat_id`, then
+// `await volunteerNotify.notifyAfterAssignmentRemoved({ volunteerId, assignmentId })`, then DELETE.
+// (Reference: `deleteAssignment` in buddhist-stone `service.js` accepts `{ volunteerNotify }` as the last options arg.)
+
+// Day-before reminders: prefer POST /jewelheart/internal/day-before-reminders with x-jewelheart-cron-secret
+// (see env JEWELHEART_CRON_SECRET). Alternatively from an authenticated worker: await volunteerNotify.notifyDayBeforeShiftReminders();
 ```
 
 Sanity (from repo root)
@@ -117,6 +154,7 @@ Sanity (from repo root)
   node --check integrations/private-server/jewelheart-calendar-feed.fragment.js
   node --check integrations/private-server/jewelheart-assignment-confirmation.fragment.js
   node --check integrations/private-server/jewelheart-volunteer-notify.fragment.js
+  node --check integrations/private-server/jewelheart-routes-wiring.fragment.js
 
 Local fixture→ICS dev tool: scripts/generate_volunteer_calendar_ics.py + scripts/fixtures/volunteer_calendar_assignments.sample.json.
 
@@ -124,7 +162,7 @@ Operator checklist (api.karmadots.org + web SDUI)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Use this when deploying KarmaDots private-server with JewelHeart routes.
 
-1. **Postgres (order):** On a fresh DB run `migrations/001_jewelheart_initial.sql`, then `migrations/002_jewelheart_volunteer_notify_calendar_feed.sql`. On existing DBs that already have 001, apply 002 only. Optional: seed ACL (`jewelheart_admins` / create retreat for per-retreat admins); run `npm run db:jewelheart` in private-server if your project uses that helper.
+1. **Postgres (order):** Run `001`, then `002`, then `003_jewelheart_assignment_day_before_reminder.sql` (adds `day_before_reminder_sent_at` for reminder idempotency). On partially migrated DBs, apply only missing files. Optional: seed ACL (`jewelheart_admins` / create retreat for per-retreat admins); run `npm run db:jewelheart` in private-server if your project uses that helper.
 
 2. **Merge / sync fragments into `private-server/src/jewelheart/`** (or equivalent):
    - Task list wire format: `jewelheart-mappers-mapTaskRow.fragment.js`, `jewelheart-service-listTasks.fragment.js` (or `node scripts/apply-jewelheart-task-list-fragments.mjs` from JewelHeartAdminFunction repo root).
@@ -132,7 +170,7 @@ Use this when deploying KarmaDots private-server with JewelHeart routes.
    - **Calendar + confirmations + notify:** `jewelheart-calendar-feed.fragment.js`, `jewelheart-assignment-confirmation.fragment.js`, `jewelheart-volunteer-notify.fragment.js` (notes: `jewelheart-calendar-feed-notes.fragment.js`).
    - **Express:** `express.json()` globally; for confirmation HTML POST, `express.urlencoded({ extended: false })` on that route or globally.
 
-3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):
+3. **Route registration (pointers):** See the `service.js` wiring block earlier in this file for calendar + assignment-confirmations + internal day-before cron. Additionally register **Firebase-authenticated** SDUI routes (same Bearer middleware as other `/jewelheart/*`):
    - `POST /jewelheart/sdui/screen` → handler calls `sduiScreen(firebaseUid, body)` (OpenAPI `postSduiScreen`).
    - `POST /jewelheart/sdui/action` → optional; wire if your client uses SDUI actions (`postSduiAction`).
    Public (no Firebase): `HEAD`/`GET /jewelheart/calendar-feed/:feedToken`; `GET`/`POST /jewelheart/assignment-confirmations/:sealedConfirmationToken`. Unauthenticated probe: `GET /jewelheart/health`.
@@ -147,3 +185,4 @@ Use this when deploying KarmaDots private-server with JewelHeart routes.
    - `POST https://api.karmadots.org/jewelheart/volunteers/{id}/calendar-feed` with `Authorization: Bearer <Firebase ID token>` (mint).
    - SDUI: `POST .../jewelheart/sdui/screen` with Bearer and JSON body per `openapi/jewelheart.yaml` / `clients/README.md` (e.g. `screenId` `jewelheart.home` or `retreat.schedule`); repo helper `scripts/check-sdui-retreat-schedule.sh`.
    - **Web (karmadots.org/login):** After sign-in, the web client uses the same Firebase ID token for `Authorization: Bearer` — nothing beyond private-server merge + correct API base is required for volunteer-week / calendar flows, as long as SDUI + calendar routes above are live.
+   - **Cron (day-before reminders):** With `JEWELHEART_CRON_SECRET` set, `curl -sS -X POST -H "x-jewelheart-cron-secret: $JEWELHEART_CRON_SECRET" https://api.karmadots.org/jewelheart/internal/day-before-reminders` → **200** and JSON `{ ok, candidates, marked, … }` (no secrets in body).
