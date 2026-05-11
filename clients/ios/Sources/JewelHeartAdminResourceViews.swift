@@ -2282,6 +2282,9 @@ struct VolunteerSelfServiceRootView: View {
                         NavigationLink("Volunteer week") {
                             RetreatVolunteerWeekSignupView(retreatId: r.id)
                         }
+                        // Use the tab’s outer `NavigationStack` only. A nested stack here caused the Messages
+                        // push to pop back to this list when `RetreatMessagingListView` swapped loading UI
+                        // for the conversation list (two stacks fighting over path updates).
                         NavigationLink("Messages") {
                             RetreatMessagingListView(retreatId: r.id)
                         }

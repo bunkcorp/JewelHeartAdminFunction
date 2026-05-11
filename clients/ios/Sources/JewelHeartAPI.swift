@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseAuth
+import FirebaseCore
 import os
 
 enum JewelHeartAPIError: LocalizedError {
@@ -26,6 +27,11 @@ enum JewelHeartAPIError: LocalizedError {
             return "HTTP 502 — API origin behind Cloudflare is down or not reachable. Check private-server and tunnel."
         case 503:
             return "HTTP 503 — service unavailable. Try again shortly."
+        case 404:
+            if let body, body.localizedCaseInsensitiveContains("conversations") {
+                return "HTTP 404 — messaging routes are not on this API host yet. Deploy the latest private-server `jewelheart` router (conversations + messages) and restart Node."
+            }
+            fallthrough
         default:
             break
         }
@@ -84,6 +90,9 @@ actor JewelHeartAPI {
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
             Task { @MainActor in
                 do {
+                    if FirebaseApp.app() == nil {
+                        FirebaseApp.configure()
+                    }
                     guard let user = Auth.auth().currentUser else {
                         cont.resume(throwing: JewelHeartAPIError.noToken)
                         return

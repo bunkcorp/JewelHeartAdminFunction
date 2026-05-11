@@ -68,7 +68,12 @@ struct RetreatMessagingListView: View {
     }
 
     private func load() async {
-        await MainActor.run { busy = true; error = nil }
+        // Avoid replacing the conversation `List` with `ProgressView` while the stack
+        // already shows rows — that drops `NavigationLink(value:)` hosts and pops pushes.
+        await MainActor.run {
+            error = nil
+            if items.isEmpty { busy = true }
+        }
         do {
             _ = try await api.ensureRetreatRoomConversation(retreatId: retreatId)
             let res = try await api.listRetreatConversations(retreatId: retreatId)

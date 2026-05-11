@@ -3,12 +3,11 @@ import FirebaseCore
 import GoogleSignIn
 
 /// `@main` must be this class (not a wrapper `enum`) so GoogleUtilities/AppDelegateSwizzler sees a
-/// real `UIApplicationDelegate`. Use `NSObject` (not `UIResponder`) so the Objective-C runtime
-/// exposes the delegate the swizzler expects. Firebase is also configured in
-/// `JewelHeartFirebaseEarlyConfigure.m` before `UIApplicationMain`.
+/// real `UIApplicationDelegate`. Subclass **`UIResponder`** (Apple + Firebase template) so the
+/// swizzler recognizes a proper app delegate; `NSObject`-only delegates can trigger **I-SWZ001014**.
 @objc(JewelHeartAppDelegate)
 @main
-final class JewelHeartAppDelegate: NSObject, UIApplicationDelegate {
+final class JewelHeartAppDelegate: UIResponder, UIApplicationDelegate {
 
     override init() {
         // Configure before `super.init()` (cannot call instance methods on `self` yet). Avoid
