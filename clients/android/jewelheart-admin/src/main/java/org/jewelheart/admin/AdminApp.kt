@@ -33,6 +33,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -265,11 +267,52 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
 
 @Composable
 private fun AdminTabShell() {
+    val single = JewelHeartConfig.singleRetreatDevMode
     var tab by remember { mutableIntStateOf(0) }
+    var homeSection by remember { mutableIntStateOf(0) }
     val retreatNav = rememberNavController()
     val directoryNav = rememberNavController()
     val volunteerNav = rememberNavController()
     val sduiVm: JewelHeartViewModel = viewModel()
+
+    var resolvedRetreatId by remember { mutableStateOf<String?>(null) }
+    var resolvedRetreatName by remember { mutableStateOf<String?>(null) }
+    var retreatResolveErr by remember { mutableStateOf<String?>(null) }
+
+    androidx.compose.runtime.LaunchedEffect(single, FirebaseAuth.getInstance().currentUser?.uid) {
+        if (!single) return@LaunchedEffect
+        retreatResolveErr = null
+        resolvedRetreatId = null
+        resolvedRetreatName = null
+        val repo = JewelHeartRepository()
+        val fixed = JewelHeartConfig.singleRetreatId?.trim()?.takeIf { it.isNotEmpty() }
+        if (fixed != null) {
+            resolvedRetreatId = fixed
+            try {
+                resolvedRetreatName = repo.getRetreat(fixed).name
+            } catch (_: Exception) {
+                resolvedRetreatName = "Summer retreat"
+            }
+            return@LaunchedEffect
+        }
+        try {
+            val items = repo.listRetreats(limit = 100).items
+            val terms = JewelHeartConfig.singleRetreatNameMatchers
+            val match = items.firstOrNull { r -> terms.all { t -> r.name.contains(t, ignoreCase = true) } }
+            resolvedRetreatId = match?.id
+            resolvedRetreatName = match?.name
+            if (resolvedRetreatId == null) {
+                retreatResolveErr =
+                    "No retreat matched ${terms.joinToString(" + ")}. Set JewelHeartConfig.singleRetreatId to the retreat UUID."
+            }
+        } catch (e: Exception) {
+            retreatResolveErr = e.message ?: e.toString()
+        }
+    }
+
+    val directoryTab = if (single) 1 else 2
+    val volunteerTab = if (single) 2 else 3
+    val settingsTab = if (single) 3 else 4
 
     Scaffold(
         bottomBar = {
@@ -280,27 +323,29 @@ private fun AdminTabShell() {
                     icon = { Icon(Icons.Filled.Home, contentDescription = null) },
                     label = { Text("Home") },
                 )
+                if (!single) {
+                    NavigationBarItem(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        icon = { Icon(Icons.Filled.List, contentDescription = null) },
+                        label = { Text("Retreats") },
+                    )
+                }
                 NavigationBarItem(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                    label = { Text("Retreats") },
-                )
-                NavigationBarItem(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
+                    selected = tab == directoryTab,
+                    onClick = { tab = directoryTab },
                     icon = { Icon(Icons.Filled.Groups, contentDescription = null) },
                     label = { Text("Directory") },
                 )
                 NavigationBarItem(
-                    selected = tab == 3,
-                    onClick = { tab = 3 },
+                    selected = tab == volunteerTab,
+                    onClick = { tab = volunteerTab },
                     icon = { Icon(Icons.Filled.VolunteerActivism, contentDescription = null) },
                     label = { Text("Volunteer") },
                 )
                 NavigationBarItem(
-                    selected = tab == 4,
-                    onClick = { tab = 4 },
+                    selected = tab == settingsTab,
+                    onClick = { tab = settingsTab },
                     icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
                     label = { Text("Settings") },
                 )
@@ -309,11 +354,74 @@ private fun AdminTabShell() {
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                0 -> SduiTabContent(vm = sduiVm)
-                1 -> RetreatNavHost(navController = retreatNav)
-                2 -> DirectoryNavHost(navController = directoryNav)
-                3 -> VolunteerNavHost(navController = volunteerNav)
-                4 -> MetaTabContent()
+                0 -> {
+                    if (single) {
+                        Column(Modifier.fillMaxSize()) {
+                            val retreatLabel = resolvedRetreatName ?: "Summer retreat"
+                            TabRow(selectedTabIndex = homeSection) {
+                                Tab(
+                                    selected = homeSection == 0,
+                                    onClick = { homeSection = 0 },
+                                    text = { Text("Home") },
+                                )
+                                Tab(
+                                    selected = homeSection == 1,
+                                    onClick = { homeSection = 1 },
+                                    text = { Text(retreatLabel, maxLines = 1) },
+                                )
+                            }
+                            retreatResolveErr?.let {
+                                Text(
+                                    it,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(8.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                            Box(Modifier.weight(1f).fillMaxWidth()) {
+                                when (homeSection) {
+                                    0 -> SduiTabContent(vm = sduiVm)
+                                    1 -> {
+                                        val rid = resolvedRetreatId
+                                        if (rid != null) {
+                                            RetreatNavHost(navController = retreatNav, startRetreatDetailId = rid)
+                                        } else {
+                                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        SduiTabContent(vm = sduiVm)
+                    }
+                }
+                1 -> {
+                    if (single) {
+                        DirectoryNavHost(navController = directoryNav)
+                    } else {
+                        RetreatNavHost(navController = retreatNav)
+                    }
+                }
+                2 -> {
+                    if (single) {
+                        VolunteerNavHost(navController = volunteerNav)
+                    } else {
+                        DirectoryNavHost(navController = directoryNav)
+                    }
+                }
+                3 -> {
+                    if (single) {
+                        MetaTabContent()
+                    } else {
+                        VolunteerNavHost(navController = volunteerNav)
+                    }
+                }
+                4 -> {
+                    if (!single) {
+                        MetaTabContent()
+                    }
+                }
             }
         }
     }

@@ -83,8 +83,14 @@ private fun parseSubjobLines(raw: String): List<String> =
     raw.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
 
 @Composable
-fun RetreatNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = "rlist", modifier = Modifier.fillMaxSize()) {
+fun RetreatNavHost(
+    navController: NavHostController,
+    /** When set, skip retreat list and open this retreat's detail first (dev single-retreat shell). */
+    startRetreatDetailId: String? = null,
+) {
+    val startDestination =
+        startRetreatDetailId?.takeIf { it.isNotBlank() }?.let { rid -> "rdetail/$rid" } ?: "rlist"
+    NavHost(navController = navController, startDestination = startDestination, modifier = Modifier.fillMaxSize()) {
         composable("rlist") { RetreatListScreen(navController) }
         composable(
             "rdetail/{rid}",
