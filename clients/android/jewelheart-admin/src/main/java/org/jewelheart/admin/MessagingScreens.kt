@@ -76,7 +76,11 @@ fun NavGraphBuilder.volunteerMessagingRoutes(navController: NavHostController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RetreatMessagingListScreen(nav: NavHostController, retreatId: String) {
+fun RetreatMessagingListScreen(
+    nav: NavHostController,
+    retreatId: String,
+    threadRoute: (retreatId: String, conversationId: String) -> String = { rid, cid -> "vthread/$rid/$cid" },
+) {
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
     var items by remember { mutableStateOf<List<ConversationSummary>>(emptyList()) }
@@ -111,7 +115,7 @@ private fun RetreatMessagingListScreen(nav: NavHostController, retreatId: String
                     try {
                         val conv = repo.createDirectConversation(retreatId, peerId)
                         showPeerPicker = false
-                        nav.navigate("vthread/$retreatId/${conv.id}")
+                        nav.navigate(threadRoute(retreatId, conv.id))
                     } catch (e: Exception) {
                         err = e.message
                     }
@@ -159,7 +163,7 @@ private fun RetreatMessagingListScreen(nav: NavHostController, retreatId: String
                                 Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 2.dp)
-                                    .clickable { nav.navigate("vthread/$retreatId/${c.id}") },
+                                    .clickable { nav.navigate(threadRoute(retreatId, c.id)) },
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 Column(Modifier.padding(12.dp)) {
@@ -228,7 +232,7 @@ private fun PeerPickerDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConversationThreadScreen(nav: NavHostController, @Suppress("UNUSED_PARAMETER") retreatId: String, conversationId: String) {
+fun ConversationThreadScreen(nav: NavHostController, @Suppress("UNUSED_PARAMETER") retreatId: String, conversationId: String) {
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current

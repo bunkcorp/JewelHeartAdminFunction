@@ -3,6 +3,7 @@ package org.jewelheart.admin
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -82,61 +83,77 @@ fun JewelHeartAdminApp() {
 @Composable
 private fun SignInScreen(onSignedIn: () -> Unit) {
     val ctx = LocalContext.current
+    val activity = ctx as? ComponentActivity
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    /** Google account picker is a separate Activity; guard double-taps and avoid overlapping auth UI (stale session / false "cancelled"). */
+    var googleSigningIn by remember { mutableStateOf(false) }
 
     val webClientId = ctx.getString(R.string.default_web_client_id)
+    // Explicit ID-token options (Firebase). Avoid wrapping DEFAULT_SIGN_IN — without google-services.json in this
+    // module, DEFAULT_SIGN_IN can disagree with the Web client ID you pass here on some devices.
     val gso = remember(webClientId) {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        GoogleSignInOptions.Builder()
             .requestIdToken(webClientId)
             .requestEmail()
+            .requestProfile()
             .build()
     }
-    val googleClient = remember(ctx, gso) { GoogleSignIn.getClient(ctx, gso) }
+    val googleClient =
+        remember(activity, gso) {
+            if (activity != null) GoogleSignIn.getClient(activity, gso) else null
+        }
 
     val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            message =
-                if (result.resultCode == Activity.RESULT_CANCELED) {
-                    "Google sign-in canceled."
-                } else {
-                    "Google sign-in failed (result code ${result.resultCode})."
-                }
-            return@rememberLauncherForActivityResult
-        }
         scope.launch {
-            busy = true
-            message = null
             try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val account = task.getResult(ApiException::class.java)
-                val token = account.idToken
-                if (token.isNullOrEmpty()) {
+                if (result.resultCode != Activity.RESULT_OK) {
                     message =
-                        "Google returned no ID token for this app. In Firebase Console → Project settings → Your apps, " +
-                            "add Android app \"${ctx.packageName}\" and register your debug/release SHA-1 fingerprints, " +
-                            "then download google-services.json into the jewelheart-admin module (or rebuild after saving)."
+                        if (result.resultCode == Activity.RESULT_CANCELED) {
+                            "Google sign-in closed before completing. If you did not cancel, check: Play Services " +
+                                "updated, device online, and in Firebase Console the Android app " +
+                                "\"${ctx.packageName}\" has this build’s SHA-1/SHA-256; then try again."
+                        } else {
+                            "Google sign-in failed (result code ${result.resultCode})."
+                        }
                     return@launch
                 }
-                val cred = GoogleAuthProvider.getCredential(token, null)
-                FirebaseAuth.getInstance().signInWithCredential(cred).await()
-                onSignedIn()
-            } catch (e: ApiException) {
-                message =
-                    when (e.statusCode) {
-                        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Google sign-in canceled."
-                        ConnectionResult.DEVELOPER_ERROR ->
-                            "Google Play services config error (code 10). Add Android app \"${ctx.packageName}\" " +
-                                "in the same Firebase project and register your signing SHA-1/SHA-256, then sync."
-                        else -> "Google sign-in error ${e.statusCode}: ${e.message}"
+                googleSigningIn = false
+                busy = true
+                message = null
+                try {
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    val account = task.getResult(ApiException::class.java)
+                    val token = account.idToken
+                    if (token.isNullOrEmpty()) {
+                        message =
+                            "Google returned no ID token for this app. In Firebase Console → Project settings → Your apps, " +
+                                "add Android app \"${ctx.packageName}\" and register your debug/release SHA-1 fingerprints, " +
+                                "then download google-services.json into the jewelheart-admin module (or rebuild after saving)."
+                        return@launch
                     }
-            } catch (e: Exception) {
-                message = e.message ?: e.toString()
+                    val cred = GoogleAuthProvider.getCredential(token, null)
+                    FirebaseAuth.getInstance().signInWithCredential(cred).await()
+                    onSignedIn()
+                } catch (e: ApiException) {
+                    message =
+                        when (e.statusCode) {
+                            GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Google sign-in canceled."
+                            ConnectionResult.DEVELOPER_ERROR ->
+                                "Google Play services config error (code 10). Add Android app \"${ctx.packageName}\" " +
+                                    "in the same Firebase project and register your signing SHA-1/SHA-256, then sync."
+                            else -> "Google sign-in error ${e.statusCode}: ${e.message}"
+                        }
+                } catch (e: Exception) {
+                    message = e.message ?: e.toString()
+                } finally {
+                    busy = false
+                }
             } finally {
-                busy = false
+                googleSigningIn = false
             }
         }
     }
@@ -174,7 +191,7 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
                     }
                 }
             },
-            enabled = !busy && email.isNotBlank() && password.isNotEmpty(),
+            enabled = !busy && !googleSigningIn && email.isNotBlank() && password.isNotEmpty(),
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Sign in with email") }
 
@@ -193,7 +210,7 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
                     }
                 }
             },
-            enabled = !busy && email.isNotBlank() && password.length >= 6,
+            enabled = !busy && !googleSigningIn && email.isNotBlank() && password.length >= 6,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Create account (email)") }
 
@@ -212,21 +229,33 @@ private fun SignInScreen(onSignedIn: () -> Unit) {
                     }
                 }
             },
-            enabled = !busy,
+            enabled = !busy && !googleSigningIn,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Continue anonymously") }
 
         Button(
             onClick = {
                 scope.launch {
-                    try {
-                        googleClient.signOut().await()
-                    } catch (_: Exception) {
+                    if (googleSigningIn || busy) return@launch
+                    val client = googleClient
+                    if (client == null || activity == null) {
+                        message =
+                            "Google Sign-In needs an Activity context. If this persists, reinstall the app or open it from the launcher (not a deep link preview)."
+                        return@launch
                     }
-                    googleLauncher.launch(googleClient.signInIntent)
+                    googleSigningIn = true
+                    message = null
+                    try {
+                        // Do not call signOut() immediately before signInIntent — on many devices that yields
+                        // RESULT_CANCELED / false “user canceled” (RN iOS workaround does not always apply to Play Services).
+                        googleLauncher.launch(client.signInIntent)
+                    } catch (e: Exception) {
+                        googleSigningIn = false
+                        message = e.message ?: e.toString()
+                    }
                 }
             },
-            enabled = !busy,
+            enabled = !busy && !googleSigningIn && googleClient != null,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Sign in with Google") }
 

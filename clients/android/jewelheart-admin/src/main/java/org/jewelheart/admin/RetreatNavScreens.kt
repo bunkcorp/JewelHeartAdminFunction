@@ -37,6 +37,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -136,6 +138,46 @@ fun RetreatNavHost(navController: NavHostController) {
         }
         composable("rreports/{rid}", arguments = listOf(navArgument("rid") { type = NavType.StringType })) { e ->
             ReportsScreen(navController, e.arguments!!.getString("rid")!!)
+        }
+        composable("rvweek/{rid}", arguments = listOf(navArgument("rid") { type = NavType.StringType })) { e ->
+            RetreatVolunteerWeekSignupScreen(
+                nav = navController,
+                retreatId = e.arguments!!.getString("rid")!!,
+            )
+        }
+        composable("rmessages/{rid}", arguments = listOf(navArgument("rid") { type = NavType.StringType })) { e ->
+            val rid = e.arguments!!.getString("rid")!!
+            RetreatMessagingListScreen(
+                navController,
+                retreatId = rid,
+                threadRoute = { r, cid -> "rthread/$r/$cid" },
+            )
+        }
+        composable(
+            "rthread/{rid}/{cid}",
+            arguments = listOf(
+                navArgument("rid") { type = NavType.StringType },
+                navArgument("cid") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            ConversationThreadScreen(
+                navController,
+                retreatId = entry.arguments!!.getString("rid")!!,
+                conversationId = entry.arguments!!.getString("cid")!!,
+            )
+        }
+        composable(
+            "rjobdetail/{rid}/{jid}",
+            arguments = listOf(
+                navArgument("rid") { type = NavType.StringType },
+                navArgument("jid") { type = NavType.StringType },
+            ),
+        ) { entry ->
+            JobDetailScreen(
+                navController,
+                retreatId = entry.arguments!!.getString("rid")!!,
+                jobId = entry.arguments!!.getString("jid")!!,
+            )
         }
     }
 }
@@ -239,14 +281,29 @@ private fun RetreatDetailScreen(nav: NavHostController, retreatId: String) {
     val scope = rememberCoroutineScope()
     var retreat by remember { mutableStateOf<Retreat?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    var showEdit by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var editName by remember { mutableStateOf("") }
+    var editStatus by remember { mutableStateOf(RetreatStatus.draft) }
+    var editHasStart by remember { mutableStateOf(false) }
+    var editHasEnd by remember { mutableStateOf(false) }
+    var editStartDate by remember { mutableStateOf("") }
+    var editEndDate by remember { mutableStateOf("") }
+    var editBusy by remember { mutableStateOf(false) }
+    var editErr by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(retreatId) {
-        try {
-            retreat = repo.getRetreat(retreatId)
-        } catch (e: Exception) {
-            err = e.message
+    fun refreshRetreat() {
+        scope.launch {
+            try {
+                retreat = repo.getRetreat(retreatId)
+                err = null
+            } catch (e: Exception) {
+                err = e.message
+            }
         }
     }
+
+    LaunchedEffect(retreatId) { refreshRetreat() }
 
     Scaffold(
         topBar = {
@@ -264,12 +321,16 @@ private fun RetreatDetailScreen(nav: NavHostController, retreatId: String) {
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             retreat?.let { r ->
                 Text("Status: ${r.status.name}")
+                r.startDate?.takeIf { it.isNotBlank() }?.let { Text("Start: $it", style = MaterialTheme.typography.bodyMedium) }
+                r.endDate?.takeIf { it.isNotBlank() }?.let { Text("End: $it", style = MaterialTheme.typography.bodyMedium) }
+                Text("id: ${r.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                 Spacer(Modifier.height(8.dp))
                 NavButton("Jobs") { nav.navigate("rjobs/$retreatId") }
                 NavButton("Slots") { nav.navigate("rslots/$retreatId") }
@@ -277,22 +338,142 @@ private fun RetreatDetailScreen(nav: NavHostController, retreatId: String) {
                 NavButton("Linked volunteers") { nav.navigate("rvols/$retreatId") }
                 NavButton("Schedule (by day)") { nav.navigate("rsched/$retreatId") }
                 NavButton("Schedule matrix (slot × day)") { nav.navigate("rschedmatrix/$retreatId") }
+                NavButton("Volunteer week (load chart, signup)") { nav.navigate("rvweek/$retreatId") }
                 NavButton("Reports (PDF/CSV)") { nav.navigate("rreports/$retreatId") }
+                NavButton("Messages") { nav.navigate("rmessages/$retreatId") }
                 Spacer(Modifier.height(16.dp))
                 Button(
+                    onClick = {
+                        editName = r.name
+                        editStatus = r.status
+                        editHasStart = !r.startDate.isNullOrBlank()
+                        editHasEnd = !r.endDate.isNullOrBlank()
+                        editStartDate = r.startDate.orEmpty()
+                        editEndDate = r.endDate.orEmpty()
+                        editErr = null
+                        showEdit = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Edit retreat") }
+                Button(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete retreat") }
+            }
+        }
+    }
+
+    if (showEdit && retreat != null) {
+        AlertDialog(
+            onDismissRequest = { if (!editBusy) showEdit = false },
+            title = { Text("Edit retreat") },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    Text("Status", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        RetreatStatus.entries.forEach { s ->
+                            FilterChip(
+                                selected = editStatus == s,
+                                onClick = { editStatus = s },
+                                label = { Text(s.name) },
+                            )
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Start date")
+                        Switch(checked = editHasStart, onCheckedChange = { editHasStart = it })
+                    }
+                    if (editHasStart) {
+                        OutlinedTextField(
+                            value = editStartDate,
+                            onValueChange = { editStartDate = it },
+                            label = { Text("Start yyyy-MM-dd") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("End date")
+                        Switch(checked = editHasEnd, onCheckedChange = { editHasEnd = it })
+                    }
+                    if (editHasEnd) {
+                        OutlinedTextField(
+                            value = editEndDate,
+                            onValueChange = { editEndDate = it },
+                            label = { Text("End yyyy-MM-dd") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
+                    editErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            editBusy = true
+                            editErr = null
+                            try {
+                                val patch = RetreatPatch(
+                                    name = editName.trim(),
+                                    timezone = JewelHeartConfig.jewelheartDefaultTimeZoneId,
+                                    status = editStatus,
+                                    startDate = if (editHasStart) editStartDate.trim().ifEmpty { null } else null,
+                                    endDate = if (editHasEnd) editEndDate.trim().ifEmpty { null } else null,
+                                )
+                                retreat = repo.updateRetreat(retreatId, patch)
+                                showEdit = false
+                            } catch (e: Exception) {
+                                editErr = e.message
+                            } finally {
+                                editBusy = false
+                            }
+                        }
+                    },
+                    enabled = !editBusy && editName.isNotBlank(),
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!editBusy) showEdit = false }, enabled = !editBusy) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete retreat?") },
+            text = { Text("This removes the retreat and nested data. This cannot be undone.") },
+            confirmButton = {
+                TextButton(
                     onClick = {
                         scope.launch {
                             try {
                                 repo.deleteRetreat(retreatId)
+                                showDeleteConfirm = false
                                 nav.popBackStack("rlist", inclusive = false)
                             } catch (e: Exception) {
                                 err = e.message
+                                showDeleteConfirm = false
                             }
                         }
                     },
-                ) { Text("Delete retreat") }
-            }
-        }
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -313,7 +494,6 @@ private fun JobsScreen(nav: NavHostController, retreatId: String) {
     var vn by remember { mutableStateOf("1") }
     var em by remember { mutableStateOf("30") }
     var subjobLinesCreate by remember { mutableStateOf("") }
-    var editingJob by remember { mutableStateOf<Job?>(null) }
 
     fun load() {
         scope.launch {
@@ -348,20 +528,20 @@ private fun JobsScreen(nav: NavHostController, retreatId: String) {
                         Modifier
                             .fillMaxWidth()
                             .padding(8.dp)
-                            .clickable { editingJob = j },
+                            .clickable { nav.navigate("rjobdetail/$retreatId/${j.id}") },
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(j.title, style = MaterialTheme.typography.titleSmall)
                             Text("Needed: ${j.volunteersNeeded} · ${j.estimatedMinutes} min")
                             if (j.subjobs.isNotEmpty()) {
                                 Text(
-                                    "${j.subjobs.size} subjobs · tap to edit",
+                                    "${j.subjobs.size} subjobs · tap for details",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.secondary,
                                 )
                             } else {
                                 Text(
-                                    "Tap to edit · add subjobs (one per line)",
+                                    "Tap for details · add subjobs (one per line) from edit",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.secondary,
                                 )
@@ -425,18 +605,6 @@ private fun JobsScreen(nav: NavHostController, retreatId: String) {
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancel") } },
         )
     }
-
-    editingJob?.let { job ->
-        EditJobDialog(
-            job = job,
-            retreatId = retreatId,
-            repo = repo,
-            scope = scope,
-            onDismiss = { editingJob = null },
-            onAfterMutation = { load(); editingJob = null },
-            onError = { err = it },
-        )
-    }
 }
 
 @Composable
@@ -476,21 +644,6 @@ private fun EditJobDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4,
                 )
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                repo.deleteJob(retreatId, job.id)
-                                onError(null)
-                                onAfterMutation()
-                            } catch (e: Exception) {
-                                localErr = e.message
-                                onError(e.message)
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text("Delete job") }
             }
         },
         confirmButton = {
@@ -521,6 +674,114 @@ private fun EditJobDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun JobDetailScreen(nav: NavHostController, retreatId: String, jobId: String) {
+    val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
+    var job by remember { mutableStateOf<Job?>(null) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var showEdit by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+
+    fun load() {
+        scope.launch {
+            try {
+                job = repo.getJob(retreatId, jobId)
+                err = null
+            } catch (e: Exception) {
+                err = e.message
+                job = null
+            }
+        }
+    }
+
+    LaunchedEffect(retreatId, jobId) { load() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(job?.title ?: "Job") },
+                navigationIcon = {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            job?.let { j ->
+                Text("Volunteers needed: ${j.volunteersNeeded}", style = MaterialTheme.typography.bodyLarge)
+                Text("Est. minutes: ${j.estimatedMinutes}", style = MaterialTheme.typography.bodyLarge)
+                if (j.subjobs.isNotEmpty()) {
+                    Text("Subjobs", style = MaterialTheme.typography.labelLarge)
+                    j.subjobs.sortedBy { it.sortOrder }.forEach { s ->
+                        Text("${s.sortOrder}. ${s.text}", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = { showEdit = true }, modifier = Modifier.fillMaxWidth()) { Text("Edit job") }
+                Button(
+                    onClick = { showDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete job") }
+            }
+        }
+    }
+
+    job?.let { j ->
+        if (showEdit) {
+            EditJobDialog(
+                job = j,
+                retreatId = retreatId,
+                repo = repo,
+                scope = scope,
+                onDismiss = { showEdit = false },
+                onAfterMutation = {
+                    showEdit = false
+                    load()
+                },
+                onError = { err = it },
+            )
+        }
+    }
+
+    if (showDelete && job != null) {
+        AlertDialog(
+            onDismissRequest = { showDelete = false },
+            title = { Text("Delete job?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            try {
+                                repo.deleteJob(retreatId, job!!.id)
+                                showDelete = false
+                                nav.popBackStack()
+                            } catch (e: Exception) {
+                                err = e.message
+                                showDelete = false
+                            }
+                        }
+                    },
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancel") } },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -565,7 +826,12 @@ private fun SlotsScreen(nav: NavHostController, retreatId: String) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp)) }
             LazyColumn {
                 items(items, key = { it.id }) { s ->
-                    Card(Modifier.fillMaxWidth().padding(8.dp)) {
+                    Card(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .clickable { nav.navigate("rslotdetail/$retreatId/${s.id}") },
+                    ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(s.label, style = MaterialTheme.typography.titleSmall)
                             Text("${s.slotDate} · ${s.timeBand.name}")
@@ -616,6 +882,29 @@ private fun SlotsScreen(nav: NavHostController, retreatId: String) {
     }
 }
 
+private fun applyTaskListFilters(
+    tasks: List<JHTask>,
+    unassignedOnly: Boolean,
+    underassignedOnly: Boolean,
+): List<JHTask> {
+    var out = tasks
+    if (unassignedOnly) {
+        out = out.filter { (it.assignmentCount ?: 0) == 0 }
+    }
+    if (underassignedOnly) {
+        out = out.filter { t ->
+            val need = t.volunteersNeeded
+            if (need != null) {
+                val c = t.assignmentCount ?: 0
+                c < need
+            } else {
+                t.isUnderassigned == true
+            }
+        }
+    }
+    return out
+}
+
 private fun jhTaskListTitle(
     t: JHTask,
     jobTitleById: Map<String, String> = emptyMap(),
@@ -659,13 +948,19 @@ private fun jhTaskListSubtitle(t: JHTask): String? {
 private fun TasksScreen(nav: NavHostController, retreatId: String) {
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
-    var items by remember { mutableStateOf<List<JHTask>>(emptyList()) }
+    var rawTasks by remember { mutableStateOf<List<JHTask>>(emptyList()) }
     var jobTitleById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var slotLabelById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var err by remember { mutableStateOf<String?>(null) }
     var showAdd by remember { mutableStateOf(false) }
     var jobId by remember { mutableStateOf("") }
     var slotId by remember { mutableStateOf("") }
+    var filterUnassigned by remember { mutableStateOf(false) }
+    var filterUnderassigned by remember { mutableStateOf(false) }
+
+    val items = remember(rawTasks, filterUnassigned, filterUnderassigned) {
+        applyTaskListFilters(rawTasks, filterUnassigned, filterUnderassigned)
+    }
 
     fun load() {
         scope.launch {
@@ -674,7 +969,7 @@ private fun TasksScreen(nav: NavHostController, retreatId: String) {
                     val tasksDef = async { repo.listTasks(retreatId) }
                     val jobsDef = async { runCatching { repo.listJobs(retreatId) }.getOrNull() }
                     val slotsDef = async { runCatching { repo.listSlots(retreatId) }.getOrNull() }
-                    items = tasksDef.await().items
+                    rawTasks = tasksDef.await().items
                     jobTitleById = jobsDef.await()?.items?.associate { it.id to it.title } ?: emptyMap()
                     slotLabelById = slotsDef.await()?.items?.associate { it.id to it.label } ?: emptyMap()
                 }
@@ -685,7 +980,7 @@ private fun TasksScreen(nav: NavHostController, retreatId: String) {
         }
     }
 
-    LaunchedEffect(retreatId) { load() }
+    LaunchedEffect(retreatId, filterUnassigned, filterUnderassigned) { load() }
 
     Scaffold(
         topBar = {
@@ -702,20 +997,44 @@ private fun TasksScreen(nav: NavHostController, retreatId: String) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp)) }
-            LazyColumn {
-                items(items, key = { it.id }) { t ->
-                    Card(Modifier.fillMaxWidth().padding(8.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(jhTaskListTitle(t, jobTitleById, slotLabelById), style = MaterialTheme.typography.titleSmall)
-                            jhTaskListSubtitle(t)?.let { sub ->
-                                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            if (t.isUnderassigned == true) {
-                                Text(
-                                    "Still needs volunteers",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFE65100),
-                                )
+            Column(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Only tasks with no volunteers yet", style = MaterialTheme.typography.bodySmall)
+                    Switch(checked = filterUnassigned, onCheckedChange = { filterUnassigned = it })
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Only tasks that still need more people", style = MaterialTheme.typography.bodySmall)
+                    Switch(checked = filterUnderassigned, onCheckedChange = { filterUnderassigned = it })
+                }
+            }
+            if (items.isEmpty() && (filterUnassigned || filterUnderassigned)) {
+                Text(
+                    "No matching tasks. Try turning off a filter, or add assignments from a task’s detail screen.",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(items, key = { it.id }) { t ->
+                        Card(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                                .clickable { nav.navigate("rtaskdetail/$retreatId/${t.id}") },
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(jhTaskListTitle(t, jobTitleById, slotLabelById), style = MaterialTheme.typography.titleSmall)
+                                jhTaskListSubtitle(t)?.let { sub ->
+                                    Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (t.isUnderassigned == true) {
+                                    Text(
+                                        "Still needs volunteers",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFFE65100),
+                                    )
+                                }
                             }
                         }
                     }
@@ -764,8 +1083,12 @@ private fun RetreatVolunteersScreen(nav: NavHostController, retreatId: String) {
     val ctx = LocalContext.current
     var items by remember { mutableStateOf<List<RetreatVolunteer>>(emptyList()) }
     var err by remember { mutableStateOf<String?>(null) }
-    var linkId by remember { mutableStateOf("") }
-    var importSummary by remember { mutableStateOf<String?>(null) }
+    var showLinkSearch by remember { mutableStateOf(false) }
+    var linkQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<Volunteer>>(emptyList()) }
+    var searchBusy by remember { mutableStateOf(false) }
+    var searchErr by remember { mutableStateOf<String?>(null) }
+    var importSummaryAlert by remember { mutableStateOf<String?>(null) }
 
     val pickCsv = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -773,7 +1096,8 @@ private fun RetreatVolunteersScreen(nav: NavHostController, retreatId: String) {
             try {
                 val bytes = ctx.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
                 val res = repo.importRetreatVolunteersCsv(retreatId, bytes)
-                importSummary = "created=${res.created} updated=${res.updated} linked=${res.linked} errors=${res.errors.size}"
+                importSummaryAlert =
+                    "created=${res.created} updated=${res.updated} linked=${res.linked} errors=${res.errors.size}"
                 items = repo.listRetreatVolunteers(retreatId).items
             } catch (e: Exception) {
                 err = e.message
@@ -791,7 +1115,38 @@ private fun RetreatVolunteersScreen(nav: NavHostController, retreatId: String) {
         }
     }
 
+    fun runVolunteerSearch() {
+        scope.launch {
+            searchBusy = true
+            searchErr = null
+            try {
+                val q = linkQuery.trim().ifEmpty { null }
+                searchResults = repo.searchVolunteers(q = q, limit = 100).items
+            } catch (e: Exception) {
+                searchErr = e.message
+                searchResults = emptyList()
+            } finally {
+                searchBusy = false
+            }
+        }
+    }
+
     LaunchedEffect(retreatId) { load() }
+
+    LaunchedEffect(showLinkSearch) {
+        if (!showLinkSearch) return@LaunchedEffect
+        linkQuery = ""
+        searchErr = null
+        searchBusy = true
+        try {
+            searchResults = repo.searchVolunteers(q = null, limit = 100).items
+        } catch (e: Exception) {
+            searchErr = e.message
+            searchResults = emptyList()
+        } finally {
+            searchBusy = false
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -807,35 +1162,115 @@ private fun RetreatVolunteersScreen(nav: NavHostController, retreatId: String) {
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            importSummary?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(value = linkId, onValueChange = { linkId = it }, label = { Text("Volunteer to link") }, modifier = Modifier.weight(1f))
-                Button(
-                    onClick = {
-                        scope.launch {
-                            try {
-                                repo.linkRetreatVolunteer(retreatId, linkId.trim())
-                                linkId = ""
-                                load()
-                            } catch (e: Exception) {
-                                err = e.message
-                            }
-                        }
-                    },
-                ) { Text("Link") }
-            }
+            Button(onClick = { showLinkSearch = true }, modifier = Modifier.fillMaxWidth()) { Text("Link volunteer…") }
             Button(onClick = { pickCsv.launch("text/*") }, modifier = Modifier.fillMaxWidth()) { Text("Import CSV") }
-            LazyColumn {
+            LazyColumn(modifier = Modifier.weight(1f)) {
                 items(items, key = { it.volunteerId }) { rv ->
                     Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(rv.volunteer.displayName, style = MaterialTheme.typography.titleSmall)
-                            Text(rv.volunteer.email ?: "—", style = MaterialTheme.typography.bodySmall)
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(rv.volunteer.displayName, style = MaterialTheme.typography.titleSmall)
+                                Text(rv.volunteer.email ?: "—", style = MaterialTheme.typography.bodySmall)
+                            }
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        try {
+                                            repo.unlinkRetreatVolunteer(retreatId, rv.volunteerId)
+                                            load()
+                                        } catch (e: Exception) {
+                                            err = e.message
+                                        }
+                                    }
+                                },
+                            ) { Text("Unlink") }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showLinkSearch) {
+        AlertDialog(
+            onDismissRequest = { showLinkSearch = false },
+            title = { Text("Link volunteer") },
+            text = {
+                Column(Modifier.heightIn(max = 520.dp)) {
+                    OutlinedTextField(
+                        value = linkQuery,
+                        onValueChange = { linkQuery = it },
+                        label = { Text("Name or email") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { runVolunteerSearch() }),
+                    )
+                    TextButton(onClick = { runVolunteerSearch() }, enabled = !searchBusy) { Text("Search") }
+                    when {
+                        searchBusy -> CircularProgressIndicator(Modifier.padding(8.dp))
+                        searchErr != null -> Text(searchErr!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        searchResults.isEmpty() -> Text(
+                            "No volunteers in this list. Search by name or email, or leave blank for recent directory entries.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        else -> {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 320.dp)
+                                    .verticalScroll(rememberScrollState()),
+                            ) {
+                                searchResults.forEach { v ->
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                try {
+                                                    repo.linkRetreatVolunteer(retreatId, v.id)
+                                                    showLinkSearch = false
+                                                    load()
+                                                } catch (e: Exception) {
+                                                    searchErr = e.message
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Column(Modifier.fillMaxWidth()) {
+                                            Text(v.displayName)
+                                            v.email?.let { em ->
+                                                Text(em, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLinkSearch = false }) { Text("Done") }
+            },
+        )
+    }
+
+    importSummaryAlert?.let { summary ->
+        AlertDialog(
+            onDismissRequest = { importSummaryAlert = null },
+            title = { Text("Import result") },
+            text = { Text(summary) },
+            confirmButton = {
+                TextButton(onClick = { importSummaryAlert = null }) { Text("OK") }
+            },
+        )
     }
 }
 
@@ -903,7 +1338,12 @@ private fun ScheduleScreen(nav: NavHostController, retreatId: String) {
                 Text("${s.items.size} task(s) · ~$volMin volunteer-minutes", style = MaterialTheme.typography.titleSmall)
                 LazyColumn {
                     items(s.items) { row ->
-                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        Card(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable { nav.navigate("rtaskdetail/$retreatId/${row.task.id}") },
+                        ) {
                             Column(Modifier.padding(8.dp)) {
                                 Text(row.job.title, style = MaterialTheme.typography.titleSmall)
                                 Text(
@@ -1226,23 +1666,61 @@ private fun ScheduleMatrixScreen(nav: NavHostController, retreatId: String) {
 @Composable
 private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: String) {
     val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
     var detail by remember { mutableStateOf<JHTaskDetail?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+    var showAssign by remember { mutableStateOf(false) }
+    var showEdit by remember { mutableStateOf(false) }
+    var showDup by remember { mutableStateOf(false) }
+    var slotsPick by remember { mutableStateOf<List<Slot>>(emptyList()) }
+    var linkedPick by remember { mutableStateOf<List<RetreatVolunteer>>(emptyList()) }
+    var editSlotId by remember { mutableStateOf("") }
+    var editNotes by remember { mutableStateOf("") }
+    var dupSlotId by remember { mutableStateOf("") }
+    var dialogErr by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(retreatId, taskId) {
-        try {
-            detail = repo.getTask(retreatId, taskId)
-            err = null
-        } catch (e: Exception) {
-            err = e.message
-            detail = null
+    fun reload() {
+        scope.launch {
+            try {
+                detail = repo.getTask(retreatId, taskId)
+                err = null
+            } catch (e: Exception) {
+                err = e.message
+                detail = null
+            }
+        }
+    }
+
+    LaunchedEffect(retreatId, taskId) { reload() }
+
+    fun loadSlots() {
+        scope.launch {
+            try {
+                slotsPick = repo.listSlots(retreatId, null).items
+            } catch (e: Exception) {
+                dialogErr = e.message
+                slotsPick = emptyList()
+            }
+        }
+    }
+
+    fun loadLinked() {
+        scope.launch {
+            try {
+                linkedPick = repo.listRetreatVolunteers(retreatId).items
+            } catch (e: Exception) {
+                dialogErr = e.message
+                linkedPick = emptyList()
+            }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Task") },
+                title = { Text(detail?.job?.title ?: detail?.jobTitle ?: "Task") },
                 navigationIcon = {
                     IconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = null)
@@ -1260,8 +1738,8 @@ private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: 
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             detail?.let { d ->
-                Text(d.job?.title ?: d.jobTitle ?: "Job", style = MaterialTheme.typography.titleLarge)
                 Text(
                     listOfNotNull(d.slot?.label ?: d.slotLabel, d.slot?.slotDate).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
@@ -1274,14 +1752,258 @@ private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: 
                 val ac = d.assignmentCount ?: 0
                 Text("Assigned $ac / ${need ?: "?"}", style = MaterialTheme.typography.titleSmall)
                 d.notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                d.assignments?.takeIf { it.isNotEmpty() }?.let { list ->
-                    Text("Volunteers", style = MaterialTheme.typography.labelLarge)
-                    list.forEach { a ->
+                Text("Volunteers", style = MaterialTheme.typography.labelLarge)
+                val assignedIds = d.assignments.orEmpty().map { it.volunteerId }.toSet()
+                d.assignments.orEmpty().forEach { a ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             a.volunteer?.displayName?.takeIf { it.isNotBlank() } ?: "Unnamed volunteer",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
                         )
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    try {
+                                        repo.deleteAssignment(retreatId, a.id)
+                                        reload()
+                                    } catch (e: Exception) {
+                                        err = e.message
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            enabled = !busy,
+                        ) { Text("Remove") }
                     }
+                }
+                if (d.assignments.isNullOrEmpty()) {
+                    Text("None yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                }
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        dialogErr = null
+                        loadLinked()
+                        showAssign = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                ) { Text("Assign volunteer…") }
+                Button(
+                    onClick = {
+                        dialogErr = null
+                        editSlotId = d.slotId
+                        editNotes = d.notes.orEmpty()
+                        loadSlots()
+                        showEdit = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                ) { Text("Edit task") }
+                Button(
+                    onClick = {
+                        dialogErr = null
+                        dupSlotId = ""
+                        loadSlots()
+                        showDup = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                ) { Text("Duplicate to another slot…") }
+                Button(
+                    onClick = { showDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete task") }
+
+                if (showAssign) {
+                    val available = linkedPick.filter { it.volunteerId !in assignedIds }
+                    AlertDialog(
+                        onDismissRequest = { if (!busy) showAssign = false },
+                        title = { Text("Assign volunteer") },
+                        text = {
+                            Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+                                if (available.isEmpty()) {
+                                    Text(
+                                        "No linked volunteers left to assign, or none are linked to this retreat.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                    )
+                                } else {
+                                    available.forEach { rv ->
+                                        TextButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    busy = true
+                                                    try {
+                                                        repo.createAssignment(retreatId, taskId, rv.volunteerId)
+                                                        showAssign = false
+                                                        reload()
+                                                    } catch (e: Exception) {
+                                                        dialogErr = e.message
+                                                    } finally {
+                                                        busy = false
+                                                    }
+                                                }
+                                            },
+                                            enabled = !busy,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(rv.volunteer.displayName.ifBlank { rv.volunteerId })
+                                        }
+                                    }
+                                }
+                                dialogErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { showAssign = false }, enabled = !busy) { Text("Close") }
+                        },
+                    )
+                }
+
+                if (showEdit) {
+                    AlertDialog(
+                        onDismissRequest = { if (!busy) showEdit = false },
+                        title = { Text("Edit task") },
+                        text = {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                                OutlinedTextField(
+                                    value = editNotes,
+                                    onValueChange = { editNotes = it },
+                                    label = { Text("Notes") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Text("Slot", style = MaterialTheme.typography.labelMedium)
+                                slotsPick.forEach { s ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { editSlotId = s.id },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        RadioButton(selected = editSlotId == s.id, onClick = { editSlotId = s.id })
+                                        Text("${s.label} (${s.slotDate})")
+                                    }
+                                }
+                                dialogErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        dialogErr = null
+                                        try {
+                                            repo.updateTask(
+                                                retreatId,
+                                                taskId,
+                                                JHTaskPatch(
+                                                    slotId = editSlotId.takeIf { it.isNotBlank() },
+                                                    notes = editNotes.trim().ifBlank { null },
+                                                ),
+                                            )
+                                            showEdit = false
+                                            reload()
+                                        } catch (e: Exception) {
+                                            dialogErr = e.message
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                                enabled = !busy && editSlotId.isNotBlank(),
+                            ) { Text("Save") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { if (!busy) showEdit = false }, enabled = !busy) { Text("Cancel") }
+                        },
+                    )
+                }
+
+                if (showDup) {
+                    AlertDialog(
+                        onDismissRequest = { if (!busy) showDup = false },
+                        title = { Text("Duplicate task") },
+                        text = {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                                Text("Target slot", style = MaterialTheme.typography.labelMedium)
+                                slotsPick.forEach { s ->
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { dupSlotId = s.id },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        RadioButton(selected = dupSlotId == s.id, onClick = { dupSlotId = s.id })
+                                        Text("${s.label} (${s.slotDate})")
+                                    }
+                                }
+                                dialogErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        dialogErr = null
+                                        try {
+                                            val created = repo.duplicateTask(retreatId, taskId, dupSlotId)
+                                            showDup = false
+                                            nav.navigate("rtaskdetail/$retreatId/${created.id}") {
+                                                popUpTo("rtaskdetail/$retreatId/$taskId") { inclusive = true }
+                                            }
+                                        } catch (e: Exception) {
+                                            dialogErr = e.message
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                                enabled = !busy && dupSlotId.isNotBlank(),
+                            ) { Text("Duplicate") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { if (!busy) showDup = false }, enabled = !busy) { Text("Cancel") }
+                        },
+                    )
+                }
+
+                if (showDelete) {
+                    AlertDialog(
+                        onDismissRequest = { showDelete = false },
+                        title = { Text("Delete task?") },
+                        text = { Text("This cannot be undone.") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    scope.launch {
+                                        busy = true
+                                        try {
+                                            repo.deleteTask(retreatId, taskId)
+                                            showDelete = false
+                                            nav.popBackStack()
+                                        } catch (e: Exception) {
+                                            err = e.message
+                                            showDelete = false
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                            ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                        },
+                        dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancel") } },
+                    )
                 }
             }
         }
@@ -1292,18 +2014,30 @@ private fun TaskDetailScreen(nav: NavHostController, retreatId: String, taskId: 
 @Composable
 private fun SlotDetailScreen(nav: NavHostController, retreatId: String, slotId: String) {
     val repo = remember { JewelHeartRepository() }
+    val scope = rememberCoroutineScope()
     var slot by remember { mutableStateOf<Slot?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var showEdit by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+    var editLabel by remember { mutableStateOf("") }
+    var editDate by remember { mutableStateOf("") }
+    var editBand by remember { mutableStateOf(TimeBand.anytime) }
+    var editErr by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(retreatId, slotId) {
-        try {
-            slot = repo.getSlot(retreatId, slotId)
-            err = null
-        } catch (e: Exception) {
-            err = e.message
-            slot = null
+    fun reload() {
+        scope.launch {
+            try {
+                slot = repo.getSlot(retreatId, slotId)
+                err = null
+            } catch (e: Exception) {
+                err = e.message
+                slot = null
+            }
         }
     }
+
+    LaunchedEffect(retreatId, slotId) { reload() }
 
     Scaffold(
         topBar = {
@@ -1326,14 +2060,112 @@ private fun SlotDetailScreen(nav: NavHostController, retreatId: String, slotId: 
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
             slot?.let { s ->
                 Text("Date: ${s.slotDate}", style = MaterialTheme.typography.bodyLarge)
                 Text("Time band: ${s.timeBand.name}", style = MaterialTheme.typography.bodyMedium)
                 s.dayOfWeek?.takeIf { it.isNotBlank() }?.let { Text("Day of week: $it") }
                 s.activityContext?.takeIf { it.isNotBlank() }?.let { Text("Context: $it") }
                 Text("id: ${s.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        editLabel = s.label
+                        editDate = s.slotDate
+                        editBand = s.timeBand
+                        editErr = null
+                        showEdit = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                ) { Text("Edit slot") }
+                Button(
+                    onClick = { showDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete slot") }
             }
         }
+    }
+
+    if (showEdit && slot != null) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) showEdit = false },
+            title = { Text("Edit slot") },
+            text = {
+                Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = editLabel, onValueChange = { editLabel = it }, label = { Text("Label") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = editDate, onValueChange = { editDate = it }, label = { Text("Date yyyy-MM-dd") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    Text("Time band", style = MaterialTheme.typography.labelMedium)
+                    TimeBand.entries.forEach { b ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { editBand = b },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = editBand == b, onClick = { editBand = b })
+                            Text(b.name)
+                        }
+                    }
+                    editErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            editErr = null
+                            try {
+                                repo.updateSlot(
+                                    retreatId,
+                                    slotId,
+                                    SlotPatch(label = editLabel.trim().ifEmpty { null }, slotDate = editDate.trim().ifEmpty { null }, timeBand = editBand),
+                                )
+                                showEdit = false
+                                reload()
+                            } catch (e: Exception) {
+                                editErr = e.message
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    enabled = !busy && editLabel.isNotBlank() && editDate.isNotBlank(),
+                ) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { if (!busy) showEdit = false }, enabled = !busy) { Text("Cancel") } },
+        )
+    }
+
+    if (showDelete) {
+        AlertDialog(
+            onDismissRequest = { showDelete = false },
+            title = { Text("Delete slot?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            try {
+                                repo.deleteSlot(retreatId, slotId)
+                                showDelete = false
+                                nav.popBackStack()
+                            } catch (e: Exception) {
+                                err = e.message
+                                showDelete = false
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancel") } },
+        )
     }
 }
 
@@ -1855,15 +2687,38 @@ private fun VolunteerEditScreen(nav: NavHostController, volunteerId: String) {
     }
 }
 
+private fun jewelheartAuthStatus(user: com.google.firebase.auth.FirebaseUser?): String {
+    if (user == null) return "Signed out"
+    if (user.isAnonymous) return "Signed in · Anonymous"
+    val ids = user.providerData.map { it.providerId }
+    return when {
+        ids.contains("google.com") -> "Signed in · Google"
+        ids.contains("password") -> "Signed in · Email"
+        ids.contains("apple.com") -> "Signed in · Apple"
+        else -> ids.firstOrNull()?.let { "Signed in · $it" } ?: "Signed in"
+    }
+}
+
 @Composable
 fun MetaTabContent() {
+    val auth = remember { FirebaseAuth.getInstance() }
+    var user by remember { mutableStateOf(auth.currentUser) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val listener = FirebaseAuth.AuthStateListener { u -> user = u.currentUser }
+        auth.addAuthStateListener(listener)
+        onDispose { auth.removeAuthStateListener(listener) }
+    }
     val repo = remember { JewelHeartRepository() }
     val scope = rememberCoroutineScope()
-    val user = FirebaseAuth.getInstance().currentUser
     var health by remember { mutableStateOf<String?>(null) }
     var actionId by remember { mutableStateOf("refresh") }
+    var actionRetreatId by remember { mutableStateOf("") }
+    var actionPayloadKey by remember { mutableStateOf("") }
+    var actionPayloadValue by remember { mutableStateOf("") }
     var actionResult by remember { mutableStateOf<String?>(null) }
     var err by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var signOutErr by remember { mutableStateOf<String?>(null) }
 
     Column(
         Modifier
@@ -1873,41 +2728,111 @@ fun MetaTabContent() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.titleLarge)
+        Text("Signed-in (ACL)", style = MaterialTheme.typography.titleSmall)
+        Text(jewelheartAuthStatus(user), style = MaterialTheme.typography.bodyMedium)
         Text("Firebase UID:\n${user?.uid ?: "—"}", style = MaterialTheme.typography.bodySmall)
+        Text(
+            "Add this UID to Postgres jewelheart_admins (or jewelheart_retreat_admins) for directory access. " +
+                "Each anonymous sign-in uses a new UID.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        signOutErr?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        Button(
+            onClick = {
+                signOutErr = null
+                try {
+                    auth.signOut()
+                } catch (e: Exception) {
+                    signOutErr = e.message
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+        ) { Text("Sign out") }
+        Spacer(Modifier.height(8.dp))
+        Text("Health (no auth)", style = MaterialTheme.typography.titleSmall)
         Button(
             onClick = {
                 scope.launch {
+                    busy = true
                     try {
                         val h = repo.getHealth()
                         health = "ok=${h.ok} service=${h.service}"
+                        err = null
                     } catch (e: Exception) {
-                        health = e.message
+                        health = null
+                        err = e.message
+                    } finally {
+                        busy = false
                     }
                 }
             },
-        ) { Text("GET /jewelheart/health") }
+            enabled = !busy,
+        ) { Text("Ping GET /jewelheart/health") }
         health?.let { Text(it) }
-        OutlinedTextField(value = actionId, onValueChange = { actionId = it }, label = { Text("SDUI actionId") }, modifier = Modifier.fillMaxWidth())
+        err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        Spacer(Modifier.height(8.dp))
+        Text("SDUI action (POST /jewelheart/sdui/action)", style = MaterialTheme.typography.titleSmall)
+        OutlinedTextField(value = actionId, onValueChange = { actionId = it }, label = { Text("actionId") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(
+            value = actionRetreatId,
+            onValueChange = { actionRetreatId = it },
+            label = { Text("retreatId (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = actionPayloadKey,
+            onValueChange = { actionPayloadKey = it },
+            label = { Text("payload key (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = actionPayloadValue,
+            onValueChange = { actionPayloadValue = it },
+            label = { Text("payload value (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
         Button(
             onClick = {
                 scope.launch {
+                    busy = true
+                    actionResult = null
+                    err = null
                     try {
-                        val r = repo.postSduiAction(actionId.trim())
-                        actionResult = listOfNotNull(r.ok?.let { "ok=$it" }, r.message, r.refreshScreenId?.let { "refresh=$it" }).joinToString("\n")
-                        err = null
+                        val rid = actionRetreatId.trim()
+                        val payload =
+                            if (actionPayloadKey.isNotBlank()) {
+                                mapOf<String, Any>(actionPayloadKey.trim() to actionPayloadValue)
+                            } else {
+                                null
+                            }
+                        val r = repo.postSduiAction(
+                            actionId.trim(),
+                            retreatId = rid.takeIf { it.isNotEmpty() },
+                            payload = payload,
+                        )
+                        val lines = listOfNotNull(
+                            r.ok?.let { "ok=$it" },
+                            r.message?.let { "message=$it" },
+                            r.refreshScreenId?.let { "refreshScreenId=$it" },
+                            if (r.nextScreen != null) "nextScreen: <envelope present>" else null,
+                        )
+                        actionResult = if (lines.isEmpty()) "(empty response body fields)" else lines.joinToString("\n")
                     } catch (e: Exception) {
                         err = e.message
                         actionResult = null
+                    } finally {
+                        busy = false
                     }
                 }
             },
-        ) { Text("POST /jewelheart/sdui/action") }
+            enabled = !busy,
+        ) { Text("Send action") }
         actionResult?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Spacer(Modifier.height(24.dp))
-        Button(
-            onClick = { FirebaseAuth.getInstance().signOut() },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Sign out") }
+        if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
     }
 }

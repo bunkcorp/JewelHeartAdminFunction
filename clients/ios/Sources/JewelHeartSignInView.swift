@@ -5,6 +5,8 @@ import SwiftUI
 /// KarmaDots-style options: Google, Apple, email, anonymous (Firebase same project as private-server).
 struct JewelHeartSignInView: View {
     @State private var busy = false
+    /// Google OAuth presents its own UI; avoid toggling `busy` (and `ProgressView`) during that flow — iOS can auto-cancel if another presentation is active.
+    @State private var googleSigningIn = false
     @State private var message = ""
     @State private var showEmailSignIn = false
     @State private var showEmailSignUp = false
@@ -35,6 +37,7 @@ struct JewelHeartSignInView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .disabled(googleSigningIn)
 
                 Button {
                     showEmailSignUp = true
@@ -43,6 +46,7 @@ struct JewelHeartSignInView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .disabled(googleSigningIn)
 
                 Button {
                     Task { await signInAnon() }
@@ -51,7 +55,7 @@ struct JewelHeartSignInView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(busy)
+                .disabled(busy || googleSigningIn)
 
                 Text("Google: enable Google sign-in in Firebase Console and set the URL scheme to REVERSED_CLIENT_ID from GoogleService-Info (see clients/ios project settings).")
                     .font(.caption2)
@@ -72,14 +76,14 @@ struct JewelHeartSignInView: View {
 
     private var googleButton: some View {
         Button {
-            Task { await run { try await JewelHeartFirebaseSignIn.signInWithGoogle() } }
+            Task { await signInWithGoogleAvoidingPresentationConflict() }
         } label: {
             Label("Sign in with Google", systemImage: "globe")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .tint(.red)
-        .disabled(busy)
+        .disabled(busy || googleSigningIn)
     }
 
     private var appleButton: some View {
@@ -111,7 +115,7 @@ struct JewelHeartSignInView: View {
         .frame(height: 48)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .disabled(busy)
+        .disabled(busy || googleSigningIn)
     }
 
     @MainActor
@@ -126,6 +130,22 @@ struct JewelHeartSignInView: View {
             JewelHeartLog.authError("sign-in FAILED: \(JewelHeartLog.describe(error))")
         }
         busy = false
+    }
+
+    /// Do not set `busy` before `GIDSignIn` presents — avoids SwiftUI `ProgressView` / layout fighting the OAuth sheet (false "cancelled" flows).
+    @MainActor
+    private func signInWithGoogleAvoidingPresentationConflict() async {
+        guard !googleSigningIn, !busy else { return }
+        message = ""
+        googleSigningIn = true
+        defer { googleSigningIn = false }
+        do {
+            try await JewelHeartFirebaseSignIn.signInWithGoogle()
+            JewelHeartLog.authInfo("sign-in ok provider=google")
+        } catch {
+            message = error.localizedDescription
+            JewelHeartLog.authError("sign-in FAILED: \(JewelHeartLog.describe(error))")
+        }
     }
 
     private func signInAnon() async {

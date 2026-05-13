@@ -36,6 +36,9 @@ enum JewelHeartFirebaseSignIn {
             throw JewelHeartFirebaseSignInError.noPresentingViewController
         }
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        // Clear stale Google session so repeat sign-in does not immediately return "cancelled"
+        // (same idea as signOut() before signIn on @react-native-google-signin).
+        GIDSignIn.sharedInstance.signOut()
         let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenting)
         guard let idToken = result.user.idToken?.tokenString else {
             throw JewelHeartFirebaseSignInError.missingGoogleIDToken
