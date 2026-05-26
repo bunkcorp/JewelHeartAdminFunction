@@ -84,6 +84,10 @@ private fun Context.volunteerPrefs() = getSharedPreferences(VolunteerPrefsName, 
 
 @Composable
 fun VolunteerNavHost(navController: NavHostController) {
+    if (JewelHeartConfig.volunteerV2Redesign) {
+        VolunteerV2NavHost(navController)
+        return
+    }
     NavHost(navController = navController, startDestination = "vlist", modifier = Modifier.fillMaxSize()) {
         composable("vlist") { VolunteerRetreatListScreen(navController) }
         composable(

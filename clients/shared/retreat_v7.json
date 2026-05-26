@@ -1,0 +1,1148 @@
+﻿{
+    "retreatName":  "JH Summer 2026 Retreat",
+    "startDate":  "2026-07-20",
+    "endDate":  "2026-07-26",
+    "scheduledDays":  6,
+    "testToday":  "2026-07-21",
+    "shifts":  [
+                   {
+                       "id":  "d1-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d1-lunch-break-caf-light-cleanup",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d1-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d1-end-day-caf-full-cleanup",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d1-end-day-kitchen-full-cleanup",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d1-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d1-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d1-any-time-men-s-room-clean-stock",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d1-any-time-urinals-check-pads-mop",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d1-any-time-women-s-room-clean-stock",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d1-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  1,
+                       "weekday":  "Mon",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-lunch-break-caf-light-cleanup",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-end-day-caf-full-cleanup",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d2-end-day-kitchen-full-cleanup",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d2-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-end-day-at-home-launder-towels-mop-pads",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "End day",
+                       "site":  "At home",
+                       "activity":  "Launder towels \u0026 mop pads",
+                       "jobTitle":  "At home — Launder towels \u0026 mop pads",
+                       "jobId":  "at-home-launder-towels-mop-pads",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-any-time-tara-paradise-store-store-hallway-vacuum",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Tara Paradise, store, store hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Tara Paradise, store, store hallway — Vacuum",
+                       "jobId":  "tara-paradise-store-store-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-any-time-jh-office-main-hallway-vacuum",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "JH office, main hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "JH office, main hallway — Vacuum",
+                       "jobId":  "jh-office-main-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-any-time-lama-offices-clean",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Lama offices",
+                       "activity":  "Clean",
+                       "jobTitle":  "Lama offices — Clean",
+                       "jobId":  "lama-offices-clean",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-any-time-men-s-room-clean-stock",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-any-time-urinals-check-pads-mop",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d2-any-time-women-s-room-clean-stock",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d2-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  2,
+                       "weekday":  "Tue",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d3-lunch-break-caf-light-cleanup",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-end-day-caf-full-cleanup",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d3-end-day-kitchen-full-cleanup",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d3-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d3-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-any-time-men-s-room-clean-stock",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-any-time-urinals-check-pads-mop",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d3-any-time-women-s-room-clean-stock",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d3-any-time-foyer-lobby-vacuum",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Foyer \u0026 lobby",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Foyer \u0026 lobby — Vacuum",
+                       "jobId":  "foyer-lobby-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d3-any-time-front-windows-clean",
+                       "dayNumber":  3,
+                       "weekday":  "Wed",
+                       "slot":  "Any time",
+                       "site":  "Front windows",
+                       "activity":  "Clean",
+                       "jobTitle":  "Front windows — Clean",
+                       "jobId":  "front-windows-clean",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-lunch-break-caf-light-cleanup",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-end-day-caf-full-cleanup",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d4-end-day-kitchen-full-cleanup",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d4-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-end-day-at-home-launder-towels-mop-pads",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "End day",
+                       "site":  "At home",
+                       "activity":  "Launder towels \u0026 mop pads",
+                       "jobTitle":  "At home — Launder towels \u0026 mop pads",
+                       "jobId":  "at-home-launder-towels-mop-pads",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-any-time-tara-paradise-store-store-hallway-vacuum",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Tara Paradise, store, store hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Tara Paradise, store, store hallway — Vacuum",
+                       "jobId":  "tara-paradise-store-store-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-any-time-jh-office-main-hallway-vacuum",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "JH office, main hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "JH office, main hallway — Vacuum",
+                       "jobId":  "jh-office-main-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-any-time-lama-offices-clean",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Lama offices",
+                       "activity":  "Clean",
+                       "jobTitle":  "Lama offices — Clean",
+                       "jobId":  "lama-offices-clean",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-any-time-men-s-room-clean-stock",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-any-time-urinals-check-pads-mop",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d4-any-time-women-s-room-clean-stock",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d4-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  4,
+                       "weekday":  "Thu",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d5-lunch-break-caf-light-cleanup",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-end-day-caf-full-cleanup",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d5-end-day-kitchen-full-cleanup",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d5-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d5-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-any-time-men-s-room-clean-stock",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-any-time-urinals-check-pads-mop",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d5-any-time-women-s-room-clean-stock",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d5-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  5,
+                       "weekday":  "Fri",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-start-day-coffee-snacks-morning-setup",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Start day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Morning setup",
+                       "jobTitle":  "Coffee \u0026 snacks — Morning setup",
+                       "jobId":  "coffee-snacks-morning-setup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-lunch-break-caf-light-cleanup",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Lunch break",
+                       "site":  "Café",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Café — Light cleanup",
+                       "jobId":  "caf-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-lunch-break-kitchen-light-cleanup",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Lunch break",
+                       "site":  "Kitchen",
+                       "activity":  "Light cleanup",
+                       "jobTitle":  "Kitchen — Light cleanup",
+                       "jobId":  "kitchen-light-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-end-day-caf-full-cleanup",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "End day",
+                       "site":  "Café",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Café — Full cleanup",
+                       "jobId":  "caf-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d6-end-day-kitchen-full-cleanup",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "End day",
+                       "site":  "Kitchen",
+                       "activity":  "Full cleanup",
+                       "jobTitle":  "Kitchen — Full cleanup",
+                       "jobId":  "kitchen-full-cleanup",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  20
+                   },
+                   {
+                       "id":  "d6-end-day-coffee-snacks-evening-breakdown",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "End day",
+                       "site":  "Coffee \u0026 snacks",
+                       "activity":  "Evening breakdown",
+                       "jobTitle":  "Coffee \u0026 snacks — Evening breakdown",
+                       "jobId":  "coffee-snacks-evening-breakdown",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-end-day-at-home-launder-towels-mop-pads",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "End day",
+                       "site":  "At home",
+                       "activity":  "Launder towels \u0026 mop pads",
+                       "jobTitle":  "At home — Launder towels \u0026 mop pads",
+                       "jobId":  "at-home-launder-towels-mop-pads",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-any-time-tara-paradise-store-store-hallway-vacuum",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Tara Paradise, store, store hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Tara Paradise, store, store hallway — Vacuum",
+                       "jobId":  "tara-paradise-store-store-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-any-time-jh-office-main-hallway-vacuum",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "JH office, main hallway",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "JH office, main hallway — Vacuum",
+                       "jobId":  "jh-office-main-hallway-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-any-time-coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Coatroom, café hallway, main hall rear",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Coatroom, café hallway, main hall rear — Vacuum",
+                       "jobId":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-any-time-lama-offices-clean",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Lama offices",
+                       "activity":  "Clean",
+                       "jobTitle":  "Lama offices — Clean",
+                       "jobId":  "lama-offices-clean",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-any-time-men-s-room-clean-stock",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Men\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Men\u0027s room — Clean \u0026 stock",
+                       "jobId":  "men-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-any-time-urinals-check-pads-mop",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Urinals",
+                       "activity":  "Check pads \u0026 mop",
+                       "jobTitle":  "Urinals — Check pads \u0026 mop",
+                       "jobId":  "urinals-check-pads-mop",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-any-time-women-s-room-clean-stock",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Women\u0027s room",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Women\u0027s room — Clean \u0026 stock",
+                       "jobId":  "women-s-room-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-any-time-unisex-lama-bathrooms-clean-stock",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Unisex \u0026 Lama bathrooms",
+                       "activity":  "Clean \u0026 stock",
+                       "jobTitle":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                       "jobId":  "unisex-lama-bathrooms-clean-stock",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   },
+                   {
+                       "id":  "d6-any-time-foyer-lobby-vacuum",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Foyer \u0026 lobby",
+                       "activity":  "Vacuum",
+                       "jobTitle":  "Foyer \u0026 lobby — Vacuum",
+                       "jobId":  "foyer-lobby-vacuum",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  15
+                   },
+                   {
+                       "id":  "d6-any-time-front-windows-clean",
+                       "dayNumber":  6,
+                       "weekday":  "Sat",
+                       "slot":  "Any time",
+                       "site":  "Front windows",
+                       "activity":  "Clean",
+                       "jobTitle":  "Front windows — Clean",
+                       "jobId":  "front-windows-clean",
+                       "volunteersNeeded":  1,
+                       "estimatedMinutes":  10
+                   }
+               ],
+    "jobs":  [
+                 {
+                     "id":  "unisex-lama-bathrooms-clean-stock",
+                     "site":  "Unisex \u0026 Lama bathrooms",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "kitchen-light-cleanup",
+                     "site":  "Kitchen",
+                     "activity":  "Light cleanup",
+                     "title":  "Kitchen — Light cleanup",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                     "site":  "Coatroom, café hallway, main hall rear",
+                     "activity":  "Vacuum",
+                     "title":  "Coatroom, café hallway, main hall rear — Vacuum",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "men-s-room-clean-stock",
+                     "site":  "Men\u0027s room",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Men\u0027s room — Clean \u0026 stock",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "jh-office-main-hallway-vacuum",
+                     "site":  "JH office, main hallway",
+                     "activity":  "Vacuum",
+                     "title":  "JH office, main hallway — Vacuum",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "coffee-snacks-evening-breakdown",
+                     "site":  "Coffee \u0026 snacks",
+                     "activity":  "Evening breakdown",
+                     "title":  "Coffee \u0026 snacks — Evening breakdown",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "coffee-snacks-morning-setup",
+                     "site":  "Coffee \u0026 snacks",
+                     "activity":  "Morning setup",
+                     "title":  "Coffee \u0026 snacks — Morning setup",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "caf-light-cleanup",
+                     "site":  "Café",
+                     "activity":  "Light cleanup",
+                     "title":  "Café — Light cleanup",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "urinals-check-pads-mop",
+                     "site":  "Urinals",
+                     "activity":  "Check pads \u0026 mop",
+                     "title":  "Urinals — Check pads \u0026 mop",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "kitchen-full-cleanup",
+                     "site":  "Kitchen",
+                     "activity":  "Full cleanup",
+                     "title":  "Kitchen — Full cleanup",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "front-windows-clean",
+                     "site":  "Front windows",
+                     "activity":  "Clean",
+                     "title":  "Front windows — Clean",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "at-home-launder-towels-mop-pads",
+                     "site":  "At home",
+                     "activity":  "Launder towels \u0026 mop pads",
+                     "title":  "At home — Launder towels \u0026 mop pads",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "foyer-lobby-vacuum",
+                     "site":  "Foyer \u0026 lobby",
+                     "activity":  "Vacuum",
+                     "title":  "Foyer \u0026 lobby — Vacuum",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "tara-paradise-store-store-hallway-vacuum",
+                     "site":  "Tara Paradise, store, store hallway",
+                     "activity":  "Vacuum",
+                     "title":  "Tara Paradise, store, store hallway — Vacuum",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "women-s-room-clean-stock",
+                     "site":  "Women\u0027s room",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Women\u0027s room — Clean \u0026 stock",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "caf-full-cleanup",
+                     "site":  "Café",
+                     "activity":  "Full cleanup",
+                     "title":  "Café — Full cleanup",
+                     "instructions":  {
+
+                                      }
+                 },
+                 {
+                     "id":  "lama-offices-clean",
+                     "site":  "Lama offices",
+                     "activity":  "Clean",
+                     "title":  "Lama offices — Clean",
+                     "instructions":  {
+
+                                      }
+                 }
+             ]
+}

@@ -21,6 +21,8 @@ targets:
     sources:
       - path: Sources
       - path: Assets.xcassets
+      - path: Resources
+        buildPhase: resources
       - path: GoogleService-Info.plist
         buildPhase: resources
     info:

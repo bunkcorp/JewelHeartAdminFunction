@@ -26,4 +26,10 @@ object JewelHeartConfig {
      * contains every substring (case-insensitive) wins. Tuned for "Summer retreat – Jul 20 …".
      */
     val singleRetreatNameMatchers: List<String> = listOf("summer", "jul")
+
+    /** Volunteer tab: walking-skeleton redesign from Retreat_Volunteer_Schedule v7. */
+    const val volunteerV2Redesign: Boolean = true
+
+    /** When true, "today" is retreat_v7.json testToday (Jul 21 2026 = retreat day 2). */
+    const val volunteerV2UseTestToday: Boolean = true
 }

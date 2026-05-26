@@ -20,7 +20,11 @@ struct AdminRootTabView: View {
             .tabItem { Label("Directory", systemImage: "person.3.fill") }
 
             NavigationStack {
-                VolunteerSelfServiceRootView()
+                if JewelHeartConfig.volunteerV2Redesign {
+                    VolunteerV2RootView()
+                } else {
+                    VolunteerSelfServiceRootView()
+                }
             }
             .tabItem { Label("Volunteer", systemImage: "calendar.badge.plus") }
 

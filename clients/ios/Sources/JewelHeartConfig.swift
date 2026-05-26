@@ -12,4 +12,10 @@ enum JewelHeartConfig {
         let scheme = useTLS ? "https" : "http"
         return URL(string: "\(scheme)://\(apiHost)")!
     }
+
+    /// Volunteer tab: walking-skeleton redesign from Retreat_Volunteer_Schedule v7.
+    static let volunteerV2Redesign = true
+
+    /// When true, "today" is retreat_v7.json testToday (Jul 21 2026 = retreat day 2).
+    static let volunteerV2UseTestToday = true
 }
