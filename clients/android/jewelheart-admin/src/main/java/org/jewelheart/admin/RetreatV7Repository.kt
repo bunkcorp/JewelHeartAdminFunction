@@ -1,7 +1,6 @@
 package org.jewelheart.admin
 
 import android.content.Context
-import com.google.gson.Gson
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -11,9 +10,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class RetreatV7Repository(context: Context) {
-    private val gson = Gson()
-    val data: RetreatV7Data =
-        context.assets.open("retreat_v7.json").bufferedReader().use { gson.fromJson(it, RetreatV7Data::class.java) }
+    val data: RetreatV7Data = loadData(context)
+
+    private fun loadData(context: Context): RetreatV7Data {
+        val raw =
+            context.assets.open("retreat_v7.json").bufferedReader().use { it.readText() }
+                .removePrefix("\uFEFF")
+        return RetreatV7Json.gson.fromJson(raw, RetreatV7Data::class.java)
+            ?: error("retreat_v7.json did not parse")
+    }
 
     private val jobsById = data.jobs.associateBy { it.id }
     private val shiftsById = data.shifts.associateBy { it.id }

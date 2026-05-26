@@ -98,30 +98,41 @@ for ($r = 1; $r -le 200; $r++) {
     if ($b -and $currentJobId) { $instructionsByJobId[$currentJobId] += $b }
 }
 
-$jobs = @{}
+function Get-InstructionLines([string]$jobId) {
+    if (-not $instructionsByJobId.ContainsKey($jobId)) { return @() }
+    return @($instructionsByJobId[$jobId] | Where-Object { $_ })
+}
+
+$jobs = [System.Collections.Generic.List[object]]::new()
 foreach ($s in $shifts) {
     $jt = $s.jobTitle
-    if (-not $jobs.ContainsKey($jt)) {
-        $jobs[$jt] = [ordered]@{
+    if ($jobs | Where-Object { $_.title -eq $jt }) { continue }
+    $lines = Get-InstructionLines $s.jobId
+    $jobs.Add([PSCustomObject]@{
             id           = $s.jobId
             site         = $s.site
             activity     = $s.activity
             title        = $jt
-            instructions = if ($instructionsByJobId.ContainsKey($s.jobId)) { @($instructionsByJobId[$s.jobId]) } else { @() }
-        }
-    }
+            instructions = [string[]]$lines
+        })
 }
 
-$outObj = [ordered]@{
+$outObj = [PSCustomObject]@{
     retreatName   = "JH Summer 2026 Retreat"
     startDate     = "2026-07-20"
     endDate       = "2026-07-26"
     scheduledDays = 6
     testToday     = "2026-07-21"
-    shifts        = $shifts
-    jobs          = @($jobs.Values)
+    shifts        = @($shifts)
+    jobs          = $jobs.ToArray()
 }
 
 New-Item -ItemType Directory -Path (Split-Path $OutPath) -Force | Out-Null
-$outObj | ConvertTo-Json -Depth 6 | Set-Content $OutPath -Encoding UTF8
+$json = $outObj | ConvertTo-Json -Depth 10
+# PowerShell 5.1 emits {} or null for empty nested arrays; Gson requires [].
+$json = [regex]::Replace($json, '"instructions"\s*:\s*\{\s*\}', '"instructions": []')
+$json = [regex]::Replace($json, '"instructions"\s*:\s*null', '"instructions": []')
+# UTF-8 without BOM — BOM breaks Gson on Android.
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($OutPath, $json, $utf8NoBom)
 Write-Host "Wrote $($shifts.Count) shifts, $($jobs.Count) jobs to $OutPath"

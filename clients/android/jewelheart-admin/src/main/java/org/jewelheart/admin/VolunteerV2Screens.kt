@@ -310,7 +310,7 @@ private fun VolunteerV2ShiftScreen(
       Text("Slot: ${shift.slot}", fontSize = 16.sp)
       Text("About ${shift.estimatedMinutes} min", fontSize = 15.sp)
       Text("Instructions", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-      val steps = job?.instructions?.filter { it.isNotBlank() }.orEmpty()
+      val steps = job?.instructions?.filter { !it.isNullOrBlank() }.orEmpty()
       if (steps.isEmpty()) {
         Text("(No instructions listed)", fontSize = 15.sp)
       } else {

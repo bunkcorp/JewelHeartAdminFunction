@@ -30,5 +30,5 @@ data class RetreatV7Job(
     @SerializedName("site") val site: String,
     @SerializedName("activity") val activity: String,
     @SerializedName("title") val title: String,
-    @SerializedName("instructions") val instructions: List<String>,
+    @SerializedName("instructions") val instructions: List<String> = emptyList(),
 )

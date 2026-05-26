@@ -1,4 +1,4 @@
-﻿{
+{
     "retreatName":  "JH Summer 2026 Retreat",
     "startDate":  "2026-07-20",
     "endDate":  "2026-07-26",
@@ -992,157 +992,123 @@
                ],
     "jobs":  [
                  {
-                     "id":  "unisex-lama-bathrooms-clean-stock",
-                     "site":  "Unisex \u0026 Lama bathrooms",
-                     "activity":  "Clean \u0026 stock",
-                     "title":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "kitchen-light-cleanup",
-                     "site":  "Kitchen",
-                     "activity":  "Light cleanup",
-                     "title":  "Kitchen — Light cleanup",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "coatroom-caf-hallway-main-hall-rear-vacuum",
-                     "site":  "Coatroom, café hallway, main hall rear",
-                     "activity":  "Vacuum",
-                     "title":  "Coatroom, café hallway, main hall rear — Vacuum",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "men-s-room-clean-stock",
-                     "site":  "Men\u0027s room",
-                     "activity":  "Clean \u0026 stock",
-                     "title":  "Men\u0027s room — Clean \u0026 stock",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "jh-office-main-hallway-vacuum",
-                     "site":  "JH office, main hallway",
-                     "activity":  "Vacuum",
-                     "title":  "JH office, main hallway — Vacuum",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "coffee-snacks-evening-breakdown",
-                     "site":  "Coffee \u0026 snacks",
-                     "activity":  "Evening breakdown",
-                     "title":  "Coffee \u0026 snacks — Evening breakdown",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
                      "id":  "coffee-snacks-morning-setup",
                      "site":  "Coffee \u0026 snacks",
                      "activity":  "Morning setup",
                      "title":  "Coffee \u0026 snacks — Morning setup",
-                     "instructions":  {
-
-                                      }
+                     "instructions": []
                  },
                  {
                      "id":  "caf-light-cleanup",
                      "site":  "Café",
                      "activity":  "Light cleanup",
                      "title":  "Café — Light cleanup",
-                     "instructions":  {
-
-                                      }
+                     "instructions": []
                  },
                  {
-                     "id":  "urinals-check-pads-mop",
-                     "site":  "Urinals",
-                     "activity":  "Check pads \u0026 mop",
-                     "title":  "Urinals — Check pads \u0026 mop",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "kitchen-full-cleanup",
+                     "id":  "kitchen-light-cleanup",
                      "site":  "Kitchen",
-                     "activity":  "Full cleanup",
-                     "title":  "Kitchen — Full cleanup",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "front-windows-clean",
-                     "site":  "Front windows",
-                     "activity":  "Clean",
-                     "title":  "Front windows — Clean",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "at-home-launder-towels-mop-pads",
-                     "site":  "At home",
-                     "activity":  "Launder towels \u0026 mop pads",
-                     "title":  "At home — Launder towels \u0026 mop pads",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "foyer-lobby-vacuum",
-                     "site":  "Foyer \u0026 lobby",
-                     "activity":  "Vacuum",
-                     "title":  "Foyer \u0026 lobby — Vacuum",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "tara-paradise-store-store-hallway-vacuum",
-                     "site":  "Tara Paradise, store, store hallway",
-                     "activity":  "Vacuum",
-                     "title":  "Tara Paradise, store, store hallway — Vacuum",
-                     "instructions":  {
-
-                                      }
-                 },
-                 {
-                     "id":  "women-s-room-clean-stock",
-                     "site":  "Women\u0027s room",
-                     "activity":  "Clean \u0026 stock",
-                     "title":  "Women\u0027s room — Clean \u0026 stock",
-                     "instructions":  {
-
-                                      }
+                     "activity":  "Light cleanup",
+                     "title":  "Kitchen — Light cleanup",
+                     "instructions": []
                  },
                  {
                      "id":  "caf-full-cleanup",
                      "site":  "Café",
                      "activity":  "Full cleanup",
                      "title":  "Café — Full cleanup",
-                     "instructions":  {
-
-                                      }
+                     "instructions": []
+                 },
+                 {
+                     "id":  "kitchen-full-cleanup",
+                     "site":  "Kitchen",
+                     "activity":  "Full cleanup",
+                     "title":  "Kitchen — Full cleanup",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "coffee-snacks-evening-breakdown",
+                     "site":  "Coffee \u0026 snacks",
+                     "activity":  "Evening breakdown",
+                     "title":  "Coffee \u0026 snacks — Evening breakdown",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "coatroom-caf-hallway-main-hall-rear-vacuum",
+                     "site":  "Coatroom, café hallway, main hall rear",
+                     "activity":  "Vacuum",
+                     "title":  "Coatroom, café hallway, main hall rear — Vacuum",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "men-s-room-clean-stock",
+                     "site":  "Men\u0027s room",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Men\u0027s room — Clean \u0026 stock",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "urinals-check-pads-mop",
+                     "site":  "Urinals",
+                     "activity":  "Check pads \u0026 mop",
+                     "title":  "Urinals — Check pads \u0026 mop",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "women-s-room-clean-stock",
+                     "site":  "Women\u0027s room",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Women\u0027s room — Clean \u0026 stock",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "unisex-lama-bathrooms-clean-stock",
+                     "site":  "Unisex \u0026 Lama bathrooms",
+                     "activity":  "Clean \u0026 stock",
+                     "title":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "at-home-launder-towels-mop-pads",
+                     "site":  "At home",
+                     "activity":  "Launder towels \u0026 mop pads",
+                     "title":  "At home — Launder towels \u0026 mop pads",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "tara-paradise-store-store-hallway-vacuum",
+                     "site":  "Tara Paradise, store, store hallway",
+                     "activity":  "Vacuum",
+                     "title":  "Tara Paradise, store, store hallway — Vacuum",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "jh-office-main-hallway-vacuum",
+                     "site":  "JH office, main hallway",
+                     "activity":  "Vacuum",
+                     "title":  "JH office, main hallway — Vacuum",
+                     "instructions": []
                  },
                  {
                      "id":  "lama-offices-clean",
                      "site":  "Lama offices",
                      "activity":  "Clean",
                      "title":  "Lama offices — Clean",
-                     "instructions":  {
-
-                                      }
+                     "instructions": []
+                 },
+                 {
+                     "id":  "foyer-lobby-vacuum",
+                     "site":  "Foyer \u0026 lobby",
+                     "activity":  "Vacuum",
+                     "title":  "Foyer \u0026 lobby — Vacuum",
+                     "instructions": []
+                 },
+                 {
+                     "id":  "front-windows-clean",
+                     "site":  "Front windows",
+                     "activity":  "Clean",
+                     "title":  "Front windows — Clean",
+                     "instructions": []
                  }
              ]
 }
