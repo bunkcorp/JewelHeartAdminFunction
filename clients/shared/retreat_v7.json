@@ -996,119 +996,209 @@
                      "site":  "Coffee \u0026 snacks",
                      "activity":  "Morning setup",
                      "title":  "Coffee \u0026 snacks — Morning setup",
-                     "instructions": []
+                     "instructions":  [
+                                          "Buy snacks?",
+                                          "Set up tea, coffee, snacks",
+                                          "Chairs down (if not done previous night)",
+                                          "Replenish \u0026 tidy through end of lunch"
+                                      ]
                  },
                  {
                      "id":  "caf-light-cleanup",
                      "site":  "Café",
                      "activity":  "Light cleanup",
                      "title":  "Café — Light cleanup",
-                     "instructions": []
+                     "instructions":  [
+                                          "Wipe tables",
+                                          "Clean serving table",
+                                          "Vacuum"
+                                      ]
                  },
                  {
                      "id":  "kitchen-light-cleanup",
                      "site":  "Kitchen",
                      "activity":  "Light cleanup",
                      "title":  "Kitchen — Light cleanup",
-                     "instructions": []
+                     "instructions":  [
+                                          "Wipe, tidy big table",
+                                          "Wash dishes",
+                                          "Vacuum"
+                                      ]
                  },
                  {
                      "id":  "caf-full-cleanup",
                      "site":  "Café",
                      "activity":  "Full cleanup",
                      "title":  "Café — Full cleanup",
-                     "instructions": []
+                     "instructions":  [
+                                          "Wipe tables",
+                                          "Clear, clean serving table",
+                                          "Chairs up",
+                                          "Vacuum",
+                                          "Mop",
+                                          "Chairs down (or leave for morning?)",
+                                          "Wash dishes in kitchen"
+                                      ]
                  },
                  {
                      "id":  "kitchen-full-cleanup",
                      "site":  "Kitchen",
                      "activity":  "Full cleanup",
                      "title":  "Kitchen — Full cleanup",
-                     "instructions": []
+                     "instructions":  [
+                                          "Clear, wipe big table",
+                                          "Stools up",
+                                          "Vacuum",
+                                          "Mop",
+                                          "Stools down",
+                                          "Store dry dishes",
+                                          "Wash dishes",
+                                          "Collect garbage, take out"
+                                      ]
                  },
                  {
                      "id":  "coffee-snacks-evening-breakdown",
                      "site":  "Coffee \u0026 snacks",
                      "activity":  "Evening breakdown",
                      "title":  "Coffee \u0026 snacks — Evening breakdown",
-                     "instructions": []
+                     "instructions":  [
+                                          "Replenish \u0026 tidy coffee area after lunch",
+                                          "End of day breakdown and cleanup:",
+                                          "Put away snacks",
+                                          "Clear, clean serving table",
+                                          "Wash coffee, tea pots",
+                                          "Wash other kitchen dishes as necessary"
+                                      ]
                  },
                  {
                      "id":  "coatroom-caf-hallway-main-hall-rear-vacuum",
                      "site":  "Coatroom, café hallway, main hall rear",
                      "activity":  "Vacuum",
                      "title":  "Coatroom, café hallway, main hall rear — Vacuum",
-                     "instructions": []
+                     "instructions":  [
+                                          "Vacuum floors",
+                                          "Shake out mats as needed"
+                                      ]
                  },
                  {
                      "id":  "men-s-room-clean-stock",
                      "site":  "Men\u0027s room",
                      "activity":  "Clean \u0026 stock",
                      "title":  "Men\u0027s room — Clean \u0026 stock",
-                     "instructions": []
+                     "instructions":  [
+                                          "Mop",
+                                          "Clean sink",
+                                          "Wipe counter",
+                                          "Wipe fixtures",
+                                          "Clean toilet",
+                                          "Replenish deployed supplies",
+                                          "Replenish backup stock of supplies as needed",
+                                          "Empty trash, replace bag"
+                                      ]
                  },
                  {
                      "id":  "urinals-check-pads-mop",
                      "site":  "Urinals",
                      "activity":  "Check pads \u0026 mop",
                      "title":  "Urinals — Check pads \u0026 mop",
-                     "instructions": []
+                     "instructions":  [
+                                          "Mop as needed",
+                                          "Clean urinals",
+                                          "Moisten mop pads *slightly* as needed",
+                                          "Replace mop pads as needed"
+                                      ]
                  },
                  {
                      "id":  "women-s-room-clean-stock",
                      "site":  "Women\u0027s room",
                      "activity":  "Clean \u0026 stock",
                      "title":  "Women\u0027s room — Clean \u0026 stock",
-                     "instructions": []
+                     "instructions":  [
+                                          "Mop",
+                                          "Clean sink",
+                                          "Wipe counter",
+                                          "Wipe fixtures",
+                                          "Clean toilet",
+                                          "Replenish deployed supplies",
+                                          "Replenish backup stock of supplies as needed",
+                                          "Empty trash, replace bag"
+                                      ]
                  },
                  {
                      "id":  "unisex-lama-bathrooms-clean-stock",
                      "site":  "Unisex \u0026 Lama bathrooms",
                      "activity":  "Clean \u0026 stock",
                      "title":  "Unisex \u0026 Lama bathrooms — Clean \u0026 stock",
-                     "instructions": []
+                     "instructions":  [
+                                          "Mop",
+                                          "Clean sink",
+                                          "Wipe counter",
+                                          "Wipe fixtures",
+                                          "Clean toilet",
+                                          "Replenish deployed supplies",
+                                          "Empty trash, replace bag"
+                                      ]
                  },
                  {
                      "id":  "at-home-launder-towels-mop-pads",
                      "site":  "At home",
                      "activity":  "Launder towels \u0026 mop pads",
                      "title":  "At home — Launder towels \u0026 mop pads",
-                     "instructions": []
+                     "instructions":  [
+                                          "Pick up dirty towels in kitchen",
+                                          "Pick up dirty mop pads in closet",
+                                          "Launder at home",
+                                          "Return next morning"
+                                      ]
                  },
                  {
                      "id":  "tara-paradise-store-store-hallway-vacuum",
                      "site":  "Tara Paradise, store, store hallway",
                      "activity":  "Vacuum",
                      "title":  "Tara Paradise, store, store hallway — Vacuum",
-                     "instructions": []
+                     "instructions":  [
+                                          "Vacuum floors",
+                                          "Vacuum sofas as needed"
+                                      ]
                  },
                  {
                      "id":  "jh-office-main-hallway-vacuum",
                      "site":  "JH office, main hallway",
                      "activity":  "Vacuum",
                      "title":  "JH office, main hallway — Vacuum",
-                     "instructions": []
+                     "instructions":  [
+                                          "Vacuum floors",
+                                          "Vacuum sofas as needed"
+                                      ]
                  },
                  {
                      "id":  "lama-offices-clean",
                      "site":  "Lama offices",
                      "activity":  "Clean",
                      "title":  "Lama offices — Clean",
-                     "instructions": []
+                     "instructions":  [
+                                          "Vacuum",
+                                          "Dust surfaces",
+                                          "Tidy desks"
+                                      ]
                  },
                  {
                      "id":  "foyer-lobby-vacuum",
                      "site":  "Foyer \u0026 lobby",
                      "activity":  "Vacuum",
                      "title":  "Foyer \u0026 lobby — Vacuum",
-                     "instructions": []
+                     "instructions":  [
+                                          "(instructions to be added)"
+                                      ]
                  },
                  {
                      "id":  "front-windows-clean",
                      "site":  "Front windows",
                      "activity":  "Clean",
                      "title":  "Front windows — Clean",
-                     "instructions": []
+                     "instructions":  [
+                                          "(instructions to be added)"
+                                      ]
                  }
              ]
 }

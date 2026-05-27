@@ -32,6 +32,40 @@ struct RetreatV7Job: Codable, Identifiable {
     let instructions: [String]
 }
 
+enum VolunteerV2Format {
+    static func shiftLine(_ shift: RetreatV7Shift) -> String {
+        let job = "\(shift.site), \(shift.activity)"
+        let slot = compactSlotLabel(shift.slot)
+        return slot.isEmpty ? job : "\(job) · \(slot)"
+    }
+
+    static func compactSlotLabel(_ slot: String) -> String {
+        switch slot {
+        case "Any time": return "any time"
+        case "Start day": return "start of day"
+        case "End day": return "end of day"
+        default: return slot
+        }
+    }
+
+    static func slotTimingText(_ slot: String) -> String {
+        switch slot {
+        case "Any time": return "Can be done at any time throughout the day"
+        case "Start day": return "Do this at start of day"
+        case "End day": return "Do this at end of day"
+        default: return "Do this at \(slot)"
+        }
+    }
+
+    static func dayHeader(_ dayNumber: Int) -> String { "Day \(dayNumber)" }
+
+    static func groupByDay(_ shifts: [RetreatV7Shift]) -> [(Int, [RetreatV7Shift])] {
+        Dictionary(grouping: shifts, by: \.dayNumber)
+            .sorted { $0.key < $1.key }
+            .map { ($0.key, $0.value) }
+    }
+}
+
 @MainActor
 final class RetreatV7Store: ObservableObject {
     static let shared = RetreatV7Store()
@@ -173,34 +207,36 @@ struct VolunteerV2HomeView: View {
         let weekday = store.data.shifts.first(where: { $0.dayNumber == dayNum })?.weekday ?? ""
         List {
             Section {
-                Text(name).font(.title2.bold())
+                Text(name).font(.headline)
                 if let dayNum {
                     Text("Retreat day \(store.dayLabel(dayNumber: dayNum, weekday: weekday))")
+                        .font(.subheadline)
                 } else {
-                    Text("Before retreat")
+                    Text("Before retreat").font(.subheadline)
                 }
-                Text("\(store.myShiftIds.count) task(s) signed up")
+                Text("\(store.myShiftIds.count) assignment(s)").font(.subheadline)
                 if let next = store.nextAssignment() {
-                    Text("Next: \(next.jobTitle) · day \(next.dayNumber) · \(next.slot)")
+                    Text("Next: \(VolunteerV2Format.shiftLine(next))").font(.subheadline)
                 } else {
-                    Text("No upcoming assignments")
+                    Text("No upcoming assignments").font(.subheadline)
                 }
             }
             Section {
                 NavigationLink { VolunteerV2SearchView() } label: {
-                    Text("Sign up for one or more tasks")
+                    Text("Sign up for shifts")
                 }
                 .listRowBackground(signupBlue)
-                NavigationLink { VolunteerV2MySignupsView() } label: {
-                    Text("See existing signups")
+                NavigationLink { VolunteerV2MyAssignmentsView() } label: {
+                    Text("My assignments")
                 }
                 .listRowBackground(signupsRed)
                 NavigationLink { VolunteerV2CheckInView() } label: {
-                    Text("Check in to a task")
+                    Text("Check in")
                 }
                 .listRowBackground(checkinGreen)
             }
         }
+        .listStyle(.plain)
         .navigationTitle(store.data.retreatName)
     }
 }
@@ -212,46 +248,41 @@ struct VolunteerV2SearchView: View {
     @State private var goResults = false
 
     var body: some View {
-        Form {
-            Section("Days (from today)") {
-                ForEach(store.searchableDays(), id: \.self) { day in
-                    let sample = store.data.shifts.first { $0.dayNumber == day }!
-                    Toggle(
-                        "Day \(store.dayLabel(dayNumber: day, weekday: sample.weekday))",
-                        isOn: Binding(
-                            get: { selectedDays.contains(day) },
-                            set: { on in
-                                if on { selectedDays.insert(day) } else { selectedDays.remove(day) }
-                            }
-                        )
-                    )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Days from today").font(.subheadline)
+                FlowLayout(spacing: 6) {
+                    ForEach(store.searchableDays(), id: \.self) { day in
+                        let sample = store.data.shifts.first { $0.dayNumber == day }!
+                        let label = "\(day)\(sample.weekday.prefix(1))"
+                        Button(label) {
+                            if selectedDays.contains(day) { selectedDays.remove(day) }
+                            else { selectedDays.insert(day) }
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(selectedDays.contains(day) ? .accentColor : .secondary)
+                    }
                 }
-            }
-            Section("Job (optional)") {
-                Toggle(
-                    "Any job",
-                    isOn: Binding(get: { selectedJobId == nil }, set: { if $0 { selectedJobId = nil } })
-                )
+                Text("Job (optional)").font(.subheadline).padding(.top, 4)
+                Toggle("Any job", isOn: Binding(get: { selectedJobId == nil }, set: { if $0 { selectedJobId = nil } }))
                 ForEach(store.data.jobs.sorted(by: { $0.title < $1.title })) { job in
-                    Toggle(
-                        job.title,
-                        isOn: Binding(
-                            get: { selectedJobId == job.id },
-                            set: { selectedJobId = $0 ? job.id : nil }
-                        )
-                    )
+                    Toggle(job.title, isOn: Binding(
+                        get: { selectedJobId == job.id },
+                        set: { selectedJobId = $0 ? job.id : nil }
+                    ))
                 }
+                Button("Search") {
+                    VolunteerV2SearchState.selectedDays = selectedDays
+                    VolunteerV2SearchState.selectedJobId = selectedJobId
+                    goResults = true
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedDays.isEmpty)
             }
-            Button("Search") {
-                VolunteerV2SearchState.selectedDays = selectedDays
-                VolunteerV2SearchState.selectedJobId = selectedJobId
-                goResults = true
-            }
-            .disabled(selectedDays.isEmpty)
+            .padding(12)
         }
-        .scrollContentBackground(.hidden)
         .background(signupBlue)
-        .navigationTitle("Search for available tasks")
+        .navigationTitle("Search shifts")
         .navigationDestination(isPresented: $goResults) {
             VolunteerV2AvailableView()
         }
@@ -259,37 +290,77 @@ struct VolunteerV2SearchView: View {
     }
 }
 
+/// Simple flow layout for day toggle chips.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        layout(proposal: proposal, subviews: subviews).size
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = layout(proposal: proposal, subviews: subviews)
+        for (i, pos) in result.positions.enumerated() {
+            subviews[i].place(at: CGPoint(x: bounds.minX + pos.x, y: bounds.minY + pos.y), proposal: .unspecified)
+        }
+    }
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let maxW = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowH: CGFloat = 0
+        var positions: [CGPoint] = []
+        for sub in subviews {
+            let s = sub.sizeThatFits(.unspecified)
+            if x + s.width > maxW, x > 0 {
+                x = 0
+                y += rowH + spacing
+                rowH = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            rowH = max(rowH, s.height)
+            x += s.width + spacing
+        }
+        return (CGSize(width: maxW, height: y + rowH), positions)
+    }
+}
+
 struct VolunteerV2AvailableView: View {
     @EnvironmentObject private var store: RetreatV7Store
 
-    private var results: [RetreatV7Shift] {
-        store.searchShifts(
+    private var grouped: [(Int, [RetreatV7Shift])] {
+        VolunteerV2Format.groupByDay(store.searchShifts(
             dayNumbers: VolunteerV2SearchState.selectedDays,
             jobId: VolunteerV2SearchState.selectedJobId
-        )
+        ))
     }
 
     var body: some View {
-        Group {
-            if results.isEmpty {
-                ContentUnavailableView("No matches", systemImage: "magnifyingglass")
-            } else {
-                List(results) { shift in
-                    NavigationLink {
-                        VolunteerV2ShiftView(shiftId: shift.id)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(shift.jobTitle).fontWeight(.medium)
-                            Text("Day \(shift.dayNumber) (\(shift.weekday)) · \(shift.slot)")
-                                .font(.subheadline)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                if grouped.isEmpty {
+                    Text("No open shifts match your search.").padding(12)
+                } else {
+                    ForEach(grouped, id: \.0) { day, shifts in
+                        Text(VolunteerV2Format.dayHeader(day))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 10)
+                            .padding(.bottom, 2)
+                        ForEach(shifts) { shift in
+                            NavigationLink {
+                                VolunteerV2ShiftView(shiftId: shift.id)
+                            } label: {
+                                Text(VolunteerV2Format.shiftLine(shift))
+                                    .font(.subheadline)
+                                    .padding(.vertical, 3)
+                            }
                         }
                     }
                 }
             }
+            .padding(.horizontal, 12)
         }
-        .scrollContentBackground(.hidden)
         .background(signupBlue)
-        .navigationTitle("Available tasks")
+        .navigationTitle("Available shifts")
     }
 }
 
@@ -303,7 +374,7 @@ struct VolunteerV2ShiftView: View {
         if let shift = store.shift(id: shiftId) {
             shiftContent(shift)
         } else {
-            ContentUnavailableView("Task not found", systemImage: "exclamationmark.triangle")
+            ContentUnavailableView("Shift not found", systemImage: "exclamationmark.triangle")
         }
     }
 
@@ -314,20 +385,18 @@ struct VolunteerV2ShiftView: View {
         let steps = job?.instructions.filter { !$0.isEmpty } ?? []
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(shift.site).fontWeight(.semibold)
-                Text(shift.activity)
-                Text("Day \(store.dayLabel(dayNumber: shift.dayNumber, weekday: shift.weekday))")
-                Text("Slot: \(shift.slot)")
-                Text("About \(shift.estimatedMinutes) min").foregroundStyle(.secondary)
-                Text("Instructions").fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(VolunteerV2Format.dayHeader(shift.dayNumber)) · ~\(shift.estimatedMinutes) min")
+                    .font(.subheadline)
+                Text(VolunteerV2Format.shiftLine(shift)).font(.subheadline)
+                Text(VolunteerV2Format.slotTimingText(shift.slot)).font(.subheadline)
                 if steps.isEmpty {
-                    Text("(No instructions listed)").foregroundStyle(.secondary)
+                    Text("(No instructions listed)").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    ForEach(steps, id: \.self) { Text("• \($0)") }
+                    ForEach(steps, id: \.self) { Text("• \($0)").font(.subheadline) }
                 }
                 if assigned {
-                    Button("Remove my assignment", role: .destructive) {
+                    Button("Remove assignment", role: .destructive) {
                         if let day = store.currentDayNumber(), shift.dayNumber <= day + 1 {
                             showDropWarning = true
                         } else {
@@ -341,22 +410,18 @@ struct VolunteerV2ShiftView: View {
                         if store.assignToMe(shiftId: shiftId) {
                             alertMessage = "Assigned"
                         } else {
-                            alertMessage =
-                                "NOT assigned — looks like someone else just grabbed it (or technical problem?)"
+                            alertMessage = "NOT assigned — someone else may have taken it"
                         }
                     }
                     .buttonStyle(.borderedProminent)
                 }
             }
-            .padding(16)
+            .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(signupBlue)
-        .navigationTitle(shift.jobTitle)
-        .alert(
-            "Notice",
-            isPresented: Binding(get: { alertMessage != nil }, set: { if !$0 { alertMessage = nil } })
-        ) {
+        .navigationTitle("Shift")
+        .alert("Notice", isPresented: Binding(get: { alertMessage != nil }, set: { if !$0 { alertMessage = nil } })) {
             Button("OK") { alertMessage = nil }
         } message: {
             Text(alertMessage ?? "")
@@ -368,35 +433,76 @@ struct VolunteerV2ShiftView: View {
             }
             Button("Keep", role: .cancel) {}
         } message: {
-            Text("This task is today or tomorrow. Please recruit someone else if you can.")
+            Text("This assignment is today or tomorrow. Please recruit someone else if you can.")
         }
     }
 }
 
-struct VolunteerV2MySignupsView: View {
+struct VolunteerV2MyAssignmentsView: View {
     @EnvironmentObject private var store: RetreatV7Store
+    @State private var markedForDelete: Set<String> = []
+
+    private var grouped: [(Int, [RetreatV7Shift])] {
+        VolunteerV2Format.groupByDay(store.myShiftsFromToday())
+    }
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
             if store.myShiftsFromToday().isEmpty {
-                ContentUnavailableView("No signups", systemImage: "calendar")
+                ContentUnavailableView("No assignments", systemImage: "calendar")
             } else {
-                List(store.myShiftsFromToday()) { shift in
-                    NavigationLink {
-                        VolunteerV2ShiftView(shiftId: shift.id)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(shift.jobTitle).fontWeight(.medium)
-                            Text("Day \(shift.dayNumber) (\(shift.weekday)) · \(shift.slot)")
+                Text("Check to mark for removal, then Delete marked.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        ForEach(grouped, id: \.0) { day, shifts in
+                            Text(VolunteerV2Format.dayHeader(day))
                                 .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 10)
+                                .padding(.bottom, 2)
+                            ForEach(shifts) { shift in
+                                let marked = markedForDelete.contains(shift.id)
+                                Button {
+                                    if marked { markedForDelete.remove(shift.id) }
+                                    else { markedForDelete.insert(shift.id) }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: marked ? "checkmark.square" : "square")
+                                        Text(VolunteerV2Format.shiftLine(shift))
+                                            .font(.subheadline)
+                                            .strikethrough(marked)
+                                            .opacity(marked ? 0.55 : 1)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 3)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
+                    .padding(.horizontal, 12)
+                }
+                if !markedForDelete.isEmpty {
+                    HStack(spacing: 8) {
+                        Button("Don't delete") { markedForDelete.removeAll() }
+                            .buttonStyle(.bordered)
+                        Button("Delete marked") {
+                            markedForDelete.forEach { store.unassign(shiftId: $0) }
+                            markedForDelete.removeAll()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(12)
                 }
             }
         }
-        .scrollContentBackground(.hidden)
         .background(signupsRed)
-        .navigationTitle("My signups")
+        .navigationTitle("My assignments")
     }
 }
 
@@ -404,22 +510,25 @@ struct VolunteerV2CheckInView: View {
     @EnvironmentObject private var store: RetreatV7Store
 
     var body: some View {
-        List {
-            if store.todaysMyShifts().isEmpty {
-                Text("No assignments for today.")
-            } else {
-                Section("Today's assignments") {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 6) {
+                if store.todaysMyShifts().isEmpty {
+                    Text("No assignments for today.")
+                } else {
                     ForEach(store.todaysMyShifts()) { shift in
                         NavigationLink {
                             VolunteerV2ShiftView(shiftId: shift.id)
                         } label: {
-                            Text("\(shift.jobTitle) · \(shift.slot)")
+                            Text(VolunteerV2Format.shiftLine(shift))
+                                .font(.subheadline)
+                                .padding(.vertical, 3)
                         }
                     }
                 }
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .scrollContentBackground(.hidden)
         .background(checkinGreen)
         .navigationTitle("Check in")
     }

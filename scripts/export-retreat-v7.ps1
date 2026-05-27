@@ -89,18 +89,25 @@ for ($r = 1; $r -le 200; $r++) {
     if (-not $cells) { continue }
     $a = Get-CellValue $cells['A'] $strings
     $b = Get-CellValue $cells['B'] $strings
-    if ($a -and ($a -match '—|–|-' -and $a -notmatch '^(Job|Instructions|Job Instructions)$')) {
+    # Job header row: title in A, blank B (outline group header in Instructions sheet).
+    if ($a -and -not $b -and $a -notmatch '^(Job Instructions|Job|Instructions)$') {
         $baseTitle = ($a -replace '\s+\(.*$', '').Trim()
-        $currentJobId = Slugify $baseTitle
-        if (-not $instructionsByJobId.ContainsKey($currentJobId)) { $instructionsByJobId[$currentJobId] = @() }
+        if ($baseTitle.Length -gt 0) {
+            $currentJobId = Slugify $baseTitle
+            if (-not $instructionsByJobId.ContainsKey($currentJobId)) {
+                $instructionsByJobId[$currentJobId] = [System.Collections.Generic.List[string]]::new()
+            }
+        }
         continue
     }
-    if ($b -and $currentJobId) { $instructionsByJobId[$currentJobId] += $b }
+    if ($b -and $currentJobId) {
+        $instructionsByJobId[$currentJobId].Add($b)
+    }
 }
 
 function Get-InstructionLines([string]$jobId) {
     if (-not $instructionsByJobId.ContainsKey($jobId)) { return @() }
-    return @($instructionsByJobId[$jobId] | Where-Object { $_ })
+    return @($instructionsByJobId[$jobId].ToArray())
 }
 
 $jobs = [System.Collections.Generic.List[object]]::new()
