@@ -76,33 +76,59 @@ final class RetreatV7Store: ObservableObject {
 
     @Published private(set) var myShiftIds: Set<String> = []
 
-    private init() {
-        let url = Bundle.main.url(forResource: "retreat_v7", withExtension: "json")!
-        let decoded = try! JSONDecoder().decode(RetreatV7Data.self, from: Data(contentsOf: url))
-        data = decoded
+    private init(data: RetreatV7Data? = nil) {
+        let decoded = data ?? RetreatV7Store.loadBundledData()
+        self.data = decoded
         jobsById = Dictionary(uniqueKeysWithValues: decoded.jobs.map { ($0.id, $0) })
         shiftsById = Dictionary(uniqueKeysWithValues: decoded.shifts.map { ($0.id, $0) })
     }
 
-    func today() -> Date {
+    private static func loadBundledData() -> RetreatV7Data {
+        guard let url = Bundle.main.url(forResource: "retreat_v7", withExtension: "json") else {
+            assertionFailure("Missing retreat_v7.json bundle resource")
+            return emptyData
+        }
+        do {
+            return try JSONDecoder().decode(RetreatV7Data.self, from: Data(contentsOf: url))
+        } catch {
+            assertionFailure("Failed to decode retreat_v7.json: \(error)")
+            return emptyData
+        }
+    }
+
+    private static let emptyData = RetreatV7Data(
+        retreatName: "Volunteer shifts",
+        startDate: "",
+        endDate: "",
+        scheduledDays: 0,
+        testToday: "",
+        shifts: [],
+        jobs: []
+    )
+
+    private static func date(from isoDay: String) -> Date? {
+        guard !isoDay.isEmpty else { return nil }
         let fmt = ISO8601DateFormatter()
-        fmt.formatOptions = [.withFullDate]
+        fmt.formatOptions = [.withInternetDateTime]
+        let text = isoDay.contains("T") ? isoDay : "\(isoDay)T12:00:00Z"
+        return fmt.date(from: text)
+    }
+
+    func today() -> Date {
         if JewelHeartConfig.volunteerV2UseTestToday,
-           let d = fmt.date(from: data.testToday + "T12:00:00Z") {
+           let d = Self.date(from: data.testToday) {
             return d
         }
         return Date()
     }
 
-    func retreatStart() -> Date {
-        let fmt = ISO8601DateFormatter()
-        fmt.formatOptions = [.withFullDate]
-        return fmt.date(from: data.startDate + "T12:00:00Z")!
-    }
+    func retreatStart() -> Date? { Self.date(from: data.startDate) }
 
     func currentDayNumber() -> Int? {
+        guard data.scheduledDays >= 1 else { return nil }
+        guard let retreatStart = retreatStart() else { return nil }
         let cal = Calendar(identifier: .gregorian)
-        let start = cal.startOfDay(for: retreatStart())
+        let start = cal.startOfDay(for: retreatStart)
         let now = cal.startOfDay(for: today())
         let days = cal.dateComponents([.day], from: start, to: now).day ?? 0
         let n = days + 1
@@ -113,6 +139,7 @@ final class RetreatV7Store: ObservableObject {
 
     func searchableDays() -> [Int] {
         let from = currentDayNumber() ?? 1
+        guard from <= data.scheduledDays else { return [] }
         return Array(from...data.scheduledDays)
     }
 
@@ -248,19 +275,26 @@ struct VolunteerV2SearchView: View {
     @State private var goResults = false
 
     var body: some View {
+        let searchableDays = store.searchableDays()
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Days from today").font(.subheadline)
-                FlowLayout(spacing: 6) {
-                    ForEach(store.searchableDays(), id: \.self) { day in
-                        let sample = store.data.shifts.first { $0.dayNumber == day }!
-                        let label = "\(day)\(sample.weekday.prefix(1))"
-                        Button(label) {
-                            if selectedDays.contains(day) { selectedDays.remove(day) }
-                            else { selectedDays.insert(day) }
+                if searchableDays.isEmpty {
+                    Text("No upcoming retreat days.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    FlowLayout(spacing: 6) {
+                        ForEach(searchableDays, id: \.self) { day in
+                            let weekday = store.data.shifts.first { $0.dayNumber == day }?.weekday ?? ""
+                            let label = weekday.isEmpty ? "\(day)" : "\(day)\(weekday.prefix(1))"
+                            Button(label) {
+                                if selectedDays.contains(day) { selectedDays.remove(day) }
+                                else { selectedDays.insert(day) }
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(selectedDays.contains(day) ? .accentColor : .secondary)
                         }
-                        .buttonStyle(.bordered)
-                        .tint(selectedDays.contains(day) ? .accentColor : .secondary)
                     }
                 }
                 Text("Job (optional)").font(.subheadline).padding(.top, 4)
@@ -286,7 +320,7 @@ struct VolunteerV2SearchView: View {
         .navigationDestination(isPresented: $goResults) {
             VolunteerV2AvailableView()
         }
-        .onAppear { selectedDays = Set(store.searchableDays()) }
+        .onAppear { selectedDays = Set(searchableDays) }
     }
 }
 
@@ -327,8 +361,11 @@ struct VolunteerV2AvailableView: View {
     @EnvironmentObject private var store: RetreatV7Store
 
     private var grouped: [(Int, [RetreatV7Shift])] {
-        VolunteerV2Format.groupByDay(store.searchShifts(
-            dayNumbers: VolunteerV2SearchState.selectedDays,
+        let dayNumbers = VolunteerV2SearchState.selectedDays.isEmpty
+            ? Set(store.searchableDays())
+            : VolunteerV2SearchState.selectedDays
+        return VolunteerV2Format.groupByDay(store.searchShifts(
+            dayNumbers: dayNumbers,
             jobId: VolunteerV2SearchState.selectedJobId
         ))
     }
