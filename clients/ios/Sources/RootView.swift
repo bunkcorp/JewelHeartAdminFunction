@@ -41,12 +41,12 @@ struct RootView: View {
             error = nil
             envelope = nil
         }
-        guard let uid = Auth.auth().currentUser?.uid else {
+        guard Auth.auth().currentUser?.uid != nil else {
             JewelHeartLog.uiWarning("load blocked: not signed in")
             await MainActor.run { error = "Sign in first." }
             return
         }
-        JewelHeartLog.uiInfo("load start screenId=\(self.screenId) uid=\(String(uid.prefix(8)))…")
+        JewelHeartLog.uiInfo("load start screenId=\(self.screenId) uid=\(String((Auth.auth().currentUser?.uid ?? "").prefix(8)))…")
         do {
             let api = JewelHeartAPI()
             let env = try await api.fetchScreen(screenId: screenId, retreatId: retreatId, params: extraParams)
@@ -73,9 +73,20 @@ struct RootView: View {
                 switch target {
                 case "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home":
                     extraParams.removeValue(forKey: "day")
+                    extraParams.removeValue(forKey: "weekMonday")
                 case "retreat.schedule.day":
+                    extraParams.removeValue(forKey: "weekMonday")
                     if let d = action.payload?["day"], !d.isEmpty {
                         extraParams["day"] = d
+                    } else {
+                        extraParams.removeValue(forKey: "day")
+                    }
+                case "retreat.volunteer.week":
+                    extraParams.removeValue(forKey: "day")
+                    if let wm = action.payload?["weekMonday"], !wm.isEmpty {
+                        extraParams["weekMonday"] = wm
+                    } else {
+                        extraParams.removeValue(forKey: "weekMonday")
                     }
                 default:
                     break

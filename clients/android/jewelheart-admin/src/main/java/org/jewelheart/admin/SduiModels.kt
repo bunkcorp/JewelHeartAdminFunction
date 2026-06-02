@@ -38,9 +38,16 @@ data class ComponentStyle(
     @SerializedName("padding") val padding: PaddingSpec?,
     @SerializedName("margin") val margin: MarginSpec?,
     @SerializedName("height") val height: DimensionSpec?,
+    @SerializedName("backgroundColor") val backgroundColor: String?,
 )
 
-data class PaddingSpec(@SerializedName("all") val all: Double?)
+data class PaddingSpec(
+    @SerializedName("all") val all: Double?,
+    @SerializedName("top") val top: Double?,
+    @SerializedName("bottom") val bottom: Double?,
+    @SerializedName("left") val left: Double?,
+    @SerializedName("right") val right: Double?,
+)
 data class MarginSpec(@SerializedName("top") val top: Double?)
 data class DimensionSpec(@SerializedName("value") val value: Double?)
 

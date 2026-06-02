@@ -141,6 +141,8 @@ struct ComponentStyle: Codable {
     let margin: MarginSpec?
     let height: DimensionSpec?
     let width: DimensionSpec?
+    /// Full-width bar fill (e.g. volunteer home mockup: #FFCA10, #7A95CA).
+    let backgroundColor: String?
 }
 
 struct PaddingSpec: Codable {

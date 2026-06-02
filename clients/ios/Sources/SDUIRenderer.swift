@@ -47,14 +47,24 @@ struct SDUIComponentView: View {
     private var containerBody: some View {
         let layout = component.layout ?? "column"
         let spacing = CGFloat(component.spacing ?? 16)
-        if layout == "row" {
-            HStack(alignment: .top, spacing: spacing) {
-                childrenViews
+        let inner: some View = Group {
+            if layout == "row" {
+                HStack(alignment: .top, spacing: spacing) {
+                    childrenViews
+                }
+            } else {
+                VStack(alignment: barAlignment(from: component), spacing: spacing) {
+                    childrenViews
+                }
             }
+        }
+        if let bg = barBackground(from: component.style) {
+            inner
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(barPadding(from: component.style))
+                .background(bg)
         } else {
-            VStack(alignment: .leading, spacing: spacing) {
-                childrenViews
-            }
+            inner
         }
     }
 
@@ -68,11 +78,19 @@ struct SDUIComponentView: View {
     }
 
     private var textBody: some View {
-        Text(component.content ?? "")
+        let label = Text(component.content ?? "")
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .multilineTextAlignment(align(from: component.textStyle?.textAlign))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
+        if let bg = barBackground(from: component.style) {
+            label
+                .frame(maxWidth: .infinity)
+                .padding(barPadding(from: component.style))
+                .background(bg)
+        } else {
+            label
+        }
     }
 
     private var buttonBody: some View {
@@ -119,6 +137,29 @@ struct SDUIComponentView: View {
 
     private func align(from a: String?) -> TextAlignment {
         switch a {
+        case "center": return .center
+        case "trailing", "right": return .trailing
+        default: return .leading
+        }
+    }
+
+    private func barBackground(from style: ComponentStyle?) -> Color? {
+        guard let hex = style?.backgroundColor else { return nil }
+        return Color(hex: hex)
+    }
+
+    private func barPadding(from style: ComponentStyle?) -> EdgeInsets {
+        let p = style?.padding
+        return EdgeInsets(
+            top: CGFloat(p?.top ?? p?.all ?? 10),
+            leading: CGFloat(p?.left ?? p?.all ?? 8),
+            bottom: CGFloat(p?.bottom ?? p?.all ?? 10),
+            trailing: CGFloat(p?.right ?? p?.all ?? 8)
+        )
+    }
+
+    private func barAlignment(from component: UIComponent) -> HorizontalAlignment {
+        switch component.textStyle?.textAlign ?? component.children?.first?.textStyle?.textAlign {
         case "center": return .center
         case "trailing", "right": return .trailing
         default: return .leading

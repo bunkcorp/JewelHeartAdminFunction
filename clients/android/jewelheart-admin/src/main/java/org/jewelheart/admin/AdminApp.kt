@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +45,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -335,14 +338,35 @@ private fun SduiComponentView(
     when (c.type) {
         "container" -> {
             val spacing = (c.spacing ?: 16.0).dp
-            if (c.layout == "row") {
-                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                    c.children?.forEach { SduiComponentView(it, vm, ctx) }
+            val inner: @Composable () -> Unit = {
+                if (c.layout == "row") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing),
+                    ) {
+                        c.children?.forEach { SduiComponentView(it, vm, ctx) }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(spacing),
+                    ) {
+                        c.children?.forEach { SduiComponentView(it, vm, ctx) }
+                    }
+                }
+            }
+            val bg = sduiBackgroundColor(c.style?.backgroundColor)
+            if (bg != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(bg)
+                        .padding(sduiBarPadding(c.style)),
+                ) {
+                    inner()
                 }
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
-                    c.children?.forEach { SduiComponentView(it, vm, ctx) }
-                }
+                inner()
             }
         }
         "text" -> {
@@ -352,7 +376,25 @@ private fun SduiComponentView(
                 "semibold" -> FontWeight.SemiBold
                 else -> FontWeight.Normal
             }
-            Text(c.content ?: "", fontSize = size, fontWeight = weight)
+            val align = when (c.textStyle?.textAlign?.lowercase()) {
+                "center" -> TextAlign.Center
+                "right", "trailing" -> TextAlign.End
+                else -> TextAlign.Start
+            }
+            val fg = sduiParseHexColor(c.textStyle?.color) ?: MaterialTheme.colorScheme.onSurface
+            val bg = sduiBackgroundColor(c.style?.backgroundColor)
+            val pad = sduiBarPadding(c.style)
+            val mod = Modifier
+                .fillMaxWidth()
+                .then(if (bg != null) Modifier.background(bg).padding(pad) else Modifier)
+            Text(
+                text = c.content ?: "",
+                modifier = mod,
+                fontSize = size,
+                fontWeight = weight,
+                color = fg,
+                textAlign = align,
+            )
         }
         "button" -> {
             Button(
@@ -380,6 +422,23 @@ private fun SduiComponentView(
         }
         else -> Text("[${c.type}]", style = MaterialTheme.typography.labelSmall)
     }
+}
+
+private fun sduiParseHexColor(hex: String?): Color? {
+    if (hex.isNullOrBlank() || !hex.startsWith("#")) return null
+    return runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()
+}
+
+private fun sduiBackgroundColor(hex: String?): Color? = sduiParseHexColor(hex)
+
+private fun sduiBarPadding(style: ComponentStyle?): androidx.compose.foundation.layout.PaddingValues {
+    val p = style?.padding ?: return androidx.compose.foundation.layout.PaddingValues(0.dp)
+    return androidx.compose.foundation.layout.PaddingValues(
+        start = (p.left ?: p.all ?: 8.0).dp,
+        top = (p.top ?: p.all ?: 10.0).dp,
+        end = (p.right ?: p.all ?: 8.0).dp,
+        bottom = (p.bottom ?: p.all ?: 10.0).dp,
+    )
 }
 
 fun shareDownload(ctx: android.content.Context, download: DownloadResult) {

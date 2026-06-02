@@ -12,4 +12,8 @@ enum JewelHeartConfig {
         let scheme = useTLS ? "https" : "http"
         return URL(string: "\(scheme)://\(apiHost)")!
     }
+
+    /// Legacy client-only override for native VolunteerHomeView (reference). SDUI home uses server env
+    /// `JEWELHEART_VOLUNTEER_HOME_TEST_TODAY` (YYYY-MM-DD) when deployed; clear here unless debugging iOS-only.
+    static let volunteerHomeTestToday: String? = nil
 }

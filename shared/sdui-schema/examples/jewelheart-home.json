@@ -8,19 +8,64 @@
       {
         "type": "container",
         "layout": "column",
-        "spacing": 12,
-        "style": { "padding": { "all": 16 } },
+        "spacing": 0,
+        "style": { "padding": { "all": 12 } },
         "children": [
           {
             "type": "text",
-            "content": "JewelHeart Admin",
-            "textStyle": { "fontSize": 22, "fontWeight": "bold" }
+            "content": "JH Summer 2026 - Day 2, Tue",
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#000000"
+            },
+            "style": {
+              "backgroundColor": "#FFCA10",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
           },
           {
-            "type": "button",
-            "label": "Retreats",
-            "icon": "list.bullet",
-            "action": { "type": "navigate", "target": "retreat.list" }
+            "type": "text",
+            "content": "Volunteer Home",
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#000000"
+            },
+            "style": {
+              "backgroundColor": "#FFCA10",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "David Lewis - 2 shifts - 1 today:",
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#7A95CA",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Kitchen Full Clean - End of Day",
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#7A95CA",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
           }
         ]
       }
