@@ -72,6 +72,7 @@ enum JewelHeartAPIError: LocalizedError {
 
 actor JewelHeartAPI {
     private let session: URLSession
+    private let cache = JewelHeartReadCache.shared
 
     init(session: URLSession? = nil) {
         if let session {
@@ -86,8 +87,8 @@ actor JewelHeartAPI {
     }
 
     /// Resolve the ID token on the main actor (avoids Firebase Auth off-main-thread edge cases).
-    private func firebaseIDToken() async throws -> String {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+    private func firebaseAuthContext() async throws -> (uid: String, token: String) {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(uid: String, token: String), Error>) in
             Task { @MainActor in
                 do {
                     if FirebaseApp.app() == nil {
@@ -98,7 +99,7 @@ actor JewelHeartAPI {
                         return
                     }
                     let token = try await user.getIDToken()
-                    cont.resume(returning: token)
+                    cont.resume(returning: (uid: user.uid, token: token))
                 } catch {
                     cont.resume(throwing: error)
                 }
@@ -141,7 +142,91 @@ actor JewelHeartAPI {
         httpBody: Data? = nil,
         contentType: String? = nil
     ) async throws -> (Data, HTTPURLResponse) {
-        let token = try await firebaseIDToken()
+        let auth = try await firebaseAuthContext()
+        return try await authorizedDataRequestWithToken(
+            path: path,
+            method: method,
+            queryItems: queryItems,
+            httpBody: httpBody,
+            contentType: contentType,
+            token: auth.token
+        )
+    }
+
+    /// Bearer-authenticated read-through request. Fresh cached responses are returned without a network hop;
+    /// stale responses are used only after transient network/server failures.
+    internal func authorizedCachedDataRequest(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem] = [],
+        httpBody: Data? = nil,
+        contentType: String? = nil,
+        cacheNamespace: String,
+        cacheKey: String,
+        ttl: TimeInterval
+    ) async throws -> Data {
+        let auth = try await firebaseAuthContext()
+        let scopedKey = "\(auth.uid)|\(JewelHeartConfig.baseURL.absoluteString)|\(cacheKey)"
+        if let data = await cache.data(namespace: cacheNamespace, key: scopedKey, maxAge: ttl) {
+            JewelHeartLog.apiInfo("read cache hit namespace=\(cacheNamespace) key=\(cacheKey)")
+            return data
+        }
+        do {
+            let (data, _) = try await authorizedDataRequestWithToken(
+                path: path,
+                method: method,
+                queryItems: queryItems,
+                httpBody: httpBody,
+                contentType: contentType,
+                token: auth.token
+            )
+            await cache.put(data, namespace: cacheNamespace, key: scopedKey)
+            return data
+        } catch {
+            if Self.canServeStaleCache(for: error),
+               let data = await cache.data(namespace: cacheNamespace, key: scopedKey, maxAge: nil) {
+                JewelHeartLog.apiWarning("read cache stale fallback namespace=\(cacheNamespace) key=\(cacheKey) error=\(JewelHeartLog.describe(error))")
+                return data
+            }
+            throw error
+        }
+    }
+
+    internal func invalidateReadCache(namespace: String) async {
+        await cache.invalidate(namespace: namespace)
+    }
+
+    internal func invalidateReadCaches(_ namespaces: [String]) async {
+        for namespace in namespaces {
+            await cache.invalidate(namespace: namespace)
+        }
+    }
+
+    internal static func cacheKey(path: String, queryItems: [URLQueryItem] = []) -> String {
+        guard !queryItems.isEmpty else { return path }
+        let q = queryItems
+            .map { "\($0.name)=\($0.value ?? "")" }
+            .sorted()
+            .joined(separator: "&")
+        return "\(path)?\(q)"
+    }
+
+    internal static func sduiCacheKey(screenId: String, retreatId: String?, params: [String: String]) -> String {
+        let p = params
+            .map { "\($0.key)=\($0.value)" }
+            .sorted()
+            .joined(separator: "&")
+        return "jewelheart/sdui/screen|screenId=\(screenId)|retreatId=\(retreatId ?? "")|params=\(p)"
+    }
+
+    private func authorizedDataRequestWithToken(
+        path: String,
+        method: String,
+        queryItems: [URLQueryItem],
+        httpBody: Data?,
+        contentType: String?,
+        token: String
+    ) async throws -> (Data, HTTPURLResponse) {
         let url = Self.makeAPIURL(path: path, queryItems: queryItems)
         var req = URLRequest(url: url)
         req.httpMethod = method
@@ -228,6 +313,16 @@ actor JewelHeartAPI {
         }
     }
 
+    private static func canServeStaleCache(for error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            return isTransient(urlError)
+        }
+        if case JewelHeartAPIError.http(let code, _) = error {
+            return [-1, 502, 503, 530].contains(code)
+        }
+        return false
+    }
+
     func fetchScreen(screenId: String, retreatId: String? = nil, params: [String: String] = [:]) async throws -> SDUIEnvelope {
         JewelHeartLog.apiInfo(
             "fetchScreen screenId=\(screenId) retreatId=\(retreatId ?? "nil") params=\(String(describing: params)) baseURL=\(JewelHeartConfig.baseURL.absoluteString)"
@@ -236,11 +331,14 @@ actor JewelHeartAPI {
         if let retreatId { body["retreatId"] = retreatId }
         if !params.isEmpty { body["params"] = params }
         let bodyData = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await authorizedDataRequest(
+        let data = try await authorizedCachedDataRequest(
             path: "jewelheart/sdui/screen",
             method: "POST",
             httpBody: bodyData,
-            contentType: "application/json"
+            contentType: "application/json",
+            cacheNamespace: JewelHeartReadCacheNamespace.sduiScreens,
+            cacheKey: Self.sduiCacheKey(screenId: screenId, retreatId: retreatId, params: params),
+            ttl: JewelHeartReadCacheTTL.standard
         )
         do {
             let dec = JSONDecoder()
@@ -249,5 +347,80 @@ actor JewelHeartAPI {
             JewelHeartLog.apiError("JSON decode failed: \(JewelHeartLog.describe(error)) dataPrefix=\(String(data: data.prefix(200), encoding: .utf8) ?? "?")")
             throw JewelHeartAPIError.decode(error)
         }
+    }
+}
+
+enum JewelHeartReadCacheNamespace {
+    static let retreats = "retreats"
+    static let retreatVolunteers = "retreatVolunteers"
+    static let sduiScreens = "sduiScreens"
+    static let conversations = "conversations"
+    static let messages = "messages"
+}
+
+enum JewelHeartReadCacheTTL {
+    static let standard: TimeInterval = 60
+    static let messages: TimeInterval = 30
+}
+
+private actor JewelHeartReadCache {
+    static let shared = JewelHeartReadCache()
+
+    private struct Entry: Codable {
+        let savedAt: Date
+        let data: Data
+    }
+
+    private let directory: URL?
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    init() {
+        guard let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            directory = nil
+            return
+        }
+        let dir = base.appendingPathComponent("JewelHeartReadCache", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        directory = dir
+    }
+
+    func data(namespace: String, key: String, maxAge: TimeInterval?) -> Data? {
+        guard let url = fileURL(namespace: namespace, key: key),
+              let bytes = try? Data(contentsOf: url),
+              let entry = try? decoder.decode(Entry.self, from: bytes) else { return nil }
+        if let maxAge, Date().timeIntervalSince(entry.savedAt) > maxAge {
+            return nil
+        }
+        return entry.data
+    }
+
+    func put(_ data: Data, namespace: String, key: String) {
+        guard let url = fileURL(namespace: namespace, key: key) else { return }
+        let entry = Entry(savedAt: Date(), data: data)
+        guard let bytes = try? encoder.encode(entry) else { return }
+        try? bytes.write(to: url, options: [.atomic])
+    }
+
+    func invalidate(namespace: String) {
+        guard let directory,
+              let files = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
+        let prefix = "\(namespace)-"
+        for file in files where file.lastPathComponent.hasPrefix(prefix) {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+
+    private func fileURL(namespace: String, key: String) -> URL? {
+        directory?.appendingPathComponent("\(namespace)-\(stableHash(key)).json")
+    }
+
+    private func stableHash(_ value: String) -> String {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return String(hash, radix: 16)
     }
 }

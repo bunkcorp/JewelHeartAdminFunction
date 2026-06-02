@@ -1,16 +1,35 @@
 package org.jewelheart.admin
 
+import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.security.MessageDigest
 
-class JewelHeartRepository(private val gson: Gson = Gson()) {
+class JewelHeartRepository(
+    private val gson: Gson = Gson(),
+    context: Context? = JewelHeartAdminApplication.appContextOrNull,
+) {
+    private val cache = JewelHeartReadCache(context?.applicationContext, gson)
+
+    private companion object {
+        const val CACHE_TTL_STANDARD_MS = 60_000L
+        const val CACHE_TTL_MESSAGES_MS = 30_000L
+
+        const val CACHE_RETREATS = "retreats"
+        const val CACHE_RETREAT_VOLUNTEERS = "retreatVolunteers"
+        const val CACHE_SDUI_SCREENS = "sduiScreens"
+        const val CACHE_CONVERSATIONS = "conversations"
+        const val CACHE_MESSAGES = "messages"
+    }
 
     class HttpApiException(val code: Int, val body: String?) : Exception(userMessage(code, body)) {
         companion object {
@@ -83,6 +102,50 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
         return data
     }
 
+    private suspend fun cachedJsonRead(
+        namespace: String,
+        key: String,
+        ttlMillis: Long,
+        block: suspend () -> ByteArray,
+    ): ByteArray {
+        val scopedKey = authScopedCacheKey(key)
+        cache.getFresh(namespace, scopedKey, ttlMillis)?.let { return it }
+        return try {
+            val data = block()
+            cache.put(namespace, scopedKey, data)
+            data
+        } catch (e: Exception) {
+            if (canServeStaleCache(e)) {
+                cache.getStale(namespace, scopedKey)?.let { return it }
+            }
+            throw e
+        }
+    }
+
+    private fun authScopedCacheKey(key: String): String {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: error("Not signed in")
+        return "$uid|${JewelHeartConfig.baseUrl()}|$key"
+    }
+
+    private fun readCacheKey(path: String, query: Map<String, String?> = emptyMap()): String {
+        val q = query
+            .filterValues { !it.isNullOrEmpty() }
+            .entries
+            .sortedBy { "${it.key}=${it.value.orEmpty()}" }
+            .joinToString("&") { (k, v) -> "$k=$v" }
+        return if (q.isEmpty()) path else "$path?$q"
+    }
+
+    private fun sduiCacheKey(screenId: String, retreatId: String?, params: Map<String, String>): String {
+        val p = params.entries
+            .sortedBy { "${it.key}=${it.value}" }
+            .joinToString("&") { (k, v) -> "$k=$v" }
+        return "jewelheart/sdui/screen|screenId=$screenId|retreatId=${retreatId.orEmpty()}|params=$p"
+    }
+
+    private fun canServeStaleCache(e: Exception): Boolean =
+        e is IOException || (e is HttpApiException && e.code in setOf(-1, 502, 503, 530))
+
     private suspend fun voidRequest(method: String, path: String, query: Map<String, String?> = emptyMap(), jsonBody: Any? = null) {
         val body = jsonBody?.let { gson.toJson(it).toByteArray(Charsets.UTF_8) }
         val (code, data) = rawRequest(method, path, query, bearer = true, body = body, contentType = "application/json")
@@ -107,7 +170,13 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
                 add("params", p)
             }
         }
-        val bytes = jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)
+        val bytes = cachedJsonRead(
+            namespace = CACHE_SDUI_SCREENS,
+            key = sduiCacheKey(screenId, retreatId, params),
+            ttlMillis = CACHE_TTL_STANDARD_MS,
+        ) {
+            jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)
+        }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), SduiEnvelope::class.java)
     }
 
@@ -116,13 +185,22 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             cursor?.let { put("cursor", it) }
             limit?.let { put("limit", it.toString()) }
         }
-        val bytes = jsonRequest("GET", "jewelheart/retreats", query = q)
+        val bytes = cachedJsonRead(
+            namespace = CACHE_RETREATS,
+            key = readCacheKey("jewelheart/retreats", q),
+            ttlMillis = CACHE_TTL_STANDARD_MS,
+        ) {
+            jsonRequest("GET", "jewelheart/retreats", query = q)
+        }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), RetreatListResponse::class.java)
     }
 
     suspend fun createRetreat(body: RetreatCreate): Retreat {
         val bytes = jsonRequest("POST", "jewelheart/retreats", jsonBody = body)
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), Retreat::class.java)
+        val retreat = gson.fromJson(bytes.toString(Charsets.UTF_8), Retreat::class.java)
+        cache.invalidate(CACHE_RETREATS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        return retreat
     }
 
     suspend fun getRetreat(retreatId: String): Retreat {
@@ -132,11 +210,19 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
 
     suspend fun updateRetreat(retreatId: String, patch: RetreatPatch): Retreat {
         val bytes = jsonRequest("PATCH", "jewelheart/retreats/$retreatId", jsonBody = patch)
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), Retreat::class.java)
+        val retreat = gson.fromJson(bytes.toString(Charsets.UTF_8), Retreat::class.java)
+        cache.invalidate(CACHE_RETREATS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        return retreat
     }
 
     suspend fun deleteRetreat(retreatId: String) {
         voidRequest("DELETE", "jewelheart/retreats/$retreatId")
+        cache.invalidate(CACHE_RETREATS)
+        cache.invalidate(CACHE_RETREAT_VOLUNTEERS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        cache.invalidate(CACHE_CONVERSATIONS)
+        cache.invalidate(CACHE_MESSAGES)
     }
 
     suspend fun listJobs(retreatId: String): JobListResponse {
@@ -256,13 +342,23 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
     }
 
     suspend fun listRetreatVolunteers(retreatId: String): RetreatVolunteerListResponse {
-        val bytes = jsonRequest("GET", "jewelheart/retreats/$retreatId/volunteers")
+        val path = "jewelheart/retreats/$retreatId/volunteers"
+        val bytes = cachedJsonRead(
+            namespace = CACHE_RETREAT_VOLUNTEERS,
+            key = readCacheKey(path),
+            ttlMillis = CACHE_TTL_STANDARD_MS,
+        ) {
+            jsonRequest("GET", path)
+        }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), RetreatVolunteerListResponse::class.java)
     }
 
     suspend fun linkRetreatVolunteer(retreatId: String, volunteerId: String): RetreatVolunteer {
         val bytes = jsonRequest("POST", "jewelheart/retreats/$retreatId/volunteers", jsonBody = LinkRetreatVolunteerBody(volunteerId))
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), RetreatVolunteer::class.java)
+        val row = gson.fromJson(bytes.toString(Charsets.UTF_8), RetreatVolunteer::class.java)
+        cache.invalidate(CACHE_RETREAT_VOLUNTEERS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        return row
     }
 
     suspend fun importRetreatVolunteersCsv(retreatId: String, csvBytes: ByteArray, filename: String = "import.csv"): VolunteerImportResult {
@@ -283,11 +379,16 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             contentType = "multipart/form-data; boundary=$boundary",
         )
         if (code != 200) throw HttpApiException(code, data.toString(Charsets.UTF_8).takeIf { it.isNotBlank() })
-        return gson.fromJson(data.toString(Charsets.UTF_8), VolunteerImportResult::class.java)
+        val result = gson.fromJson(data.toString(Charsets.UTF_8), VolunteerImportResult::class.java)
+        cache.invalidate(CACHE_RETREAT_VOLUNTEERS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        return result
     }
 
     suspend fun unlinkRetreatVolunteer(retreatId: String, volunteerId: String) {
         voidRequest("DELETE", "jewelheart/retreats/$retreatId/volunteers/$volunteerId")
+        cache.invalidate(CACHE_RETREAT_VOLUNTEERS)
+        cache.invalidate(CACHE_SDUI_SCREENS)
     }
 
     suspend fun mintVolunteerCalendarFeed(volunteerId: String, regenerate: Boolean = false): VolunteerCalendarFeedResponse {
@@ -358,7 +459,9 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             }
         }
         val bytes = jsonRequest("POST", "jewelheart/sdui/action", jsonBody = jo)
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), SduiActionResponse::class.java)
+        val response = gson.fromJson(bytes.toString(Charsets.UTF_8), SduiActionResponse::class.java)
+        cache.invalidate(CACHE_SDUI_SCREENS)
+        return response
     }
 
     // --- Messaging (see openapi/jewelheart.yaml tag Messaging) ---
@@ -369,7 +472,9 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             "jewelheart/retreats/$retreatId/conversations",
             jsonBody = ConversationCreateRequest(kind = "retreat_room"),
         )
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+        val conversation = gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+        cache.invalidate(CACHE_CONVERSATIONS)
+        return conversation
     }
 
     suspend fun createDirectConversation(retreatId: String, peerVolunteerId: String): ConversationSummary {
@@ -378,11 +483,20 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             "jewelheart/retreats/$retreatId/conversations",
             jsonBody = ConversationCreateRequest(kind = "direct", peerVolunteerId = peerVolunteerId),
         )
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+        val conversation = gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationSummary::class.java)
+        cache.invalidate(CACHE_CONVERSATIONS)
+        return conversation
     }
 
     suspend fun listRetreatConversations(retreatId: String): ConversationListResponse {
-        val bytes = jsonRequest("GET", "jewelheart/retreats/$retreatId/conversations")
+        val path = "jewelheart/retreats/$retreatId/conversations"
+        val bytes = cachedJsonRead(
+            namespace = CACHE_CONVERSATIONS,
+            key = readCacheKey(path),
+            ttlMillis = CACHE_TTL_STANDARD_MS,
+        ) {
+            jsonRequest("GET", path)
+        }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationListResponse::class.java)
     }
 
@@ -397,7 +511,14 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             cursor?.let { put("cursor", it) }
             if (includeDeleted) put("include_deleted", "true")
         }
-        val bytes = jsonRequest("GET", "jewelheart/conversations/$conversationId/messages", query = q)
+        val path = "jewelheart/conversations/$conversationId/messages"
+        val bytes = cachedJsonRead(
+            namespace = CACHE_MESSAGES,
+            key = readCacheKey(path, q),
+            ttlMillis = CACHE_TTL_MESSAGES_MS,
+        ) {
+            jsonRequest("GET", path, query = q)
+        }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), MessageListResponse::class.java)
     }
 
@@ -407,15 +528,85 @@ class JewelHeartRepository(private val gson: Gson = Gson()) {
             "jewelheart/conversations/$conversationId/messages",
             jsonBody = ConversationMessageSendBody(body = body),
         )
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), JHMessage::class.java)
+        val message = gson.fromJson(bytes.toString(Charsets.UTF_8), JHMessage::class.java)
+        cache.invalidate(CACHE_MESSAGES)
+        cache.invalidate(CACHE_CONVERSATIONS)
+        return message
     }
 
     suspend fun markConversationRead(conversationId: String): ConversationReadResponse {
         val bytes = jsonRequest("POST", "jewelheart/conversations/$conversationId/read")
-        return gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationReadResponse::class.java)
+        val response = gson.fromJson(bytes.toString(Charsets.UTF_8), ConversationReadResponse::class.java)
+        cache.invalidate(CACHE_CONVERSATIONS)
+        return response
     }
 
     suspend fun deleteJewelHeartMessage(messageId: String) {
         voidRequest("DELETE", "jewelheart/messages/$messageId")
+        cache.invalidate(CACHE_MESSAGES)
+        cache.invalidate(CACHE_CONVERSATIONS)
+    }
+}
+
+private class JewelHeartReadCache(
+    private val context: Context?,
+    private val gson: Gson,
+) {
+    private data class Entry(
+        val savedAtMillis: Long,
+        val payload: String,
+    )
+
+    suspend fun getFresh(namespace: String, key: String, ttlMillis: Long): ByteArray? =
+        withContext(Dispatchers.IO) {
+            val entry = readEntry(namespace, key) ?: return@withContext null
+            if (System.currentTimeMillis() - entry.savedAtMillis > ttlMillis) return@withContext null
+            entry.payload.toByteArray(Charsets.UTF_8)
+        }
+
+    suspend fun getStale(namespace: String, key: String): ByteArray? =
+        withContext(Dispatchers.IO) {
+            readEntry(namespace, key)?.payload?.toByteArray(Charsets.UTF_8)
+        }
+
+    suspend fun put(namespace: String, key: String, data: ByteArray) {
+        withContext(Dispatchers.IO) {
+            val file = file(namespace, key) ?: return@withContext
+            val entry = Entry(
+                savedAtMillis = System.currentTimeMillis(),
+                payload = data.toString(Charsets.UTF_8),
+            )
+            runCatching {
+                file.parentFile?.mkdirs()
+                file.writeText(gson.toJson(entry), Charsets.UTF_8)
+            }
+        }
+    }
+
+    suspend fun invalidate(namespace: String) {
+        withContext(Dispatchers.IO) {
+            val dir = directory() ?: return@withContext
+            dir.listFiles { file -> file.name.startsWith("$namespace-") }
+                ?.forEach { runCatching { it.delete() } }
+        }
+    }
+
+    private fun readEntry(namespace: String, key: String): Entry? {
+        val file = file(namespace, key) ?: return null
+        if (!file.exists()) return null
+        return runCatching {
+            gson.fromJson(file.readText(Charsets.UTF_8), Entry::class.java)
+        }.getOrNull()
+    }
+
+    private fun file(namespace: String, key: String): File? =
+        directory()?.resolve("$namespace-${sha256(key)}.json")
+
+    private fun directory(): File? =
+        context?.cacheDir?.resolve("jewelheart-read-cache")
+
+    private fun sha256(value: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
 }
