@@ -14,7 +14,14 @@ extension JewelHeartAPI {
         var q: [URLQueryItem] = []
         if let cursor { q.append(URLQueryItem(name: "cursor", value: cursor)) }
         if let limit { q.append(URLQueryItem(name: "limit", value: String(limit))) }
-        let (data, _) = try await authorizedDataRequest(path: "jewelheart/retreats", method: "GET", queryItems: q)
+        let data = try await authorizedCachedDataRequest(
+            path: "jewelheart/retreats",
+            method: "GET",
+            queryItems: q,
+            cacheNamespace: JewelHeartReadCacheNamespace.retreats,
+            cacheKey: Self.cacheKey(path: "jewelheart/retreats", queryItems: q),
+            ttl: JewelHeartReadCacheTTL.standard
+        )
         return try jsonDecoder().decode(RetreatListResponse.self, from: data)
     }
 
@@ -26,7 +33,9 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(Retreat.self, from: data)
+        let retreat = try jsonDecoder().decode(Retreat.self, from: data)
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.retreats, JewelHeartReadCacheNamespace.sduiScreens])
+        return retreat
     }
 
     func getRetreat(retreatId: String) async throws -> Retreat {
@@ -42,11 +51,20 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(Retreat.self, from: data)
+        let retreat = try jsonDecoder().decode(Retreat.self, from: data)
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.retreats, JewelHeartReadCacheNamespace.sduiScreens])
+        return retreat
     }
 
     func deleteRetreat(retreatId: String) async throws {
         let (_, _) = try await authorizedDataRequest(path: "jewelheart/retreats/\(retreatId)", method: "DELETE")
+        await invalidateReadCaches([
+            JewelHeartReadCacheNamespace.retreats,
+            JewelHeartReadCacheNamespace.retreatVolunteers,
+            JewelHeartReadCacheNamespace.sduiScreens,
+            JewelHeartReadCacheNamespace.conversations,
+            JewelHeartReadCacheNamespace.messages,
+        ])
     }
 
     // MARK: - Jobs
@@ -255,9 +273,12 @@ extension JewelHeartAPI {
     // MARK: - Retreat volunteers
 
     func listRetreatVolunteers(retreatId: String) async throws -> RetreatVolunteerListResponse {
-        let (data, _) = try await authorizedDataRequest(
+        let data = try await authorizedCachedDataRequest(
             path: "jewelheart/retreats/\(retreatId)/volunteers",
-            method: "GET"
+            method: "GET",
+            cacheNamespace: JewelHeartReadCacheNamespace.retreatVolunteers,
+            cacheKey: Self.cacheKey(path: "jewelheart/retreats/\(retreatId)/volunteers"),
+            ttl: JewelHeartReadCacheTTL.standard
         )
         return try jsonDecoder().decode(RetreatVolunteerListResponse.self, from: data)
     }
@@ -270,7 +291,9 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(RetreatVolunteer.self, from: data)
+        let row = try jsonDecoder().decode(RetreatVolunteer.self, from: data)
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.retreatVolunteers, JewelHeartReadCacheNamespace.sduiScreens])
+        return row
     }
 
     func importRetreatVolunteersCsv(retreatId: String, csvData: Data, filename: String = "import.csv") async throws -> VolunteerImportResult {
@@ -290,7 +313,9 @@ extension JewelHeartAPI {
             httpBody: body,
             contentType: "multipart/form-data; boundary=\(boundary)"
         )
-        return try jsonDecoder().decode(VolunteerImportResult.self, from: data)
+        let result = try jsonDecoder().decode(VolunteerImportResult.self, from: data)
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.retreatVolunteers, JewelHeartReadCacheNamespace.sduiScreens])
+        return result
     }
 
     func unlinkRetreatVolunteer(retreatId: String, volunteerId: String) async throws {
@@ -298,6 +323,7 @@ extension JewelHeartAPI {
             path: "jewelheart/retreats/\(retreatId)/volunteers/\(volunteerId)",
             method: "DELETE"
         )
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.retreatVolunteers, JewelHeartReadCacheNamespace.sduiScreens])
     }
 
     // MARK: - Calendar feed
@@ -394,7 +420,9 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(SduiActionResponse.self, from: data)
+        let response = try jsonDecoder().decode(SduiActionResponse.self, from: data)
+        await invalidateReadCache(namespace: JewelHeartReadCacheNamespace.sduiScreens)
+        return response
     }
 
     // MARK: - Messaging
@@ -407,7 +435,9 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(ConversationSummary.self, from: data)
+        let conversation = try jsonDecoder().decode(ConversationSummary.self, from: data)
+        await invalidateReadCache(namespace: JewelHeartReadCacheNamespace.conversations)
+        return conversation
     }
 
     func createDirectConversation(retreatId: String, peerVolunteerId: String) async throws -> ConversationSummary {
@@ -418,13 +448,18 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(ConversationSummary.self, from: data)
+        let conversation = try jsonDecoder().decode(ConversationSummary.self, from: data)
+        await invalidateReadCache(namespace: JewelHeartReadCacheNamespace.conversations)
+        return conversation
     }
 
     func listRetreatConversations(retreatId: String) async throws -> ConversationListResponse {
-        let (data, _) = try await authorizedDataRequest(
+        let data = try await authorizedCachedDataRequest(
             path: "jewelheart/retreats/\(retreatId)/conversations",
-            method: "GET"
+            method: "GET",
+            cacheNamespace: JewelHeartReadCacheNamespace.conversations,
+            cacheKey: Self.cacheKey(path: "jewelheart/retreats/\(retreatId)/conversations"),
+            ttl: JewelHeartReadCacheTTL.standard
         )
         return try jsonDecoder().decode(ConversationListResponse.self, from: data)
     }
@@ -439,10 +474,13 @@ extension JewelHeartAPI {
         if let limit { q.append(URLQueryItem(name: "limit", value: String(limit))) }
         if let cursor, !cursor.isEmpty { q.append(URLQueryItem(name: "cursor", value: cursor)) }
         if includeDeleted { q.append(URLQueryItem(name: "include_deleted", value: "true")) }
-        let (data, _) = try await authorizedDataRequest(
+        let data = try await authorizedCachedDataRequest(
             path: "jewelheart/conversations/\(conversationId)/messages",
             method: "GET",
-            queryItems: q
+            queryItems: q,
+            cacheNamespace: JewelHeartReadCacheNamespace.messages,
+            cacheKey: Self.cacheKey(path: "jewelheart/conversations/\(conversationId)/messages", queryItems: q),
+            ttl: JewelHeartReadCacheTTL.messages
         )
         return try jsonDecoder().decode(MessageListResponse.self, from: data)
     }
@@ -455,7 +493,9 @@ extension JewelHeartAPI {
             httpBody: enc,
             contentType: "application/json"
         )
-        return try jsonDecoder().decode(ChatMessage.self, from: data)
+        let message = try jsonDecoder().decode(ChatMessage.self, from: data)
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.messages, JewelHeartReadCacheNamespace.conversations])
+        return message
     }
 
     func markConversationRead(conversationId: String) async throws -> ConversationReadResponse {
@@ -463,10 +503,13 @@ extension JewelHeartAPI {
             path: "jewelheart/conversations/\(conversationId)/read",
             method: "POST"
         )
-        return try jsonDecoder().decode(ConversationReadResponse.self, from: data)
+        let response = try jsonDecoder().decode(ConversationReadResponse.self, from: data)
+        await invalidateReadCache(namespace: JewelHeartReadCacheNamespace.conversations)
+        return response
     }
 
     func deleteJewelHeartMessage(messageId: String) async throws {
         let (_, _) = try await authorizedDataRequest(path: "jewelheart/messages/\(messageId)", method: "DELETE")
+        await invalidateReadCaches([JewelHeartReadCacheNamespace.messages, JewelHeartReadCacheNamespace.conversations])
     }
 }
