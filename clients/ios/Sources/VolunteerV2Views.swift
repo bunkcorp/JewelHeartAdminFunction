@@ -86,25 +86,27 @@ final class RetreatV7Store: ObservableObject {
     private static func loadBundledData() -> RetreatV7Data {
         guard let url = Bundle.main.url(forResource: "retreat_v7", withExtension: "json") else {
             assertionFailure("Missing retreat_v7.json bundle resource")
-            return emptyData
+            return makeEmptyData()
         }
         do {
             return try JSONDecoder().decode(RetreatV7Data.self, from: Data(contentsOf: url))
         } catch {
             assertionFailure("Failed to decode retreat_v7.json: \(error)")
-            return emptyData
+            return makeEmptyData()
         }
     }
 
-    private static let emptyData = RetreatV7Data(
-        retreatName: "Volunteer shifts",
-        startDate: "",
-        endDate: "",
-        scheduledDays: 0,
-        testToday: "",
-        shifts: [],
-        jobs: []
-    )
+    private static func makeEmptyData() -> RetreatV7Data {
+        RetreatV7Data(
+            retreatName: "Volunteer shifts",
+            startDate: "",
+            endDate: "",
+            scheduledDays: 0,
+            testToday: "",
+            shifts: [],
+            jobs: []
+        )
+    }
 
     private static func date(from isoDay: String) -> Date? {
         guard !isoDay.isEmpty else { return nil }
