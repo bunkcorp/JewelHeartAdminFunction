@@ -17,6 +17,18 @@ From the JewelHeartAdminFunction repo root:
 
   node scripts/apply-jewelheart-task-list-fragments.mjs
 
+Volunteer home SDUI (jewelheart.home gold/blue bars):
+
+  node scripts/apply-jewelheart-sdui-fragment.mjs
+
+  # production laptop checkout:
+  JEWELHEART_PRIVATE_SERVER_SRC=~/private-server/src/jewelheart \
+    node scripts/apply-jewelheart-sdui-fragment.mjs
+
+Verify after deploy (needs .jewelheart-token in repo root):
+
+  bash scripts/check-sdui-jewelheart-home.sh
+
 Default target: ../buddhist-stone-ios-app/private-server/src/jewelheart
 
 Override path:
