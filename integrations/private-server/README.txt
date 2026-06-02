@@ -11,7 +11,28 @@ Purpose
 Task list JSON includes human-readable jobTitle and slotLabel (camelCase on
 the wire) so iOS/Android can show "Job — Slot" instead of UUIDs.
 
-Automated apply (recommended)
+SDUI volunteer home (jewelheart.home)
+-------------------------------------
+Replaces the legacy Home hub (Retreats / Docs buttons) with gold/blue volunteer bars.
+
+From JewelHeartAdminFunction repo root:
+
+  node scripts/apply-jewelheart-sdui-fragment.mjs
+
+Default target: ../buddhist-stone-ios-app/private-server/src/jewelheart
+
+Production laptop:
+
+  JEWELHEART_PRIVATE_SERVER_SRC=~/private-server/src/jewelheart \
+    node scripts/apply-jewelheart-sdui-fragment.mjs
+
+Then restart Node (launchd org.karmadots.private-server, pm2, etc.).
+
+Verify (requires .jewelheart-token in repo root):
+
+  bash scripts/check-sdui-jewelheart-home.sh
+
+Automated apply (task list)
 -------------------------------
 From the JewelHeartAdminFunction repo root:
 

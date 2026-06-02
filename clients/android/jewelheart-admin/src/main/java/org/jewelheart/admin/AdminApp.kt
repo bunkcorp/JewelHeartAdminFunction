@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -313,14 +314,22 @@ fun SduiTabContent(vm: JewelHeartViewModel) {
             )
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+        Column(Modifier.fillMaxSize().padding(padding)) {
             when {
-                vm.loading -> CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
-                vm.error != null -> Text(vm.error!!, color = MaterialTheme.colorScheme.error)
+                vm.loading -> CircularProgressIndicator(
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(horizontal = 16.dp),
+                )
+                vm.error != null -> Text(
+                    vm.error!!,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
                 vm.envelope != null -> {
                     val s = vm.envelope!!.screen
+                    // Full-bleed volunteer bars (gold/blue) — no side inset; matches iOS SDUI home.
                     Column(Modifier.verticalScroll(rememberScrollState())) {
-                        // `screen.title` is only in the top app bar (matches iOS nav title).
                         s.components?.forEach { SduiComponentView(it, vm, ctx) }
                     }
                 }
@@ -381,12 +390,12 @@ private fun SduiComponentView(
                 "right", "trailing" -> TextAlign.End
                 else -> TextAlign.Start
             }
-            val fg = sduiParseHexColor(c.textStyle?.color) ?: MaterialTheme.colorScheme.onSurface
+            val fg = sduiTextForegroundColor(c, MaterialTheme.colorScheme.onSurface)
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
             val pad = sduiBarPadding(c.style)
             val mod = Modifier
                 .fillMaxWidth()
-                .then(if (bg != null) Modifier.background(bg).padding(pad) else Modifier)
+                .then(if (bg != null) Modifier.background(bg).padding(pad) else Modifier.padding(horizontal = 16.dp))
             Text(
                 text = c.content ?: "",
                 modifier = mod,
@@ -431,9 +440,17 @@ private fun sduiParseHexColor(hex: String?): Color? {
 
 private fun sduiBackgroundColor(hex: String?): Color? = sduiParseHexColor(hex)
 
-private fun sduiBarPadding(style: ComponentStyle?): androidx.compose.foundation.layout.PaddingValues {
-    val p = style?.padding ?: return androidx.compose.foundation.layout.PaddingValues(0.dp)
-    return androidx.compose.foundation.layout.PaddingValues(
+private fun sduiTextForegroundColor(c: UiComponent, defaultOnSurface: Color): Color {
+    sduiParseHexColor(c.textStyle?.color)?.let { return it }
+    val content = c.content.orEmpty()
+    if (content.contains("does not exist", ignoreCase = true)) return JewelHeartColors.ErrorRed
+    if (content.contains("Demo schedule", ignoreCase = true)) return JewelHeartColors.DemoNoteGray
+    return defaultOnSurface
+}
+
+private fun sduiBarPadding(style: ComponentStyle?): PaddingValues {
+    val p = style?.padding ?: return PaddingValues(0.dp)
+    return PaddingValues(
         start = (p.left ?: p.all ?: 8.0).dp,
         top = (p.top ?: p.all ?: 10.0).dp,
         end = (p.right ?: p.all ?: 8.0).dp,

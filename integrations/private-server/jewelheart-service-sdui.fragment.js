@@ -131,7 +131,7 @@ async function resolveVolunteerIdForHome(firebaseUid, retreatId) {
        FROM jewelheart_retreat_volunteers rv
        JOIN jewelheart_volunteers v ON v.id = rv.volunteer_id
        WHERE rv.retreat_id = $1
-       ORDER BY rv.created_at NULLS LAST, v.display_name
+       ORDER BY rv.linked_at NULLS LAST, v.display_name
        LIMIT 1`,
       [retreatId],
     );

@@ -1,15 +1,15 @@
-#!/usr/bin/env bash
-# Call production SDUI jewelheart.home (does not print your token).
+﻿#!/usr/bin/env bash
+# Verify production jewelheart.home SDUI (does not print your token).
 # Setup (repo root, once per session):
 #   echo 'YOUR_FIREBASE_ID_TOKEN' > .jewelheart-token
-# Both files are gitignored.
+# (.jewelheart-token is gitignored.)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TOKEN_FILE="$ROOT/.jewelheart-token"
 BASE="${JEWELHEART_API:-https://api.karmadots.org/jewelheart}"
 
 if [[ ! -f "$TOKEN_FILE" ]]; then
-  echo "Missing $TOKEN_FILE — see scripts/check-sdui-retreat-schedule.sh" >&2
+  echo "Missing $TOKEN_FILE — paste a Firebase ID token from the admin app (Settings shows UID after sign-in). See scripts/check-sdui-retreat-schedule.sh." >&2
   exit 1
 fi
 
@@ -27,33 +27,44 @@ screen = d.get('screen') or {}
 sid = screen.get('id') or screen.get('screenId')
 print('schemaVersion:', d.get('schemaVersion', d.get('version')))
 print('screen.id:', sid)
-comps = screen.get('components') or []
+print('screen.title:', screen.get('title'))
 
-def walk(obj, out):
+def walk(obj, texts, buttons, styled):
     if isinstance(obj, dict):
         if obj.get('type') == 'text':
+            content = obj.get('content')
+            if content:
+                texts.append(str(content))
             style = obj.get('style') or {}
             bg = style.get('backgroundColor')
-            content = (obj.get('content') or '')[:60]
-            if bg or 'Volunteer Home' in content or 'Retreat' in content:
-                out.append((bg, content))
-        walk(obj.get('children'), out)
+            snippet = (content or '')[:60] if content else ''
+            if bg or (snippet and ('Volunteer Home' in snippet or 'Retreat' in snippet)):
+                styled.append((bg, snippet))
+        if obj.get('type') == 'button':
+            buttons.append(str(obj.get('label') or obj.get('content') or '?'))
+        walk(obj.get('children'), texts, buttons, styled)
     elif isinstance(obj, list):
         for x in obj:
-            walk(x, out)
+            walk(x, texts, buttons, styled)
 
-lines = []
-walk(comps, lines)
-for bg, text in lines[:8]:
-    print(' text:', repr(text), 'bg:', bg)
+texts, buttons, styled = [], [], []
+walk(screen.get('components'), texts, buttons, styled)
+print('text_samples:', texts[:6])
+print('buttons:', buttons)
+for bg, text in styled[:8]:
+    print(' styled_text:', repr(text), 'bg:', bg)
 
 blob = json.dumps(d)
-if '#FFCA10' in blob or '#7A95CA' in blob:
-    print('OK: volunteer home colors present (deployed layout).')
-elif 'Retreat volunteer scheduling' in blob or 'pick a section' in blob:
-    print('WARNING: old home hub copy — deploy jewelheartHomeSdui to sduiScreens.js.')
-else:
-    print('NOTE: could not detect layout; inspect JSON manually.')
-if sid != 'jewelheart.home':
+legacy = any('Retreat volunteer scheduling' in t for t in texts) or 'Retreats' in buttons
+volunteer = any('Volunteer Home' in t for t in texts)
+colors = '#FFCA10' in blob or '#7A95CA' in blob
+
+if sid and sid != 'jewelheart.home':
     print('WARNING: expected screen.id jewelheart.home')
+if legacy:
+    print('STATUS: OLD home hub (Retreats/Docs) — redeploy private-server and restart Node.')
+elif volunteer or colors:
+    print('STATUS: OK — volunteer home layout present.')
+else:
+    print('STATUS: UNKNOWN — inspect response above.')
 "
