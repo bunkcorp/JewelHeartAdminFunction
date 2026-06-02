@@ -28,6 +28,7 @@
 		A43C12252E49B91130127D43 /* JewelHeartFirebaseEarlyConfigure.m in Sources */ = {isa = PBXBuildFile; fileRef = 1B5637CC250383502B47FC09 /* JewelHeartFirebaseEarlyConfigure.m */; };
 		B50DA5C2B4E42C7574E6B3F7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 433923B95ABD412F2853CA40 /* Assets.xcassets */; };
 		B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */; };
+		C84F815E1C5D4E6F8A901234 /* VolunteerV2Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84F815D1C5D4E6F8A901234 /* VolunteerV2Views.swift */; };
 		E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
 		F1A2B3C4D5E6F708091A2B3C /* JewelHeartMessagingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */; };
@@ -53,6 +54,7 @@
 		A959266B5A269656940ADBCC /* JewelHeartFirebaseSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartFirebaseSignIn.swift; sourceTree = "<group>"; };
 		AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartRootPresenter.swift; sourceTree = "<group>"; };
 		B9D49FFF9CB5ED057F410552 /* JewelHeartSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartSignInView.swift; sourceTree = "<group>"; };
+		C84F815D1C5D4E6F8A901234 /* VolunteerV2Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolunteerV2Views.swift; sourceTree = "<group>"; };
 		C64887F96267A1539C6F04B6 /* JewelHeartRESTModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartRESTModels.swift; sourceTree = "<group>"; };
 		DA254DD62D9077915714E370 /* SDUIRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIRenderer.swift; sourceTree = "<group>"; };
 		FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAdminResourceViews.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				04D1E1F2F366079542D83BAA /* RootView.swift */,
 				7D032E827A7E776FB693FD8C /* SDUIModels.swift */,
 				DA254DD62D9077915714E370 /* SDUIRenderer.swift */,
+				C84F815D1C5D4E6F8A901234 /* VolunteerV2Views.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -216,6 +219,7 @@
 				03EB4846FC78F2657859B3C3 /* RootView.swift in Sources */,
 				56AC20D06B3A62DB3CCF37D8 /* SDUIModels.swift in Sources */,
 				84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */,
+				C84F815E1C5D4E6F8A901234 /* VolunteerV2Views.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
