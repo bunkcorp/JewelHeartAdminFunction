@@ -77,6 +77,7 @@ struct SDUIComponentView: View {
         }
     }
 
+    @ViewBuilder
     private var textBody: some View {
         let label = Text(component.content ?? "")
             .font(.system(size: component.textStyle?.fontSize ?? 16))
