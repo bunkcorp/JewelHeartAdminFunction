@@ -13,35 +13,7 @@
         "children": [
           {
             "type": "text",
-            "content": "JH Summer 2026 - Day 2, Tue",
-            "textStyle": {
-              "fontSize": 17,
-              "fontWeight": "bold",
-              "textAlign": "center",
-              "color": "#000000"
-            },
-            "style": {
-              "backgroundColor": "#FFCA10",
-              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
-            }
-          },
-          {
-            "type": "text",
-            "content": "Volunteer Home",
-            "textStyle": {
-              "fontSize": 17,
-              "fontWeight": "bold",
-              "textAlign": "center",
-              "color": "#000000"
-            },
-            "style": {
-              "backgroundColor": "#FFCA10",
-              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
-            }
-          },
-          {
-            "type": "text",
-            "content": "David Lewis - 2 shifts - 1 today:",
+            "content": "JH Summer Retreat 2026 - Jul 20-26",
             "textStyle": {
               "fontSize": 17,
               "fontWeight": "bold",
@@ -50,12 +22,57 @@
             },
             "style": {
               "backgroundColor": "#7A95CA",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Volunteer Home - Day 2, Tue July 21",
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#7A95CA",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Tap for announcements and messages",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.messages", "payload": {} },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#7A95CA",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "4 shifts, 2 today (tap to check in):",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#000000"
+            },
+            "style": {
+              "backgroundColor": "#FFCA10",
               "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
             }
           },
           {
             "type": "text",
             "content": "Kitchen Full Clean - End of Day",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": { "taskId": "demo-kitchen-full" } },
             "textStyle": {
               "fontSize": 17,
               "fontWeight": "bold",
@@ -63,7 +80,56 @@
               "color": "#FFFFFF"
             },
             "style": {
-              "backgroundColor": "#7A95CA",
+              "backgroundColor": "#92160E",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "spacer",
+            "style": { "height": { "value": 28 } }
+          },
+          {
+            "type": "text",
+            "content": "Sign up for more shifts",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.search", "payload": {} },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#92160E",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Review / edit my assigned shifts",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.mine", "payload": {} },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#92160E",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Check in for a shift today",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#92160E",
               "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
             }
           }

@@ -26,10 +26,46 @@ const jewelDir = process.env.JEWELHEART_PRIVATE_SERVER_SRC || defaultJewelDir;
 const sduiScreensPath = path.join(jewelDir, 'sduiScreens.js');
 const homeModuleDest = path.join(jewelDir, 'jewelheart-sdui-home.js');
 
-const importLine = "import { buildJewelheartHomeScreen } from './jewelheart-sdui-home.js';";
+const importLine =
+  "import { buildJewelheartHomeScreen, buildJewelheartVolunteerSearchScreen, buildJewelheartVolunteerAssignScreen, buildJewelheartVolunteerCheckinScreen, buildJewelheartVolunteerMessagesScreen, buildJewelheartVolunteerMineScreen } from './jewelheart-sdui-home.js';";
+const mineCaseBlock = `    case 'jewelheart.volunteer.mine':
+      return wrap(
+        await buildJewelheartVolunteerMineScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
+const checkinCaseBlock = `    case 'jewelheart.volunteer.checkin':
+      return wrap(
+        await buildJewelheartVolunteerCheckinScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
+const messagesCaseBlock = `    case 'jewelheart.volunteer.messages':
+      return wrap(
+        await buildJewelheartVolunteerMessagesScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
 const homeCaseBlock = `    case 'jewelheart.home':
     case 'home':
       return wrap(await buildJewelheartHomeScreen(firebaseUid, authToken));`;
+const searchCaseBlock = `    case 'jewelheart.volunteer.search':
+      return wrap(
+        await buildJewelheartVolunteerSearchScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
+const assignCaseBlock = `    case 'jewelheart.volunteer.assign':
+      return wrap(
+        await buildJewelheartVolunteerAssignScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
 
 function die(msg) {
   console.error(msg);
@@ -60,6 +96,52 @@ function patchSduiScreens() {
     src = src.replace(legacyCase, homeCaseBlock);
   } else if (!src.includes('buildJewelheartHomeScreen(firebaseUid, authToken)')) {
     die('sduiScreens.js: jewelheart.home case not in expected form (already patched or layout changed).');
+  }
+
+  if (!src.includes("case 'jewelheart.volunteer.search':")) {
+    const homeCaseAnchor = homeCaseBlock.split('\n')[0];
+    if (!src.includes(homeCaseAnchor)) {
+      die('sduiScreens.js: cannot find jewelheart.home case to insert volunteer search/assign routes.');
+    }
+    src = src.replace(
+      homeCaseBlock,
+      `${homeCaseBlock}\n${searchCaseBlock}\n${assignCaseBlock}`,
+    );
+    console.log('Added jewelheart.volunteer.search and jewelheart.volunteer.assign cases.');
+  }
+
+  if (!src.includes("case 'jewelheart.volunteer.checkin':")) {
+    const assignAnchor = assignCaseBlock.split('\n').slice(-1)[0];
+    if (!src.includes(assignCaseBlock)) {
+      die('sduiScreens.js: cannot find volunteer assign case to insert checkin/messages routes.');
+    }
+    src = src.replace(assignCaseBlock, `${assignCaseBlock}\n${checkinCaseBlock}\n${messagesCaseBlock}`);
+    console.log('Added jewelheart.volunteer.checkin and jewelheart.volunteer.messages cases.');
+  }
+
+  if (!src.includes("case 'jewelheart.volunteer.mine':")) {
+    if (!src.includes(messagesCaseBlock)) {
+      die('sduiScreens.js: cannot find volunteer messages case to insert mine route.');
+    }
+    src = src.replace(messagesCaseBlock, `${messagesCaseBlock}\n${mineCaseBlock}`);
+    console.log('Added jewelheart.volunteer.mine case.');
+  }
+
+  const partialImport =
+    "import { buildJewelheartHomeScreen, buildJewelheartVolunteerSearchScreen, buildJewelheartVolunteerAssignScreen } from './jewelheart-sdui-home.js';";
+  if (src.includes(partialImport) && !src.includes('buildJewelheartVolunteerCheckinScreen')) {
+    src = src.replace(partialImport, importLine);
+    console.log('Extended jewelheart-sdui-home import with checkin/messages builders.');
+  } else if (src.includes("buildJewelheartHomeScreen } from './jewelheart-sdui-home.js'")) {
+    src = src.replace(
+      "import { buildJewelheartHomeScreen } from './jewelheart-sdui-home.js';",
+      importLine,
+    );
+  } else if (!src.includes('buildJewelheartVolunteerSearchScreen')) {
+    const homeImport = "import { buildJewelheartHomeScreen } from './jewelheart-sdui-home.js';";
+    if (src.includes(homeImport)) {
+      src = src.replace(homeImport, importLine);
+    }
   }
 
   const screenHomeRe =

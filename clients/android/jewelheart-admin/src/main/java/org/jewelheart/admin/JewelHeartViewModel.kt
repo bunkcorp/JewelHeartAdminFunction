@@ -11,8 +11,9 @@ import kotlinx.coroutines.tasks.await
 
 class JewelHeartViewModel(
     private val repo: JewelHeartRepository = JewelHeartRepository(),
+    initialScreenId: String = "jewelheart.home",
 ) : ViewModel() {
-    var screenId by mutableStateOf("jewelheart.home")
+    var screenId by mutableStateOf(initialScreenId)
         private set
     var retreatId by mutableStateOf<String?>(null)
         private set
@@ -35,6 +36,14 @@ class JewelHeartViewModel(
                 onDone(e)
             }
         }
+    }
+
+    /** Return to volunteer home SDUI (e.g. when re-opening the Volunteer tab). */
+    fun resetToVolunteerHome() {
+        screenId = "jewelheart.home"
+        retreatId = null
+        extraParams = emptyMap()
+        load()
     }
 
     fun load() {
@@ -66,8 +75,23 @@ class JewelHeartViewModel(
                         if (screenId == "retreat.list" || screenId == "jewelheart.home") retreatId = null
                     }
                 when (screenId) {
+                    "jewelheart.volunteer.search", "jewelheart.volunteer.assign",
+                    "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
+                    "jewelheart.volunteer.mine" -> {
+                        action.payload?.get("retreatId")?.takeIf { it.isNotBlank() }?.let { retreatId = it }
+                        val days = action.payload?.get("selectedDays")
+                        val jobs = action.payload?.get("selectedJobs")
+                        val taskId = action.payload?.get("taskId")
+                        extraParams = extraParams.toMutableMap().apply {
+                            if (days != null) put("selectedDays", days) else if (screenId == "jewelheart.volunteer.search") remove("selectedDays")
+                            if (jobs != null) put("selectedJobs", jobs) else if (screenId == "jewelheart.volunteer.search") remove("selectedJobs")
+                            if (taskId != null) put("taskId", taskId) else if (screenId == "jewelheart.volunteer.checkin") remove("taskId")
+                        }
+                    }
                     "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home" ->
-                        extraParams = extraParams.filterKeys { it != "day" && it != "weekMonday" }
+                        extraParams = extraParams.filterKeys {
+                            it != "day" && it != "weekMonday" && it != "selectedDays" && it != "selectedJobs" && it != "taskId"
+                        }
                     "retreat.schedule.day" -> {
                         val d = action.payload?.get("day")?.takeIf { it.isNotBlank() }
                         extraParams = if (d != null) {
