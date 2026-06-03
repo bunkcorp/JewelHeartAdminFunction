@@ -92,6 +92,15 @@ function volunteerHomeEffectiveTodayIso(timeZone) {
   return todayYmdInTimeZone(timeZone);
 }
 
+/** When set (e.g. 2026-07-21 = retreat day 2), home uses demo shift lines for QA. */
+function volunteerHomeForceDemoAssignments() {
+  const test =
+    typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
+      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
+      : '';
+  return Boolean(test && isIsoDate(test));
+}
+
 function isIsoDate(d) {
   return typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 }
@@ -304,14 +313,19 @@ function volunteerHomeActionButton(label, target, payload = {}) {
     label,
     action: { type: 'navigate', target, payload },
     textStyle: {
-      fontSize: 16,
+      fontSize: VOLUNTEER_HOME_BAR_FONT_SP,
       fontWeight: 'bold',
       textAlign: 'center',
       color: '#FFFFFF',
     },
     style: {
       backgroundColor: volunteerHomeMaroon,
-      padding: { top: 12, bottom: 12, left: 24, right: 24 },
+      padding: {
+        top: VOLUNTEER_HOME_BAR_V_PAD,
+        bottom: VOLUNTEER_HOME_BAR_V_PAD,
+        left: 24,
+        right: 24,
+      },
     },
   };
 }
@@ -322,7 +336,7 @@ function volunteerHomeCenteredAction(label, target, payload = {}) {
     layout: 'column',
     spacing: 0,
     textStyle: { textAlign: 'center' },
-    style: { padding: { top: 4, bottom: 12, left: 24, right: 24 } },
+    style: { padding: { top: 6, bottom: 6, left: 16, right: 16 } },
     children: [volunteerHomeActionButton(label, target, payload)],
   };
 }
@@ -361,10 +375,10 @@ function volunteerHomeShiftsSummaryBar(ctx, checkInPayload) {
   return volunteerHomeBar(ctx.shiftsSummaryLine, bg, fg, action);
 }
 
-/** Mockup “I want to…” actions — full-width maroon bars. */
+/** Mockup “I want to…” actions — centered maroon pills (not full-width bars). */
 function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
   const buttons = [
-    volunteerHomeMaroonButton(
+    volunteerHomeCenteredAction(
       ctx.shiftCount === 0 ? 'Sign up for shifts' : 'Sign up for more shifts',
       'jewelheart.volunteer.search',
       searchPayload,
@@ -372,7 +386,7 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
   ];
   if (ctx.shiftCount > 0) {
     buttons.push(
-      volunteerHomeMaroonButton(
+      volunteerHomeCenteredAction(
         'Review / edit my assigned shifts',
         'jewelheart.volunteer.mine',
         searchPayload,
@@ -383,7 +397,7 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
     const checkInLabel =
       ctx.todayCount === 1 ? 'Check in for my shift today' : 'Check in for a shift today';
     buttons.push(
-      volunteerHomeMaroonButton(checkInLabel, 'jewelheart.volunteer.checkin', checkInPayload),
+      volunteerHomeCenteredAction(checkInLabel, 'jewelheart.volunteer.checkin', checkInPayload),
     );
   }
   return buttons;
@@ -439,6 +453,7 @@ function volunteerHomeBlueHeaderChildren(ctx) {
       target: 'jewelheart.volunteer.messages',
       payload: basePayload,
     }),
+    volunteerHomeSpacer(12),
   ];
 }
 
@@ -501,8 +516,8 @@ function volunteerHomeDemoContext(todayIso, retreat) {
     retreatBannerLine: volunteerHomeRetreatBannerLine(demoRetreat),
     volunteerHomeLine: volunteerHomeVolunteerHomeLine(dayNum, todayIso),
     todayShifts: [
-      { taskId: 'demo-kitchen-full', label: 'Kitchen Full Clean - End of Day' },
-      { taskId: 'demo-cafe-light', label: 'Cafe light clean - lunch' },
+      { taskId: 'demo-kitchen-full', label: 'Kitchen full clean - End of day' },
+      { taskId: 'demo-urinals', label: 'Urinals - End of day' },
     ],
   };
 }
@@ -582,6 +597,14 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
       { id: 'demo-caf-full', title: 'Cafe full clean - end of day' },
       { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
     ];
+  }
+
+  if (volunteerHomeForceDemoAssignments()) {
+    const demo = volunteerHomeDemoContext(todayIso, retreat);
+    shiftCount = demo.shiftCount;
+    todayCount = demo.todayCount;
+    rawTodayShifts = demo.todayShifts;
+    usingDemo = true;
   }
 
   const layoutWarnings = [];

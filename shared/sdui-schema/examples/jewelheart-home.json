@@ -55,6 +55,10 @@
             }
           },
           {
+            "type": "spacer",
+            "style": { "height": { "value": 12 } }
+          },
+          {
             "type": "text",
             "content": "4 shifts, 2 today (tap to check in):",
             "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
@@ -71,8 +75,23 @@
           },
           {
             "type": "text",
-            "content": "Kitchen Full Clean - End of Day",
+            "content": "Kitchen full clean - End of day",
             "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": { "taskId": "demo-kitchen-full" } },
+            "textStyle": {
+              "fontSize": 17,
+              "fontWeight": "bold",
+              "textAlign": "center",
+              "color": "#FFFFFF"
+            },
+            "style": {
+              "backgroundColor": "#92160E",
+              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
+            }
+          },
+          {
+            "type": "text",
+            "content": "Urinals - End of day",
+            "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": { "taskId": "demo-urinals" } },
             "textStyle": {
               "fontSize": 17,
               "fontWeight": "bold",
@@ -89,49 +108,70 @@
             "style": { "height": { "value": 28 } }
           },
           {
-            "type": "text",
-            "content": "Sign up for more shifts",
-            "action": { "type": "navigate", "target": "jewelheart.volunteer.search", "payload": {} },
-            "textStyle": {
-              "fontSize": 17,
-              "fontWeight": "bold",
-              "textAlign": "center",
-              "color": "#FFFFFF"
-            },
-            "style": {
-              "backgroundColor": "#92160E",
-              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
-            }
+            "type": "container",
+            "layout": "column",
+            "style": { "padding": { "top": 6, "bottom": 6, "left": 16, "right": 16 } },
+            "children": [
+              {
+                "type": "button",
+                "label": "Sign up for more shifts",
+                "action": { "type": "navigate", "target": "jewelheart.volunteer.search", "payload": {} },
+                "textStyle": {
+                  "fontSize": 17,
+                  "fontWeight": "bold",
+                  "textAlign": "center",
+                  "color": "#FFFFFF"
+                },
+                "style": {
+                  "backgroundColor": "#92160E",
+                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                }
+              }
+            ]
           },
           {
-            "type": "text",
-            "content": "Review / edit my assigned shifts",
-            "action": { "type": "navigate", "target": "jewelheart.volunteer.mine", "payload": {} },
-            "textStyle": {
-              "fontSize": 17,
-              "fontWeight": "bold",
-              "textAlign": "center",
-              "color": "#FFFFFF"
-            },
-            "style": {
-              "backgroundColor": "#92160E",
-              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
-            }
+            "type": "container",
+            "layout": "column",
+            "style": { "padding": { "top": 6, "bottom": 6, "left": 16, "right": 16 } },
+            "children": [
+              {
+                "type": "button",
+                "label": "Review / edit my assigned shifts",
+                "action": { "type": "navigate", "target": "jewelheart.volunteer.mine", "payload": {} },
+                "textStyle": {
+                  "fontSize": 17,
+                  "fontWeight": "bold",
+                  "textAlign": "center",
+                  "color": "#FFFFFF"
+                },
+                "style": {
+                  "backgroundColor": "#92160E",
+                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                }
+              }
+            ]
           },
           {
-            "type": "text",
-            "content": "Check in for a shift today",
-            "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
-            "textStyle": {
-              "fontSize": 17,
-              "fontWeight": "bold",
-              "textAlign": "center",
-              "color": "#FFFFFF"
-            },
-            "style": {
-              "backgroundColor": "#92160E",
-              "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
-            }
+            "type": "container",
+            "layout": "column",
+            "style": { "padding": { "top": 6, "bottom": 6, "left": 16, "right": 16 } },
+            "children": [
+              {
+                "type": "button",
+                "label": "Check in for a shift today",
+                "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
+                "textStyle": {
+                  "fontSize": 17,
+                  "fontWeight": "bold",
+                  "textAlign": "center",
+                  "color": "#FFFFFF"
+                },
+                "style": {
+                  "backgroundColor": "#92160E",
+                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                }
+              }
+            ]
           }
         ]
       }
