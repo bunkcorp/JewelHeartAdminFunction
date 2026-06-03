@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -243,8 +245,12 @@ private fun AdminTabShell() {
     var tab by remember { mutableIntStateOf(0) }
     val retreatNav = rememberNavController()
     val directoryNav = rememberNavController()
-    val volunteerNav = rememberNavController()
-    val sduiVm: JewelHeartViewModel = viewModel()
+    val homeSduiVm: JewelHeartViewModel = viewModel(key = "home_sdui") {
+        JewelHeartViewModel(initialScreenId = "retreat.list")
+    }
+    val volunteerSduiVm: JewelHeartViewModel = viewModel(key = "volunteer_sdui") {
+        JewelHeartViewModel(initialScreenId = "jewelheart.home")
+    }
 
     Scaffold(
         bottomBar = {
@@ -269,7 +275,10 @@ private fun AdminTabShell() {
                 )
                 NavigationBarItem(
                     selected = tab == 3,
-                    onClick = { tab = 3 },
+                    onClick = {
+                        if (tab == 3) volunteerSduiVm.resetToVolunteerHome()
+                        tab = 3
+                    },
                     icon = { Icon(Icons.Filled.VolunteerActivism, contentDescription = null) },
                     label = { Text("Volunteer") },
                 )
@@ -284,54 +293,38 @@ private fun AdminTabShell() {
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (tab) {
-                0 -> SduiTabContent(vm = sduiVm)
+                0 -> SduiTabContent(vm = homeSduiVm)
                 1 -> RetreatNavHost(navController = retreatNav)
                 2 -> DirectoryNavHost(navController = directoryNav)
-                3 -> VolunteerNavHost(navController = volunteerNav)
+                3 -> SduiTabContent(vm = volunteerSduiVm)
                 4 -> MetaTabContent()
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SduiTabContent(vm: JewelHeartViewModel) {
     val ctx = LocalContext.current
     androidx.compose.runtime.LaunchedEffect(FirebaseAuth.getInstance().currentUser?.uid) {
         vm.load()
     }
-    val topTitle =
+    Column(Modifier.fillMaxSize()) {
         when {
-            vm.loading || vm.envelope == null -> "Home"
-            else -> vm.envelope!!.screen.title ?: "Home"
-        }
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(topTitle) },
-                actions = { TextButton(onClick = { vm.load() }) { Text("Reload") } },
+            vm.loading -> CircularProgressIndicator(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(horizontal = 16.dp),
             )
-        },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
-            when {
-                vm.loading -> CircularProgressIndicator(
-                    Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(horizontal = 16.dp),
-                )
-                vm.error != null -> Text(
-                    vm.error!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-                vm.envelope != null -> {
-                    val s = vm.envelope!!.screen
-                    // Full-bleed volunteer bars (gold/blue) — no side inset; matches iOS SDUI home.
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        s.components?.forEach { SduiComponentView(it, vm, ctx) }
-                    }
+            vm.error != null -> Text(
+                vm.error!!,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            vm.envelope != null -> {
+                val s = vm.envelope!!.screen
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    s.components?.forEach { SduiComponentView(it, vm, ctx) }
                 }
             }
         }
@@ -375,7 +368,17 @@ private fun SduiComponentView(
                     inner()
                 }
             } else {
-                inner()
+                val alignH = when (c.textStyle?.textAlign?.lowercase()) {
+                    "center" -> Alignment.CenterHorizontally
+                    "right", "trailing" -> Alignment.End
+                    else -> Alignment.Start
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = alignH,
+                ) {
+                    inner()
+                }
             }
         }
         "text" -> {
@@ -396,28 +399,71 @@ private fun SduiComponentView(
             val mod = Modifier
                 .fillMaxWidth()
                 .then(if (bg != null) Modifier.background(bg).padding(pad) else Modifier.padding(horizontal = 16.dp))
+            val textModifier = c.action?.let { action ->
+                mod.clickable {
+                    if (action.type == "openUrl" && action.target != null) {
+                        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(action.target)))
+                    } else {
+                        vm.onAction(action)
+                    }
+                }
+            } ?: mod
             Text(
                 text = c.content ?: "",
-                modifier = mod,
+                modifier = textModifier,
                 fontSize = size,
                 fontWeight = weight,
                 color = fg,
                 textAlign = align,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         "button" -> {
-            Button(
-                onClick = {
-                    val a = c.action ?: return@Button
+            val bg = sduiBackgroundColor(c.style?.backgroundColor)
+            val fg = sduiTextForegroundColor(c, MaterialTheme.colorScheme.onPrimary)
+            val pad = sduiBarPadding(c.style)
+            val centered = c.textStyle?.textAlign?.lowercase() == "center"
+            val onClick: () -> Unit = {
+                val a = c.action
+                if (a != null) {
                     if (a.type == "openUrl" && a.target != null) {
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(a.target)))
                     } else {
                         vm.onAction(a)
                     }
-                },
-                modifier = Modifier.padding(vertical = 4.dp),
-            ) {
-                Text(c.label ?: c.content ?: "Button")
+                }
+            }
+            val label = c.label ?: c.content ?: "Button"
+            val textWeight = when (c.textStyle?.fontWeight?.lowercase()) {
+                "bold" -> FontWeight.Bold
+                "semibold" -> FontWeight.SemiBold
+                else -> FontWeight.Normal
+            }
+            val textAlign = when (c.textStyle?.textAlign?.lowercase()) {
+                "center" -> TextAlign.Center
+                "right", "trailing" -> TextAlign.End
+                else -> TextAlign.Start
+            }
+            if (bg != null) {
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                TextButton(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .then(if (centered) Modifier else Modifier.fillMaxWidth())
+                        .padding(vertical = 4.dp)
+                        .background(bg, shape)
+                        .padding(pad),
+                ) {
+                    Text(label, color = fg, fontWeight = textWeight, textAlign = textAlign, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            } else {
+                Button(
+                    onClick = onClick,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                ) {
+                    Text(label)
+                }
             }
         }
         "spacer" -> {

@@ -92,13 +92,33 @@ function volunteerHomeEffectiveTodayIso(timeZone) {
   return todayYmdInTimeZone(timeZone);
 }
 
-/** When set (e.g. 2026-07-21 = retreat day 2), home uses demo shift lines for QA. */
+/**
+ * When set (e.g. 2026-07-21 = retreat day 2), home uses demo shift lines for QA / management demo.
+ * Falls back to 2026-07-21 when JEWELHEART_VOLUNTEER_HOME_DEMO=1 (launchd on prod).
+ */
 function volunteerHomeForceDemoAssignments() {
+  if (
+    typeof process !== 'undefined' &&
+    process.env &&
+    String(process.env.JEWELHEART_VOLUNTEER_HOME_DEMO || '').trim() === '1'
+  ) {
+    return true;
+  }
   const test =
     typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
       ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
       : '';
   return Boolean(test && isIsoDate(test));
+}
+
+function volunteerHomeDemoTodayIso(timeZone) {
+  const forced =
+    typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
+      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
+      : '';
+  if (forced && isIsoDate(forced)) return forced;
+  if (volunteerHomeForceDemoAssignments()) return '2026-07-21';
+  return volunteerHomeEffectiveTodayIso(timeZone);
 }
 
 function isIsoDate(d) {
@@ -525,7 +545,7 @@ function volunteerHomeDemoContext(todayIso, retreat) {
 /** Shared header data for home and volunteer search screens. */
 export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefined) {
   const tz = jewelheartDefaultTimeZoneId;
-  const todayIso = volunteerHomeEffectiveTodayIso(tz);
+  const todayIso = volunteerHomeDemoTodayIso(tz);
   let retreat = null;
   let shiftCount = 0;
   let todayCount = 0;
@@ -663,10 +683,11 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
   const children = [
     ...volunteerHomeBlueHeaderChildren(ctx),
     volunteerHomeShiftsSummaryBar(ctx, checkInPayload),
-    ...ctx.todayShifts.map((row) => {
+    ...ctx.todayShifts.flatMap((row, index) => {
       const payload = { ...checkInPayload };
       if (row.taskId) payload.taskId = row.taskId;
-      return volunteerHomeMaroonButton(row.label, 'jewelheart.volunteer.checkin', payload);
+      const bar = volunteerHomeMaroonButton(row.label, 'jewelheart.volunteer.checkin', payload);
+      return index === 0 ? [bar] : [volunteerHomeSpacer(6), bar];
     }),
     volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
     ...volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload),
@@ -679,7 +700,7 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
       textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
     });
   }
-  if (ctx.usingDemo) {
+  if (ctx.usingDemo && !volunteerHomeForceDemoAssignments()) {
     children.push({
       type: 'text',
       content: 'Demo schedule — link volunteer for live data.',

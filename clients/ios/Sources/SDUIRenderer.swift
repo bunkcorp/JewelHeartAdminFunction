@@ -65,6 +65,7 @@ struct SDUIComponentView: View {
                 .background(bg)
         } else {
             inner
+                .frame(maxWidth: .infinity, alignment: frameAlignment(from: component.textStyle?.textAlign))
         }
     }
 
@@ -79,36 +80,79 @@ struct SDUIComponentView: View {
 
     @ViewBuilder
     private var textBody: some View {
+        let textAlign = component.textStyle?.textAlign
         let label = Text(component.content ?? "")
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
-            .multilineTextAlignment(align(from: component.textStyle?.textAlign))
+            .multilineTextAlignment(align(from: textAlign))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
-        if let bg = barBackground(from: component.style) {
-            label
-                .frame(maxWidth: .infinity)
-                .padding(barPadding(from: component.style))
-                .background(bg)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
+        let bar: some View = Group {
+            if let bg = barBackground(from: component.style) {
+                label
+                    .padding(barPadding(from: component.style))
+                    .frame(maxWidth: .infinity)
+                    .background(bg)
+            } else {
+                label
+            }
+        }
+        if let action = component.action {
+            Button {
+                Task { await onAction(action) }
+            } label: {
+                bar
+            }
+            .buttonStyle(.plain)
         } else {
-            label
+            bar
         }
     }
 
     private var buttonBody: some View {
-        Button {
+        let title = component.label ?? component.content ?? "Button"
+        let textAlign = component.textStyle?.textAlign
+        let centered = textAlign?.lowercased() == "center"
+        let label = Text(title)
+            .font(.system(size: component.textStyle?.fontSize ?? 16))
+            .fontWeight(weight(from: component.textStyle?.fontWeight))
+            .foregroundStyle(Color(hex: component.textStyle?.color) ?? .white)
+            .multilineTextAlignment(align(from: textAlign))
+            .lineLimit(1)
+            .truncationMode(.tail)
+        let bg = barBackground(from: component.style)
+        let buttonLabel = Group {
+            if let icon = component.icon {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                    label
+                }
+            } else {
+                label
+            }
+        }
+        .padding(barPadding(from: component.style))
+        .background(bg ?? Color.clear, in: RoundedRectangle(cornerRadius: 8))
+
+        return Button {
             if let a = component.action {
                 Task { await onAction(a) }
             }
         } label: {
-            HStack {
-                if let icon = component.icon {
-                    Image(systemName: icon)
+            if bg != nil, centered {
+                HStack {
+                    Spacer(minLength: 0)
+                    buttonLabel
+                    Spacer(minLength: 0)
                 }
-                Text(component.label ?? component.content ?? "Button")
+            } else {
+                buttonLabel
+                    .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(.plain)
         .padding(.top, 4)
     }
 
@@ -137,6 +181,14 @@ struct SDUIComponentView: View {
     }
 
     private func align(from a: String?) -> TextAlignment {
+        switch a {
+        case "center": return .center
+        case "trailing", "right": return .trailing
+        default: return .leading
+        }
+    }
+
+    private func frameAlignment(from a: String?) -> Alignment {
         switch a {
         case "center": return .center
         case "trailing", "right": return .trailing
