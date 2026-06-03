@@ -97,23 +97,44 @@ function volunteerHomeEffectiveTodayIso(timeZone) {
   return todayYmdInTimeZone(timeZone);
 }
 
+const VOLUNTEER_HOME_DEFAULT_RETREAT = {
+  name: 'JH Summer Retreat 2026',
+  startDate: '2026-07-20',
+  endDate: '2026-07-26',
+};
+
+const VOLUNTEER_HOME_DEMO_TASKS = {
+  'demo-kitchen-full': {
+    jobName: 'Kitchen full clean - End of day',
+    instructions: ['blah blah', 'Contact is David L'],
+  },
+  'demo-urinals': {
+    jobName: 'Urinals - End of day',
+    instructions: ['blah blah', 'Contact is David L'],
+  },
+};
+
 /**
- * When set (e.g. 2026-07-21 = retreat day 2), home uses demo shift lines for QA / management demo.
- * Falls back to 2026-07-21 when JEWELHEART_VOLUNTEER_HOME_DEMO=1 (launchd on prod).
+ * Pin July 21 (retreat day 2) and demo shifts for management demos.
+ * Set JEWELHEART_VOLUNTEER_HOME_DEMO=0 after go-live to use live dates/data.
  */
-function volunteerHomeForceDemoAssignments() {
-  if (
-    typeof process !== 'undefined' &&
-    process.env &&
-    String(process.env.JEWELHEART_VOLUNTEER_HOME_DEMO || '').trim() === '1'
-  ) {
-    return true;
-  }
+function volunteerHomePinSummer2026Demo() {
+  const v =
+    typeof process !== 'undefined' && process.env
+      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_DEMO ?? '1').trim()
+      : '1';
+  if (v === '0' || v.toLowerCase() === 'false') return false;
+  if (v === '1' || v.toLowerCase() === 'true') return true;
   const test =
     typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
       ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
       : '';
   return Boolean(test && isIsoDate(test));
+}
+
+/** @deprecated use volunteerHomePinSummer2026Demo */
+function volunteerHomeForceDemoAssignments() {
+  return volunteerHomePinSummer2026Demo();
 }
 
 function volunteerHomeDemoTodayIso(timeZone) {
@@ -122,8 +143,29 @@ function volunteerHomeDemoTodayIso(timeZone) {
       ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
       : '';
   if (forced && isIsoDate(forced)) return forced;
-  if (volunteerHomeForceDemoAssignments()) return VOLUNTEER_HOME_DEMO_DAY_ISO;
+  if (volunteerHomePinSummer2026Demo()) return VOLUNTEER_HOME_DEMO_DAY_ISO;
   return volunteerHomeEffectiveTodayIso(timeZone);
+}
+
+function volunteerHomeDefaultRetreat(retreat) {
+  if (
+    retreat &&
+    retreat.startDate === VOLUNTEER_HOME_DEFAULT_RETREAT.startDate &&
+    retreat.endDate === VOLUNTEER_HOME_DEFAULT_RETREAT.endDate
+  ) {
+    return retreat;
+  }
+  if (retreat?.id) {
+    return { ...VOLUNTEER_HOME_DEFAULT_RETREAT, id: retreat.id, name: retreat.name || VOLUNTEER_HOME_DEFAULT_RETREAT.name };
+  }
+  return { ...VOLUNTEER_HOME_DEFAULT_RETREAT };
+}
+
+function volunteerHomeCheckinTitle(taskId, fallbackLabel) {
+  const task = VOLUNTEER_HOME_DEMO_TASKS[taskId];
+  if (task) return `Check in for ${task.jobName}`;
+  const label = String(fallbackLabel || 'your shift').trim();
+  return label.toLowerCase().startsWith('check in') ? label : `Check in for ${label}`;
 }
 
 function isIsoDate(d) {
@@ -402,7 +444,7 @@ function volunteerHomeShiftsSummaryBar(ctx, checkInPayload) {
 
 /** Mockup “I want to…” actions — centered maroon pills (not full-width bars). */
 function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
-  const buttons = [
+  const items = [
     volunteerHomeCenteredAction(
       ctx.shiftCount === 0 ? 'Sign up for shifts' : 'Sign up for more shifts',
       'jewelheart.volunteer.search',
@@ -410,7 +452,7 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
     ),
   ];
   if (ctx.shiftCount > 0) {
-    buttons.push(
+    items.push(
       volunteerHomeCenteredAction(
         'Review / edit my assigned shifts',
         'jewelheart.volunteer.mine',
@@ -421,11 +463,11 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
   if (ctx.todayCount > 0) {
     const checkInLabel =
       ctx.todayCount === 1 ? 'Check in for my shift today' : 'Check in for a shift today';
-    buttons.push(
+    items.push(
       volunteerHomeCenteredAction(checkInLabel, 'jewelheart.volunteer.checkin', checkInPayload),
     );
   }
-  return buttons;
+  return items.flatMap((node, index) => (index === 0 ? [node] : [volunteerHomeSpacer(10), node]));
 }
 
 function volunteerHomeToggleButton(label, selected, target, payload) {
@@ -468,12 +510,15 @@ function volunteerHomeBlueHeaderChildren(ctx) {
     'announcements',
   );
   const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
+  const hasAnnouncements = ctx.hasAnnouncements !== false;
+  const announceBg = hasAnnouncements ? volunteerHomeGold : volunteerHomeSummaryBlue;
+  const announceFg = hasAnnouncements ? '#000000' : '#FFFFFF';
   return [
     volunteerHomeBar(retreatLine, volunteerHomeSummaryBlue, '#FFFFFF'),
     volunteerHomeSpacer(6),
     volunteerHomeBar(homeLine, volunteerHomeSummaryBlue, '#FFFFFF'),
     volunteerHomeSpacer(6),
-    volunteerHomeBar(announceLine, volunteerHomeSummaryBlue, '#FFFFFF', {
+    volunteerHomeBar(announceLine, announceBg, announceFg, {
       type: 'navigate',
       target: 'jewelheart.volunteer.messages',
       payload: basePayload,
@@ -529,11 +574,7 @@ async function resolveVolunteerIdForHome(firebaseUid, retreatId) {
 }
 
 function volunteerHomeDemoContext(todayIso, retreat) {
-  const demoRetreat = retreat || {
-    name: 'JH Summer Retreat 2026',
-    startDate: '2026-07-20',
-    endDate: '2026-07-26',
-  };
+  const demoRetreat = volunteerHomeDefaultRetreat(retreat);
   const dayNum = volunteerHomeDayNumber(demoRetreat, todayIso);
   return {
     shiftCount: 4,
@@ -549,10 +590,6 @@ function volunteerHomeDemoContext(todayIso, retreat) {
 
 function buildVolunteerHomeContextFromDemo(todayIso, retreat, layoutWarnings = []) {
   const demo = volunteerHomeDemoContext(todayIso, retreat);
-  const dayNum = volunteerHomeDayNumber(
-    retreat || { startDate: '2026-07-20', endDate: '2026-07-26' },
-    todayIso,
-  );
   return {
     todayIso,
     retreat: retreat || null,
@@ -579,6 +616,7 @@ function buildVolunteerHomeContextFromDemo(todayIso, retreat, layoutWarnings = [
       { id: 'demo-kitchen-light', title: 'Kitchen light clean - end of lunch break' },
     ],
     usingDemo: true,
+    hasAnnouncements: true,
     errorNote: null,
     layoutWarnings,
   };
@@ -589,15 +627,19 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
   const tz = jewelheartDefaultTimeZoneId;
   const todayIso = volunteerHomeDemoTodayIso(tz);
 
-  if (volunteerHomeForceDemoAssignments()) {
+  if (volunteerHomePinSummer2026Demo()) {
     let retreat = null;
     try {
       const { items: retreats } = await listRetreats(firebaseUid, authToken);
-      retreat = volunteerHomePickRetreat(retreats, todayIso);
+      retreat = volunteerHomePickRetreat(retreats, VOLUNTEER_HOME_DEMO_DAY_ISO);
     } catch {
       retreat = null;
     }
-    return buildVolunteerHomeContextFromDemo(VOLUNTEER_HOME_DEMO_DAY_ISO, retreat, []);
+    return buildVolunteerHomeContextFromDemo(
+      VOLUNTEER_HOME_DEMO_DAY_ISO,
+      volunteerHomeDefaultRetreat(retreat),
+      [],
+    );
   }
 
   let retreat = null;
@@ -714,6 +756,7 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
     searchableDayIsos,
     jobs,
     usingDemo,
+    hasAnnouncements: false,
     errorNote,
     layoutWarnings,
   };
@@ -733,7 +776,7 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
       const payload = { ...checkInPayload };
       if (row.taskId) payload.taskId = row.taskId;
       const bar = volunteerHomeMaroonButton(row.label, 'jewelheart.volunteer.checkin', payload);
-      return index === 0 ? [bar] : [volunteerHomeSpacer(6), bar];
+      return index === 0 ? [bar] : [volunteerHomeSpacer(10), bar];
     }),
     volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
     ...volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload),
@@ -746,7 +789,7 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
       textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
     });
   }
-  if (ctx.usingDemo && !volunteerHomeForceDemoAssignments()) {
+  if (ctx.usingDemo && !volunteerHomePinSummer2026Demo()) {
     children.push({
       type: 'text',
       content: 'Demo schedule — link volunteer for live data.',
@@ -902,20 +945,26 @@ export async function buildJewelheartVolunteerCheckinScreen(
   const shiftLabel =
     (taskId && ctx.todayShifts.find((s) => s.taskId === taskId)?.label) ||
     (ctx.todayShifts[0] && ctx.todayShifts[0].label) ||
-    'Your shift today';
+    'your shift today';
+  const demoTask = VOLUNTEER_HOME_DEMO_TASKS[taskId];
+  const titleLine = volunteerHomeCheckinTitle(taskId, shiftLabel);
+  const titleBar = volunteerHomeFitLine(titleLine, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'checkin_title');
 
   const children = [
     ...volunteerHomeBlueHeaderChildren(ctx),
-    ...volunteerHomeGoldPageTitleBar('Check in', ctx.layoutWarnings),
-    volunteerHomeBodyText(shiftLabel, ctx.layoutWarnings, 'checkin_shift'),
-    volunteerHomeBodyText('Check-in steps coming soon.', ctx.layoutWarnings, 'checkin_hint'),
-    volunteerHomeMaroonButton('← Volunteer Home', 'jewelheart.home', basePayload),
+    volunteerHomeBar(titleBar, volunteerHomeGold, '#000000'),
+    volunteerHomeSpacer(12),
   ];
+  const steps = demoTask?.instructions || ['blah blah', 'Contact is David L'];
+  steps.forEach((line, index) => {
+    children.push(volunteerHomeBodyText(line, ctx.layoutWarnings, `checkin_step_${index}`));
+  });
+  children.push(volunteerHomeMaroonButton('← Volunteer Home', 'jewelheart.home', basePayload));
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.checkin', 'JewelHeart', children, ctx.layoutWarnings);
 }
 
-/** Placeholder — links to retreat messaging when native/API flow is wired. */
+/** Placeholder — retreat announcements (live: unread → yellow bar on home). */
 export async function buildJewelheartVolunteerMessagesScreen(
   firebaseUid,
   authToken = undefined,
@@ -926,7 +975,8 @@ export async function buildJewelheartVolunteerMessagesScreen(
   const children = [
     ...volunteerHomeBlueHeaderChildren(ctx),
     ...volunteerHomeGoldPageTitleBar('Announcements', ctx.layoutWarnings),
-    volunteerHomeBodyText('Retreat announcements and messages.', ctx.layoutWarnings, 'messages_hint'),
+    volunteerHomeBodyText('Announcement here', ctx.layoutWarnings, 'announcement_body'),
+    volunteerHomeBodyText('Demo at 5:00 PM ;^))', ctx.layoutWarnings, 'announcement_demo'),
     volunteerHomeMaroonButton('← Volunteer Home', 'jewelheart.home', basePayload),
   ];
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));

@@ -47,10 +47,10 @@
               "fontSize": 17,
               "fontWeight": "bold",
               "textAlign": "center",
-              "color": "#FFFFFF"
+              "color": "#000000"
             },
             "style": {
-              "backgroundColor": "#7A95CA",
+              "backgroundColor": "#FFCA10",
               "padding": { "top": 10, "bottom": 10, "left": 8, "right": 8 }
             }
           },
