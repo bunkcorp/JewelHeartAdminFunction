@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -447,15 +448,32 @@ private fun SduiComponentView(
             }
             if (bg != null) {
                 val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                TextButton(
-                    onClick = onClick,
-                    modifier = Modifier
-                        .then(if (centered) Modifier else Modifier.fillMaxWidth())
-                        .padding(vertical = 4.dp)
-                        .background(bg, shape)
-                        .padding(pad),
-                ) {
-                    Text(label, color = fg, fontWeight = textWeight, textAlign = textAlign, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val buttonModifier = Modifier
+                    .wrapContentWidth()
+                    .background(bg, shape)
+                    .padding(pad)
+                val rowModifier = if (centered) {
+                    Modifier.fillMaxWidth()
+                } else {
+                    Modifier.fillMaxWidth()
+                }
+                Box(modifier = rowModifier, contentAlignment = Alignment.Center) {
+                    TextButton(
+                        onClick = onClick,
+                        modifier = buttonModifier,
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        Text(
+                            label,
+                            color = fg,
+                            fontSize = (c.textStyle?.fontSize ?: 16.0).sp,
+                            fontWeight = textWeight,
+                            textAlign = textAlign,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.wrapContentWidth(),
+                        )
+                    }
                 }
             } else {
                 Button(

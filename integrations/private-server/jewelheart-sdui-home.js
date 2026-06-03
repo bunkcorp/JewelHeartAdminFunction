@@ -23,6 +23,11 @@ const VOLUNTEER_HOME_MAX_BAR_CHARS = 38;
 const VOLUNTEER_HOME_MAX_HINT_CHARS = 38;
 const VOLUNTEER_HOME_BAR_FONT_SP = 17;
 const VOLUNTEER_HOME_BAR_V_PAD = 10;
+/** Centered maroon pills (slightly larger type, tighter pad than header bars). */
+const VOLUNTEER_HOME_ACTION_FONT_SP = 18;
+const VOLUNTEER_HOME_ACTION_V_PAD = 6;
+const VOLUNTEER_HOME_ACTION_H_PAD = 12;
+const VOLUNTEER_HOME_DEMO_DAY_ISO = '2026-07-21';
 const VOLUNTEER_HOME_ACTION_SECTION_SPACER = 28;
 
 function volunteerHomeLayoutWarn(warnings, code, original) {
@@ -117,7 +122,7 @@ function volunteerHomeDemoTodayIso(timeZone) {
       ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
       : '';
   if (forced && isIsoDate(forced)) return forced;
-  if (volunteerHomeForceDemoAssignments()) return '2026-07-21';
+  if (volunteerHomeForceDemoAssignments()) return VOLUNTEER_HOME_DEMO_DAY_ISO;
   return volunteerHomeEffectiveTodayIso(timeZone);
 }
 
@@ -333,7 +338,7 @@ function volunteerHomeActionButton(label, target, payload = {}) {
     label,
     action: { type: 'navigate', target, payload },
     textStyle: {
-      fontSize: VOLUNTEER_HOME_BAR_FONT_SP,
+      fontSize: VOLUNTEER_HOME_ACTION_FONT_SP,
       fontWeight: 'bold',
       textAlign: 'center',
       color: '#FFFFFF',
@@ -341,10 +346,10 @@ function volunteerHomeActionButton(label, target, payload = {}) {
     style: {
       backgroundColor: volunteerHomeMaroon,
       padding: {
-        top: VOLUNTEER_HOME_BAR_V_PAD,
-        bottom: VOLUNTEER_HOME_BAR_V_PAD,
-        left: 24,
-        right: 24,
+        top: VOLUNTEER_HOME_ACTION_V_PAD,
+        bottom: VOLUNTEER_HOME_ACTION_V_PAD,
+        left: VOLUNTEER_HOME_ACTION_H_PAD,
+        right: VOLUNTEER_HOME_ACTION_H_PAD,
       },
     },
   };
@@ -356,7 +361,7 @@ function volunteerHomeCenteredAction(label, target, payload = {}) {
     layout: 'column',
     spacing: 0,
     textStyle: { textAlign: 'center' },
-    style: { padding: { top: 6, bottom: 6, left: 16, right: 16 } },
+    style: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
     children: [volunteerHomeActionButton(label, target, payload)],
   };
 }
@@ -542,10 +547,59 @@ function volunteerHomeDemoContext(todayIso, retreat) {
   };
 }
 
+function buildVolunteerHomeContextFromDemo(todayIso, retreat, layoutWarnings = []) {
+  const demo = volunteerHomeDemoContext(todayIso, retreat);
+  const dayNum = volunteerHomeDayNumber(
+    retreat || { startDate: '2026-07-20', endDate: '2026-07-26' },
+    todayIso,
+  );
+  return {
+    todayIso,
+    retreat: retreat || null,
+    retreatId: retreat?.id || null,
+    retreatBannerLine: volunteerHomeFitLine(demo.retreatBannerLine, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, 'retreat_banner'),
+    volunteerHomeLine: volunteerHomeFitLine(demo.volunteerHomeLine, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, 'volunteer_home_line'),
+    shiftsSummaryLine: volunteerHomeFitLine(
+      volunteerHomeShiftsSummaryLine(demo.shiftCount, demo.todayCount),
+      VOLUNTEER_HOME_MAX_BAR_CHARS,
+      layoutWarnings,
+      'shifts_summary',
+    ),
+    shiftCount: demo.shiftCount,
+    todayCount: demo.todayCount,
+    todayShifts: demo.todayShifts.map((row, index) => ({
+      taskId: row.taskId,
+      label: volunteerHomeFitLine(row.label, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
+    })),
+    searchableDayIsos: [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)],
+    jobs: [
+      { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
+      { id: 'demo-urinals', title: 'Urinals - end of day' },
+      { id: 'demo-caf-light', title: 'Cafe light clean - end of lunch break' },
+      { id: 'demo-kitchen-light', title: 'Kitchen light clean - end of lunch break' },
+    ],
+    usingDemo: true,
+    errorNote: null,
+    layoutWarnings,
+  };
+}
+
 /** Shared header data for home and volunteer search screens. */
 export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefined) {
   const tz = jewelheartDefaultTimeZoneId;
   const todayIso = volunteerHomeDemoTodayIso(tz);
+
+  if (volunteerHomeForceDemoAssignments()) {
+    let retreat = null;
+    try {
+      const { items: retreats } = await listRetreats(firebaseUid, authToken);
+      retreat = volunteerHomePickRetreat(retreats, todayIso);
+    } catch {
+      retreat = null;
+    }
+    return buildVolunteerHomeContextFromDemo(VOLUNTEER_HOME_DEMO_DAY_ISO, retreat, []);
+  }
+
   let retreat = null;
   let shiftCount = 0;
   let todayCount = 0;
@@ -617,14 +671,6 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
       { id: 'demo-caf-full', title: 'Cafe full clean - end of day' },
       { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
     ];
-  }
-
-  if (volunteerHomeForceDemoAssignments()) {
-    const demo = volunteerHomeDemoContext(todayIso, retreat);
-    shiftCount = demo.shiftCount;
-    todayCount = demo.todayCount;
-    rawTodayShifts = demo.todayShifts;
-    usingDemo = true;
   }
 
   const layoutWarnings = [];

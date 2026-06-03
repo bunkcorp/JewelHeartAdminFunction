@@ -136,24 +136,26 @@ struct SDUIComponentView: View {
         .padding(barPadding(from: component.style))
         .background(bg ?? Color.clear, in: RoundedRectangle(cornerRadius: 8))
 
-        return Button {
-            if let a = component.action {
-                Task { await onAction(a) }
-            }
-        } label: {
-            if bg != nil, centered {
-                HStack {
-                    Spacer(minLength: 0)
-                    buttonLabel
-                    Spacer(minLength: 0)
+        let pill = buttonLabel.fixedSize(horizontal: true, vertical: false)
+
+        return HStack {
+            Spacer(minLength: 0)
+            Button {
+                if let a = component.action {
+                    Task { await onAction(a) }
                 }
-            } else {
-                buttonLabel
-                    .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
+            } label: {
+                if centered {
+                    pill
+                } else {
+                    buttonLabel
+                        .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
+                }
             }
+            .buttonStyle(.plain)
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
-        .padding(.top, 4)
+        .frame(maxWidth: .infinity)
     }
 
     private var spacerBody: some View {

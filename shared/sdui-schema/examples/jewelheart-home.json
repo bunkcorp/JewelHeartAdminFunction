@@ -117,14 +117,14 @@
                 "label": "Sign up for more shifts",
                 "action": { "type": "navigate", "target": "jewelheart.volunteer.search", "payload": {} },
                 "textStyle": {
-                  "fontSize": 17,
+                  "fontSize": 18,
                   "fontWeight": "bold",
                   "textAlign": "center",
                   "color": "#FFFFFF"
                 },
                 "style": {
                   "backgroundColor": "#92160E",
-                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                  "padding": { "top": 6, "bottom": 6, "left": 12, "right": 12 }
                 }
               }
             ]
@@ -139,14 +139,14 @@
                 "label": "Review / edit my assigned shifts",
                 "action": { "type": "navigate", "target": "jewelheart.volunteer.mine", "payload": {} },
                 "textStyle": {
-                  "fontSize": 17,
+                  "fontSize": 18,
                   "fontWeight": "bold",
                   "textAlign": "center",
                   "color": "#FFFFFF"
                 },
                 "style": {
                   "backgroundColor": "#92160E",
-                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                  "padding": { "top": 6, "bottom": 6, "left": 12, "right": 12 }
                 }
               }
             ]
@@ -161,14 +161,14 @@
                 "label": "Check in for a shift today",
                 "action": { "type": "navigate", "target": "jewelheart.volunteer.checkin", "payload": {} },
                 "textStyle": {
-                  "fontSize": 17,
+                  "fontSize": 18,
                   "fontWeight": "bold",
                   "textAlign": "center",
                   "color": "#FFFFFF"
                 },
                 "style": {
                   "backgroundColor": "#92160E",
-                  "padding": { "top": 10, "bottom": 10, "left": 24, "right": 24 }
+                  "padding": { "top": 6, "bottom": 6, "left": 12, "right": 12 }
                 }
               }
             ]
