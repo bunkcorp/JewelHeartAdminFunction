@@ -143,6 +143,8 @@ struct ComponentStyle: Codable {
     let width: DimensionSpec?
     /// Full-width bar fill (e.g. volunteer home mockup: #FFCA10, #7A95CA).
     let backgroundColor: String?
+    /// Pill / button corner radius (dp).
+    let borderRadius: Double?
 }
 
 struct PaddingSpec: Codable {

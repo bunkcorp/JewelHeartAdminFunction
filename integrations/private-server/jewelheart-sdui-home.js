@@ -28,6 +28,9 @@ const VOLUNTEER_HOME_ACTION_FONT_SP = 18;
 const VOLUNTEER_HOME_ACTION_V_PAD = 6;
 const VOLUNTEER_HOME_ACTION_H_PAD = 12;
 const VOLUNTEER_HOME_DEMO_DAY_ISO = '2026-07-21';
+const VOLUNTEER_HOME_BAR_GAP = 12;
+const VOLUNTEER_HOME_PILL_RADIUS = 16;
+const VOLUNTEER_HOME_EN_DASH = ' – ';
 const VOLUNTEER_HOME_ACTION_SECTION_SPACER = 28;
 
 function volunteerHomeLayoutWarn(warnings, code, original) {
@@ -105,11 +108,11 @@ const VOLUNTEER_HOME_DEFAULT_RETREAT = {
 
 const VOLUNTEER_HOME_DEMO_TASKS = {
   'demo-kitchen-full': {
-    jobName: 'Kitchen full clean - End of day',
+    jobName: 'Kitchen full clean',
     instructions: ['blah blah', 'Contact is David L'],
   },
   'demo-urinals': {
-    jobName: 'Urinals - End of day',
+    jobName: 'Urinals',
     instructions: ['blah blah', 'Contact is David L'],
   },
 };
@@ -219,40 +222,40 @@ function volunteerHomeFormatJulDay(iso) {
 }
 
 function volunteerHomeFormatJulDateRange(startIso, endIso) {
-  if (!startIso || !endIso) return 'Jul 20-26';
+  if (!startIso || !endIso) return 'Jul 20–26, 2026';
+  const year = startIso.slice(0, 4);
   const start = volunteerHomeFormatJulDay(startIso);
   const end = volunteerHomeFormatJulDay(endIso);
   const [startMonth, startDay] = start.split(' ');
   const [endMonth, endDay] = end.split(' ');
-  if (startMonth === endMonth) return `${startMonth} ${startDay}-${endDay}`;
-  return `${start}-${end}`;
-}
-
-function volunteerHomeRetreatBannerName(name) {
-  let s = String(name || 'JH Summer Retreat 2026')
-    .replace(/\bJewel\s*Heart\b/gi, 'JH')
-    .trim();
-  if (!/\bRetreat\b/i.test(s) && /\b20\d{2}\b/.test(s)) s = `${s} Retreat`;
-  return s.replace(/\s+/g, ' ').trim();
+  if (startMonth === endMonth) return `${startMonth} ${startDay}–${endDay}, ${year}`;
+  return `${start}–${end}, ${year}`;
 }
 
 function volunteerHomeRetreatBannerLine(retreat) {
-  const title = volunteerHomeRetreatBannerName(retreat?.name || 'JH Summer Retreat 2026');
   const range = volunteerHomeFormatJulDateRange(retreat?.startDate, retreat?.endDate);
-  return `${title} - ${range}`;
+  return `JH Summer Retreat${VOLUNTEER_HOME_EN_DASH}${range}`;
 }
 
 function volunteerHomeVolunteerHomeLine(dayNum, todayIso) {
   const weekday = volunteerHomeWeekdayShort(todayIso);
   const monthDay = volunteerHomeMonthDayLong(todayIso);
-  return `Volunteer Home - Day ${dayNum}, ${weekday} ${monthDay}`;
+  return `Volunteer Home${VOLUNTEER_HOME_EN_DASH}Day ${dayNum}, ${weekday} ${monthDay}`;
 }
 
 function volunteerHomeShiftsSummaryLine(shiftCount, todayCount) {
   const shiftWord = shiftCount === 1 ? 'shift' : 'shifts';
-  if (!todayCount) return `${shiftCount} ${shiftWord}, none today`;
-  const todayWord = todayCount === 1 ? '1 today' : `${todayCount} today`;
-  return `${shiftCount} ${shiftWord}, ${todayWord} (tap to check in):`;
+  if (!todayCount) return `I have ${shiftCount} ${shiftWord}, none today${VOLUNTEER_HOME_EN_DASH}tap to check in...`;
+  const todayWord = todayCount === 1 ? '1' : String(todayCount);
+  return `I have ${shiftCount} ${shiftWord}, ${todayWord} today${VOLUNTEER_HOME_EN_DASH}tap to check in...`;
+}
+
+function volunteerHomeDisplayJobName(label) {
+  return String(label || '')
+    .replace(/\s*[-–]\s*End of\s+day\s*$/i, '')
+    .replace(/\s*[-–]\s*EOD\s*$/i, '')
+    .replace(/\s*[-–]\s*end of\s+day\s*$/i, '')
+    .trim();
 }
 
 function volunteerHomeRetreatShortName(name) {
@@ -345,8 +348,12 @@ function volunteerHomeBar(content, backgroundColor, textColor, action = undefine
   return node;
 }
 
-function volunteerHomeSpacer(height = 12) {
+function volunteerHomeSpacer(height = VOLUNTEER_HOME_BAR_GAP) {
   return { type: 'spacer', style: { height: { value: height } } };
+}
+
+function volunteerHomeGap() {
+  return volunteerHomeSpacer(VOLUNTEER_HOME_BAR_GAP);
 }
 
 function volunteerHomePlainLabel(content) {
@@ -372,40 +379,73 @@ function volunteerHomeBodyText(content, warnings, code = 'hint') {
   };
 }
 
-/** Centered maroon pill (type button — not edge-to-edge). */
-function volunteerHomeActionButton(label, target, payload = {}) {
+/** Centered pill button — bar height, optional corner radius. */
+function volunteerHomePillButton(
+  label,
+  target,
+  payload,
+  backgroundColor,
+  textColor,
+  options = {},
+) {
+  const fontSize = options.fontSize ?? VOLUNTEER_HOME_BAR_FONT_SP;
+  const vPad = options.vPad ?? VOLUNTEER_HOME_BAR_V_PAD;
+  const hPad = options.hPad ?? 10;
   return {
     type: 'button',
     content: label,
     label,
     action: { type: 'navigate', target, payload },
     textStyle: {
-      fontSize: VOLUNTEER_HOME_ACTION_FONT_SP,
+      fontSize,
       fontWeight: 'bold',
       textAlign: 'center',
-      color: '#FFFFFF',
+      color: textColor,
     },
     style: {
-      backgroundColor: volunteerHomeMaroon,
-      padding: {
-        top: VOLUNTEER_HOME_ACTION_V_PAD,
-        bottom: VOLUNTEER_HOME_ACTION_V_PAD,
-        left: VOLUNTEER_HOME_ACTION_H_PAD,
-        right: VOLUNTEER_HOME_ACTION_H_PAD,
-      },
+      backgroundColor,
+      borderRadius: options.borderRadius ?? VOLUNTEER_HOME_PILL_RADIUS,
+      padding: { top: vPad, bottom: vPad, left: hPad, right: hPad },
     },
   };
 }
 
-function volunteerHomeCenteredAction(label, target, payload = {}) {
+function volunteerHomeCenteredPill(label, target, payload, backgroundColor, textColor, options = {}) {
   return {
     type: 'container',
     layout: 'column',
     spacing: 0,
     textStyle: { textAlign: 'center' },
-    style: { padding: { top: 4, bottom: 4, left: 0, right: 0 } },
-    children: [volunteerHomeActionButton(label, target, payload)],
+    style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
+    children: [volunteerHomePillButton(label, target, payload, backgroundColor, textColor, options)],
   };
+}
+
+/** Centered maroon pill (type button — not edge-to-edge). */
+function volunteerHomeActionButton(label, target, payload = {}) {
+  return volunteerHomePillButton(label, target, payload, volunteerHomeMaroon, '#FFFFFF', {
+    fontSize: VOLUNTEER_HOME_ACTION_FONT_SP,
+    vPad: VOLUNTEER_HOME_ACTION_V_PAD,
+    hPad: VOLUNTEER_HOME_ACTION_H_PAD,
+    borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
+  });
+}
+
+function volunteerHomeCenteredAction(label, target, payload = {}) {
+  return volunteerHomeCenteredPill(label, target, payload, volunteerHomeMaroon, '#FFFFFF', {
+    fontSize: VOLUNTEER_HOME_ACTION_FONT_SP,
+    vPad: VOLUNTEER_HOME_ACTION_V_PAD,
+    hPad: VOLUNTEER_HOME_ACTION_H_PAD,
+  });
+}
+
+function volunteerHomeSmallBlueButton(label, target, payload = {}) {
+  return volunteerHomePillButton(label, target, payload, volunteerHomeSummaryBlue, '#FFFFFF', {
+    fontSize: 14,
+    vPad: 6,
+    hPad: 10,
+    borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
+  });
 }
 
 /** Tappable full-width maroon bar — same 17sp / vertical size as blue/gold header lines. */
@@ -432,19 +472,81 @@ function volunteerHomeMaroonButton(label, target, payload = {}) {
   };
 }
 
-function volunteerHomeShiftsSummaryBar(ctx, checkInPayload) {
-  const hasToday = ctx.todayCount > 0;
-  const bg = hasToday ? volunteerHomeGold : volunteerHomeSummaryBlue;
-  const fg = hasToday ? '#000000' : '#FFFFFF';
-  const action = hasToday
-    ? { type: 'navigate', target: 'jewelheart.volunteer.checkin', payload: checkInPayload }
-    : undefined;
-  return volunteerHomeBar(ctx.shiftsSummaryLine, bg, fg, action);
+function volunteerHomeShiftsSummaryBar(ctx) {
+  const fg = ctx.todayCount > 0 ? '#000000' : '#FFFFFF';
+  const bg = ctx.todayCount > 0 ? volunteerHomeGold : volunteerHomeSummaryBlue;
+  return volunteerHomeBar(ctx.shiftsSummaryLine, bg, fg);
 }
 
-/** Mockup “I want to…” actions — centered maroon pills (not full-width bars). */
-function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
+/** Home header: retreat (yellow on blue) + volunteer home line. */
+function volunteerHomeTopBlueBars(ctx) {
+  const warnings = ctx.layoutWarnings;
+  const retreatLine = volunteerHomeFitLine(
+    ctx.retreatBannerLine,
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    warnings,
+    'retreat_banner',
+  );
+  const homeLine = volunteerHomeFitLine(
+    ctx.volunteerHomeLine,
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    warnings,
+    'volunteer_home_line',
+  );
+  return [
+    volunteerHomeBar(retreatLine, volunteerHomeSummaryBlue, volunteerHomeGold),
+    volunteerHomeGap(),
+    volunteerHomeBar(homeLine, volunteerHomeSummaryBlue, '#FFFFFF'),
+  ];
+}
+
+function volunteerHomeAnnouncementsButton(ctx) {
+  const warnings = ctx.layoutWarnings;
+  const label = volunteerHomeFitLine(
+    'See announcements and messages',
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    warnings,
+    'announcements_btn',
+  );
+  const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
+  return volunteerHomeCenteredPill(
+    label,
+    'jewelheart.volunteer.messages',
+    basePayload,
+    volunteerHomeGold,
+    '#000000',
+    { fontSize: VOLUNTEER_HOME_BAR_FONT_SP, vPad: VOLUNTEER_HOME_BAR_V_PAD, hPad: 10 },
+  );
+}
+
+function volunteerHomeTodayShiftButtons(ctx, checkInPayload) {
+  return ctx.todayShifts.flatMap((row, index) => {
+    const payload = { ...checkInPayload };
+    if (row.taskId) payload.taskId = row.taskId;
+    const name = volunteerHomeDisplayJobName(row.label);
+    const label = volunteerHomeFitLine(
+      name,
+      VOLUNTEER_HOME_MAX_BAR_CHARS,
+      ctx.layoutWarnings,
+      `today_shift_btn_${index}`,
+    );
+    const btn = volunteerHomeCenteredPill(
+      label,
+      'jewelheart.volunteer.checkin',
+      payload,
+      volunteerHomeGold,
+      '#000000',
+      { fontSize: VOLUNTEER_HOME_BAR_FONT_SP, vPad: VOLUNTEER_HOME_BAR_V_PAD, hPad: 10 },
+    );
+    return index === 0 ? [btn] : [volunteerHomeGap(), btn];
+  });
+}
+
+/** Mockup “I want to…” — two maroon pills + account/preferences row. */
+function volunteerHomeIWantToSection(ctx, searchPayload) {
   const items = [
+    volunteerHomePlainLabel('I want to...'),
+    volunteerHomeGap(),
     volunteerHomeCenteredAction(
       ctx.shiftCount === 0 ? 'Sign up for shifts' : 'Sign up for more shifts',
       'jewelheart.volunteer.search',
@@ -453,6 +555,7 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
   ];
   if (ctx.shiftCount > 0) {
     items.push(
+      volunteerHomeGap(),
       volunteerHomeCenteredAction(
         'Review / edit my assigned shifts',
         'jewelheart.volunteer.mine',
@@ -460,14 +563,29 @@ function volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload) {
       ),
     );
   }
-  if (ctx.todayCount > 0) {
-    const checkInLabel =
-      ctx.todayCount === 1 ? 'Check in for my shift today' : 'Check in for a shift today';
-    items.push(
-      volunteerHomeCenteredAction(checkInLabel, 'jewelheart.volunteer.checkin', checkInPayload),
-    );
-  }
-  return items.flatMap((node, index) => (index === 0 ? [node] : [volunteerHomeSpacer(10), node]));
+  items.push(volunteerHomeGap(), volunteerHomeAccountPreferencesRow(ctx, searchPayload));
+  return items;
+}
+
+function volunteerHomeAccountPreferencesRow(ctx, searchPayload) {
+  const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
+  return {
+    type: 'container',
+    layout: 'row',
+    spacing: 8,
+    textStyle: { textAlign: 'center' },
+    style: { padding: { top: 4, bottom: 4, left: 8, right: 8 } },
+    children: [
+      {
+        type: 'text',
+        content: 'Review/edit my',
+        textStyle: { fontSize: 14, fontWeight: 'bold', textAlign: 'center', color: '#333333' },
+        style: { padding: { top: 6, bottom: 6, left: 0, right: 4 } },
+      },
+      volunteerHomeSmallBlueButton('account', 'jewelheart.volunteer.account', basePayload),
+      volunteerHomeSmallBlueButton('preferences', 'jewelheart.volunteer.preferences', basePayload),
+    ],
+  };
 }
 
 function volunteerHomeToggleButton(label, selected, target, payload) {
@@ -488,43 +606,9 @@ function volunteerHomeToggleButton(label, selected, target, payload) {
   };
 }
 
-/** Three blue header bars shared by home and volunteer sub-screens. */
+/** Blue header bars for volunteer sub-screens (no home-only controls). */
 function volunteerHomeBlueHeaderChildren(ctx) {
-  const warnings = ctx.layoutWarnings;
-  const retreatLine = volunteerHomeFitLine(
-    ctx.retreatBannerLine,
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    warnings,
-    'retreat_banner',
-  );
-  const homeLine = volunteerHomeFitLine(
-    ctx.volunteerHomeLine,
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    warnings,
-    'volunteer_home_line',
-  );
-  const announceLine = volunteerHomeFitLine(
-    'Tap for announcements and messages',
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    warnings,
-    'announcements',
-  );
-  const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
-  const hasAnnouncements = ctx.hasAnnouncements !== false;
-  const announceBg = hasAnnouncements ? volunteerHomeGold : volunteerHomeSummaryBlue;
-  const announceFg = hasAnnouncements ? '#000000' : '#FFFFFF';
-  return [
-    volunteerHomeBar(retreatLine, volunteerHomeSummaryBlue, '#FFFFFF'),
-    volunteerHomeSpacer(6),
-    volunteerHomeBar(homeLine, volunteerHomeSummaryBlue, '#FFFFFF'),
-    volunteerHomeSpacer(6),
-    volunteerHomeBar(announceLine, announceBg, announceFg, {
-      type: 'navigate',
-      target: 'jewelheart.volunteer.messages',
-      payload: basePayload,
-    }),
-    volunteerHomeSpacer(12),
-  ];
+  return [...volunteerHomeTopBlueBars(ctx), volunteerHomeGap()];
 }
 
 function volunteerHomeGoldPageTitleBar(pageTitle, warnings) {
@@ -582,8 +666,8 @@ function volunteerHomeDemoContext(todayIso, retreat) {
     retreatBannerLine: volunteerHomeRetreatBannerLine(demoRetreat),
     volunteerHomeLine: volunteerHomeVolunteerHomeLine(dayNum, todayIso),
     todayShifts: [
-      { taskId: 'demo-kitchen-full', label: 'Kitchen full clean - End of day' },
-      { taskId: 'demo-urinals', label: 'Urinals - End of day' },
+      { taskId: 'demo-kitchen-full', label: 'Kitchen full clean' },
+      { taskId: 'demo-urinals', label: 'Urinals' },
     ],
   };
 }
@@ -604,10 +688,13 @@ function buildVolunteerHomeContextFromDemo(todayIso, retreat, layoutWarnings = [
     ),
     shiftCount: demo.shiftCount,
     todayCount: demo.todayCount,
-    todayShifts: demo.todayShifts.map((row, index) => ({
-      taskId: row.taskId,
-      label: volunteerHomeFitLine(row.label, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
-    })),
+    todayShifts: demo.todayShifts.map((row, index) => {
+      const name = volunteerHomeDisplayJobName(row.label);
+      return {
+        taskId: row.taskId,
+        label: volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
+      };
+    }),
     searchableDayIsos: [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)],
     jobs: [
       { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
@@ -738,10 +825,13 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
     layoutWarnings,
     'shifts_summary',
   );
-  const todayShifts = rawTodayShifts.map((row, index) => ({
-    taskId: row.taskId,
-    label: volunteerHomeFitLine(row.label, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
-  }));
+  const todayShifts = rawTodayShifts.map((row, index) => {
+    const name = volunteerHomeDisplayJobName(row.label);
+    return {
+      taskId: row.taskId,
+      label: volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
+    };
+  });
 
   return {
     todayIso,
@@ -770,16 +860,14 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
   const checkInPayload = { ...searchPayload };
 
   const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
-    volunteerHomeShiftsSummaryBar(ctx, checkInPayload),
-    ...ctx.todayShifts.flatMap((row, index) => {
-      const payload = { ...checkInPayload };
-      if (row.taskId) payload.taskId = row.taskId;
-      const bar = volunteerHomeMaroonButton(row.label, 'jewelheart.volunteer.checkin', payload);
-      return index === 0 ? [bar] : [volunteerHomeSpacer(10), bar];
-    }),
+    ...volunteerHomeTopBlueBars(ctx),
+    volunteerHomeGap(),
+    volunteerHomeAnnouncementsButton(ctx),
+    volunteerHomeGap(),
+    volunteerHomeShiftsSummaryBar(ctx),
+    ...(ctx.todayShifts.length ? [volunteerHomeGap(), ...volunteerHomeTodayShiftButtons(ctx, checkInPayload)] : []),
     volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
-    ...volunteerHomeIWantToButtons(ctx, searchPayload, checkInPayload),
+    ...volunteerHomeIWantToSection(ctx, searchPayload),
   ];
 
   if (ctx.errorNote) {
@@ -981,4 +1069,47 @@ export async function buildJewelheartVolunteerMessagesScreen(
   ];
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.messages', 'JewelHeart', children, ctx.layoutWarnings);
+}
+
+function volunteerHomeSimplePlaceholderScreen(ctx, title, body, basePayload, screenId) {
+  const children = [
+    ...volunteerHomeBlueHeaderChildren(ctx),
+    ...volunteerHomeGoldPageTitleBar(title, ctx.layoutWarnings),
+    volunteerHomeBodyText(body, ctx.layoutWarnings, `${screenId}_body`),
+    volunteerHomeMaroonButton('← Volunteer Home', 'jewelheart.home', basePayload),
+  ];
+  children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
+  return volunteerHomeScreenEnvelope(screenId, 'JewelHeart', children, ctx.layoutWarnings);
+}
+
+export async function buildJewelheartVolunteerAccountScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
+  const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
+  return volunteerHomeSimplePlaceholderScreen(
+    ctx,
+    'My account',
+    'Account settings placeholder for demo.',
+    basePayload,
+    'jewelheart.volunteer.account',
+  );
+}
+
+export async function buildJewelheartVolunteerPreferencesScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
+  const basePayload = ctx.retreatId ? { retreatId: ctx.retreatId } : {};
+  return volunteerHomeSimplePlaceholderScreen(
+    ctx,
+    'My preferences',
+    'Preferences placeholder for demo.',
+    basePayload,
+    'jewelheart.volunteer.preferences',
+  );
 }

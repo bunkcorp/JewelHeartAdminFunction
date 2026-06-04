@@ -49,9 +49,10 @@ struct SDUIComponentView: View {
         let spacing = CGFloat(component.spacing ?? 16)
         let inner: some View = Group {
             if layout == "row" {
-                HStack(alignment: .top, spacing: spacing) {
+                HStack(alignment: .center, spacing: spacing) {
                     childrenViews
                 }
+                .frame(maxWidth: .infinity)
             } else {
                 VStack(alignment: barAlignment(from: component), spacing: spacing) {
                     childrenViews
@@ -134,7 +135,7 @@ struct SDUIComponentView: View {
             }
         }
         .padding(barPadding(from: component.style))
-        .background(bg ?? Color.clear, in: RoundedRectangle(cornerRadius: 8))
+        .background(bg ?? Color.clear, in: RoundedRectangle(cornerRadius: barCornerRadius(from: component.style)))
 
         let pill = buttonLabel.fixedSize(horizontal: true, vertical: false)
 
@@ -201,6 +202,10 @@ struct SDUIComponentView: View {
     private func barBackground(from style: ComponentStyle?) -> Color? {
         guard let hex = style?.backgroundColor else { return nil }
         return Color(hex: hex)
+    }
+
+    private func barCornerRadius(from style: ComponentStyle?) -> CGFloat {
+        CGFloat(style?.borderRadius ?? 8)
     }
 
     private func barPadding(from style: ComponentStyle?) -> EdgeInsets {

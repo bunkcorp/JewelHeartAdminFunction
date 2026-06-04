@@ -27,7 +27,21 @@ const sduiScreensPath = path.join(jewelDir, 'sduiScreens.js');
 const homeModuleDest = path.join(jewelDir, 'jewelheart-sdui-home.js');
 
 const importLine =
-  "import { buildJewelheartHomeScreen, buildJewelheartVolunteerSearchScreen, buildJewelheartVolunteerAssignScreen, buildJewelheartVolunteerCheckinScreen, buildJewelheartVolunteerMessagesScreen, buildJewelheartVolunteerMineScreen } from './jewelheart-sdui-home.js';";
+  "import { buildJewelheartHomeScreen, buildJewelheartVolunteerSearchScreen, buildJewelheartVolunteerAssignScreen, buildJewelheartVolunteerCheckinScreen, buildJewelheartVolunteerMessagesScreen, buildJewelheartVolunteerMineScreen, buildJewelheartVolunteerAccountScreen, buildJewelheartVolunteerPreferencesScreen } from './jewelheart-sdui-home.js';";
+const accountCaseBlock = `    case 'jewelheart.volunteer.account':
+      return wrap(
+        await buildJewelheartVolunteerAccountScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
+const preferencesCaseBlock = `    case 'jewelheart.volunteer.preferences':
+      return wrap(
+        await buildJewelheartVolunteerPreferencesScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );`;
 const mineCaseBlock = `    case 'jewelheart.volunteer.mine':
       return wrap(
         await buildJewelheartVolunteerMineScreen(firebaseUid, authToken, {
@@ -125,6 +139,14 @@ function patchSduiScreens() {
     }
     src = src.replace(messagesCaseBlock, `${messagesCaseBlock}\n${mineCaseBlock}`);
     console.log('Added jewelheart.volunteer.mine case.');
+  }
+
+  if (!src.includes("case 'jewelheart.volunteer.account':")) {
+    if (!src.includes(mineCaseBlock)) {
+      die('sduiScreens.js: cannot find volunteer mine case to insert account/preferences routes.');
+    }
+    src = src.replace(mineCaseBlock, `${mineCaseBlock}\n${accountCaseBlock}\n${preferencesCaseBlock}`);
+    console.log('Added jewelheart.volunteer.account and jewelheart.volunteer.preferences cases.');
   }
 
   const partialImport =

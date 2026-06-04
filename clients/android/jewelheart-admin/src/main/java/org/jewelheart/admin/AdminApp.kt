@@ -345,7 +345,8 @@ private fun SduiComponentView(
                 if (c.layout == "row") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(spacing),
+                        horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         c.children?.forEach { SduiComponentView(it, vm, ctx) }
                     }
@@ -447,7 +448,8 @@ private fun SduiComponentView(
                 else -> TextAlign.Start
             }
             if (bg != null) {
-                val shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                val radius = (c.style?.borderRadius ?: 8.0).dp
+                val shape = androidx.compose.foundation.shape.RoundedCornerShape(radius)
                 val buttonModifier = Modifier
                     .wrapContentWidth()
                     .background(bg, shape)

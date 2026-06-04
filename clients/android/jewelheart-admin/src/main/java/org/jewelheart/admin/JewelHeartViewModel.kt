@@ -77,7 +77,8 @@ class JewelHeartViewModel(
                 when (screenId) {
                     "jewelheart.volunteer.search", "jewelheart.volunteer.assign",
                     "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
-                    "jewelheart.volunteer.mine" -> {
+                    "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
+                    "jewelheart.volunteer.preferences" -> {
                         action.payload?.get("retreatId")?.takeIf { it.isNotBlank() }?.let { retreatId = it }
                         val days = action.payload?.get("selectedDays")
                         val jobs = action.payload?.get("selectedJobs")

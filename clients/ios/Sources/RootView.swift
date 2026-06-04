@@ -176,7 +176,8 @@ struct SduiNavigationRootView: View {
 
                 case "jewelheart.volunteer.search", "jewelheart.volunteer.assign",
                      "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
-                     "jewelheart.volunteer.mine":
+                     "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
+                     "jewelheart.volunteer.preferences":
 
                     if let r = action.payload?["retreatId"], !r.isEmpty {
 
