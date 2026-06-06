@@ -134,7 +134,12 @@ struct SduiNavigationRootView: View {
 
             JewelHeartLog.uiInfo("load ok screen.id=\(env.screen.id) schema=\(env.schemaVersion)")
 
-            await MainActor.run { envelope = env }
+            await MainActor.run {
+                envelope = env
+                if screenId == "jewelheart.volunteer.checkin" {
+                    extraParams.removeValue(forKey: "checkinOp")
+                }
+            }
 
         } catch {
 
@@ -215,6 +220,26 @@ struct SduiNavigationRootView: View {
 
                     }
 
+                    if let op = action.payload?["checkinOp"], !op.isEmpty {
+
+                        extraParams["checkinOp"] = op
+
+                    } else if target == "jewelheart.volunteer.checkin" {
+
+                        extraParams.removeValue(forKey: "checkinOp")
+
+                    }
+
+                    if let rt = action.payload?["returnTo"], !rt.isEmpty {
+
+                        extraParams["returnTo"] = rt
+
+                    } else if target == "jewelheart.home" {
+
+                        extraParams.removeValue(forKey: "returnTo")
+
+                    }
+
                 case "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home":
 
                     extraParams.removeValue(forKey: "day")
@@ -226,6 +251,10 @@ struct SduiNavigationRootView: View {
                     extraParams.removeValue(forKey: "selectedJobs")
 
                     extraParams.removeValue(forKey: "taskId")
+
+                    extraParams.removeValue(forKey: "returnTo")
+
+                    extraParams.removeValue(forKey: "checkinOp")
 
                 case "retreat.schedule.day":
 

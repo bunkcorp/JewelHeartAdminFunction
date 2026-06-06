@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct SDUIRoot: View {
     let screen: SDUIScreen
@@ -15,7 +18,8 @@ struct SDUIRoot: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
+            .padding(.horizontal, screen.id == "jewelheart.home" ? 0 : 16)
+            .padding(.vertical, screen.id == "jewelheart.home" ? 6 : 12)
         }
     }
 }
@@ -49,10 +53,19 @@ struct SDUIComponentView: View {
         let spacing = CGFloat(component.spacing ?? 16)
         let inner: some View = Group {
             if layout == "row" {
+                let equalWidth = component.style?.equalWidthChildren == true
+                let rowAlign: HorizontalAlignment = (component.textStyle?.textAlign?.lowercased() == "left") ? .leading : .center
                 HStack(alignment: .center, spacing: spacing) {
-                    childrenViews
+                    if let ch = component.children {
+                        ForEach(Array(ch.enumerated()), id: \.offset) { _, child in
+                            Group {
+                                SDUIComponentView(component: child, onAction: onAction)
+                            }
+                            .frame(maxWidth: (equalWidth || child.style?.flexGrow == true) ? .infinity : nil)
+                        }
+                    }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: rowAlign == .leading ? .leading : .center)
             } else {
                 VStack(alignment: barAlignment(from: component), spacing: spacing) {
                     childrenViews
@@ -89,13 +102,33 @@ struct SDUIComponentView: View {
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
+            .frame(
+                maxWidth: (barBackground(from: component.style) != nil
+                    || component.style?.flexGrow == true
+                    || component.style?.parentCentered == true) ? .infinity : nil,
+                alignment: frameAlignment(from: textAlign)
+            )
+        let fixedBarH = CGFloat(component.style?.height?.value ?? 0)
         let bar: some View = Group {
             if let bg = barBackground(from: component.style) {
-                label
-                    .padding(barPadding(from: component.style))
-                    .frame(maxWidth: .infinity)
-                    .background(bg)
+                if fixedBarH > 0 {
+                    let hPad = barPadding(from: component.style)
+                    let fixedW = component.style?.width?.value
+                    label
+                        .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
+                        .frame(
+                            minWidth: fixedW != nil ? CGFloat(fixedW!) : nil,
+                            maxWidth: fixedW != nil ? CGFloat(fixedW!) : .infinity,
+                            minHeight: fixedBarH,
+                            maxHeight: fixedBarH
+                        )
+                        .background(bg)
+                } else {
+                    label
+                        .padding(barPadding(from: component.style))
+                        .frame(maxWidth: .infinity)
+                        .background(bg)
+                }
             } else {
                 label
             }
@@ -134,29 +167,46 @@ struct SDUIComponentView: View {
                 label
             }
         }
-        .padding(barPadding(from: component.style))
-        .background(bg ?? Color.clear, in: RoundedRectangle(cornerRadius: barCornerRadius(from: component.style)))
-
-        let pill = buttonLabel.fixedSize(horizontal: true, vertical: false)
-
-        return HStack {
-            Spacer(minLength: 0)
-            Button {
-                if let a = component.action {
-                    Task { await onAction(a) }
-                }
-            } label: {
-                if centered {
-                    pill
-                } else {
-                    buttonLabel
-                        .frame(maxWidth: .infinity, alignment: frameAlignment(from: textAlign))
+        let fixedBtnH = CGFloat(component.style?.height?.value ?? 0)
+        let hPad = barPadding(from: component.style)
+        let pillCore = buttonLabel
+            .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
+            .frame(
+                minWidth: 0,
+                minHeight: fixedBtnH > 0 ? fixedBtnH : nil,
+                maxHeight: fixedBtnH > 0 ? fixedBtnH : nil
+            )
+            .background {
+                if let bg {
+                    raisedButtonBackground(bg, style: component.style)
                 }
             }
-            .buttonStyle(.plain)
-            Spacer(minLength: 0)
+
+        let pill = pillCore.fixedSize(horizontal: true, vertical: false)
+        let parentCentered = component.style?.parentCentered == true
+
+        let tapButton = Button {
+            if let a = component.action {
+                Task { await onAction(a) }
+            }
+        } label: {
+            if centered {
+                pill
+            } else {
+                pill
+            }
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+
+        if parentCentered {
+            return HStack {
+                Spacer(minLength: 0)
+                tapButton
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        return tapButton
     }
 
     private var spacerBody: some View {
@@ -224,6 +274,36 @@ struct SDUIComponentView: View {
         case "trailing", "right": return .trailing
         default: return .leading
         }
+    }
+
+    @ViewBuilder
+    private func raisedButtonBackground(_ bg: Color, style: ComponentStyle?) -> some View {
+        let radius = barCornerRadius(from: style)
+        let raised = style?.buttonVariant == "raised"
+        let shape = RoundedRectangle(cornerRadius: radius)
+        if raised {
+            shape
+                .fill(bg)
+                .shadow(color: .black.opacity(0.42), radius: 5, x: 0, y: 4)
+                .overlay(shape.stroke(sduiShadeColor(bg, by: 0.32), lineWidth: 2))
+        } else {
+            shape.fill(bg)
+        }
+    }
+
+    private func sduiShadeColor(_ color: Color, by amount: CGFloat) -> Color {
+        #if canImport(UIKit)
+        let ui = UIColor(color)
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let f = 1 - min(max(amount, 0), 0.45)
+        return Color(red: r * f, green: g * f, blue: b * f, opacity: Double(a))
+        #else
+        return color
+        #endif
     }
 }
 

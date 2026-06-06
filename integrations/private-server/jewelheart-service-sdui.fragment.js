@@ -114,6 +114,19 @@ function volunteerHomeBar(content, backgroundColor, textColor) {
   };
 }
 
+function volunteerHomePlainLabel(content) {
+  return {
+    type: 'text',
+    content,
+    textStyle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      textAlign: 'center',
+    },
+    style: { padding: { top: 10, bottom: 6, left: 8, right: 8 } },
+  };
+}
+
 /** Firebase uid → volunteer row, else first volunteer linked to retreat. */
 async function resolveVolunteerIdForHome(firebaseUid, retreatId) {
   if (typeof query !== 'function') return null;
@@ -222,6 +235,7 @@ async function jewelheartHomeSdui(firebaseUid) {
     volunteerHomeBar('Volunteer Home', volunteerHomeGold, '#000000'),
     volunteerHomeBar(summaryLine, volunteerHomeSummaryBlue, '#FFFFFF'),
     ...todayJobLines.map((line) => volunteerHomeBar(line, volunteerHomeSummaryBlue, '#FFFFFF')),
+    volunteerHomePlainLabel('I want to...'),
   ];
   if (errorNote) {
     children.push({

@@ -145,6 +145,12 @@ struct ComponentStyle: Codable {
     let backgroundColor: String?
     /// Pill / button corner radius (dp).
     let borderRadius: Double?
+    let fullBleed: Bool?
+    let elevation: Double?
+    let buttonVariant: String?
+    let equalWidthChildren: Bool?
+    let parentCentered: Bool?
+    let flexGrow: Bool?
 }
 
 struct PaddingSpec: Codable {

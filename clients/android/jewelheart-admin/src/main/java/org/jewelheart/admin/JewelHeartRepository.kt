@@ -170,12 +170,17 @@ class JewelHeartRepository(
                 add("params", p)
             }
         }
-        val bytes = cachedJsonRead(
-            namespace = CACHE_SDUI_SCREENS,
-            key = sduiCacheKey(screenId, retreatId, params),
-            ttlMillis = CACHE_TTL_STANDARD_MS,
-        ) {
+        val bypassCache = params.containsKey("checkinOp")
+        val bytes = if (bypassCache) {
             jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)
+        } else {
+            cachedJsonRead(
+                namespace = CACHE_SDUI_SCREENS,
+                key = sduiCacheKey(screenId, retreatId, params),
+                ttlMillis = CACHE_TTL_STANDARD_MS,
+            ) {
+                jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)
+            }
         }
         return gson.fromJson(bytes.toString(Charsets.UTF_8), SduiEnvelope::class.java)
     }

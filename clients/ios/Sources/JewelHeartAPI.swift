@@ -331,15 +331,25 @@ actor JewelHeartAPI {
         if let retreatId { body["retreatId"] = retreatId }
         if !params.isEmpty { body["params"] = params }
         let bodyData = try JSONSerialization.data(withJSONObject: body)
-        let data = try await authorizedCachedDataRequest(
-            path: "jewelheart/sdui/screen",
-            method: "POST",
-            httpBody: bodyData,
-            contentType: "application/json",
-            cacheNamespace: JewelHeartReadCacheNamespace.sduiScreens,
-            cacheKey: Self.sduiCacheKey(screenId: screenId, retreatId: retreatId, params: params),
-            ttl: JewelHeartReadCacheTTL.standard
-        )
+        let data: Data
+        if params["checkinOp"] != nil {
+            data = try await authorizedDataRequest(
+                path: "jewelheart/sdui/screen",
+                method: "POST",
+                httpBody: bodyData,
+                contentType: "application/json"
+            )
+        } else {
+            data = try await authorizedCachedDataRequest(
+                path: "jewelheart/sdui/screen",
+                method: "POST",
+                httpBody: bodyData,
+                contentType: "application/json",
+                cacheNamespace: JewelHeartReadCacheNamespace.sduiScreens,
+                cacheKey: Self.sduiCacheKey(screenId: screenId, retreatId: retreatId, params: params),
+                ttl: JewelHeartReadCacheTTL.standard
+            )
+        }
         do {
             let dec = JSONDecoder()
             return try dec.decode(SDUIEnvelope.self, from: data)

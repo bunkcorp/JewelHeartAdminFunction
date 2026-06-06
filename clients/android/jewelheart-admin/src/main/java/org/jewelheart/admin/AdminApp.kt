@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +17,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
@@ -343,12 +348,37 @@ private fun SduiComponentView(
             val spacing = (c.spacing ?: 16.0).dp
             val inner: @Composable () -> Unit = {
                 if (c.layout == "row") {
+                    val equalWidth = c.style?.equalWidthChildren == true
+                    val rowAlign = when (c.textStyle?.textAlign?.lowercase()) {
+                        "left", "start" -> Arrangement.spacedBy(spacing, Alignment.Start)
+                        else -> Arrangement.spacedBy(spacing, Alignment.CenterHorizontally)
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
+                        horizontalArrangement = rowAlign,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        c.children?.forEach { SduiComponentView(it, vm, ctx) }
+                        c.children?.forEach { child ->
+                            when {
+                                equalWidth -> {
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        SduiComponentView(child, vm, ctx)
+                                    }
+                                }
+                                child.style?.flexGrow == true -> {
+                                    Box(
+                                        modifier = Modifier.weight(1f),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        SduiComponentView(child, vm, ctx)
+                                    }
+                                }
+                                else -> SduiComponentView(child, vm, ctx)
+                            }
+                        }
                     }
                 } else {
                     Column(
@@ -397,34 +427,77 @@ private fun SduiComponentView(
             }
             val fg = sduiTextForegroundColor(c, MaterialTheme.colorScheme.onSurface)
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
-            val pad = sduiBarPadding(c.style)
-            val mod = Modifier
-                .fillMaxWidth()
-                .then(if (bg != null) Modifier.background(bg).padding(pad) else Modifier.padding(horizontal = 16.dp))
-            val textModifier = c.action?.let { action ->
-                mod.clickable {
+            val fullBleed = c.style?.fullBleed == true
+            val fixedH = c.style?.height?.value?.dp
+            val onTextClick: (() -> Unit)? = c.action?.let { action ->
+                {
                     if (action.type == "openUrl" && action.target != null) {
                         ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(action.target)))
                     } else {
                         vm.onAction(action)
                     }
                 }
-            } ?: mod
-            Text(
-                text = c.content ?: "",
-                modifier = textModifier,
-                fontSize = size,
-                fontWeight = weight,
-                color = fg,
-                textAlign = align,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            }
+            if (bg != null && fixedH != null) {
+                val flexGrow = c.style?.flexGrow == true
+                val fixedW = c.style?.width?.value?.dp
+                val barMod = Modifier
+                    .then(
+                        when {
+                            fullBleed || flexGrow -> Modifier.fillMaxWidth()
+                            fixedW != null -> Modifier.width(fixedW)
+                            else -> Modifier.fillMaxWidth()
+                        },
+                    )
+                    .height(fixedH)
+                    .background(bg)
+                    .then(if (onTextClick != null) Modifier.clickable { onTextClick() } else Modifier)
+                    .padding(sduiHorizontalBarPadding(c.style))
+                Box(modifier = barMod, contentAlignment = Alignment.Center) {
+                    Text(
+                        text = c.content ?: "",
+                        fontSize = size,
+                        fontWeight = weight,
+                        color = fg,
+                        textAlign = align,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                val pad = sduiBarPadding(c.style)
+                val parentCentered = c.style?.parentCentered == true
+                val widthMod = when {
+                    fullBleed -> Modifier.fillMaxWidth()
+                    bg != null -> Modifier.wrapContentWidth()
+                    parentCentered -> Modifier.fillMaxWidth()
+                    else -> Modifier.wrapContentWidth()
+                }
+                val mod = widthMod
+                    .then(if (fixedH != null) Modifier.defaultMinSize(minHeight = fixedH) else Modifier)
+                    .then(
+                        if (bg != null) {
+                            Modifier.background(bg).padding(pad)
+                        } else {
+                            Modifier.padding(horizontal = 16.dp)
+                        },
+                    )
+                    .then(if (onTextClick != null) Modifier.clickable { onTextClick() } else Modifier)
+                Text(
+                    text = c.content ?: "",
+                    modifier = mod,
+                    fontSize = size,
+                    fontWeight = weight,
+                    color = fg,
+                    textAlign = align,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         "button" -> {
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
             val fg = sduiTextForegroundColor(c, MaterialTheme.colorScheme.onPrimary)
-            val pad = sduiBarPadding(c.style)
             val centered = c.textStyle?.textAlign?.lowercase() == "center"
             val onClick: () -> Unit = {
                 val a = c.action
@@ -449,22 +522,20 @@ private fun SduiComponentView(
             }
             if (bg != null) {
                 val radius = (c.style?.borderRadius ?: 8.0).dp
-                val shape = androidx.compose.foundation.shape.RoundedCornerShape(radius)
-                val buttonModifier = Modifier
+                val shape = RoundedCornerShape(radius)
+                val fixedH = c.style?.height?.value?.dp
+                val raised = c.style?.buttonVariant == "raised"
+                val elevation = (c.style?.elevation ?: if (raised) 9.0 else 0.0).dp
+                val parentCentered = c.style?.parentCentered == true
+                val pillMod = Modifier
                     .wrapContentWidth()
-                    .background(bg, shape)
-                    .padding(pad)
-                val rowModifier = if (centered) {
-                    Modifier.fillMaxWidth()
-                } else {
-                    Modifier.fillMaxWidth()
-                }
-                Box(modifier = rowModifier, contentAlignment = Alignment.Center) {
-                    TextButton(
-                        onClick = onClick,
-                        modifier = buttonModifier,
-                        contentPadding = PaddingValues(0.dp),
-                    ) {
+                    .then(if (fixedH != null) Modifier.height(fixedH) else Modifier)
+                    .then(sduiRaisedSurfaceModifier(bg, shape, elevation, raised))
+                    .clickable { onClick() }
+                    .padding(sduiHorizontalBarPadding(c.style))
+                val outerMod = if (parentCentered) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()
+                Box(modifier = outerMod, contentAlignment = Alignment.Center) {
+                    Box(modifier = pillMod, contentAlignment = Alignment.Center) {
                         Text(
                             label,
                             color = fg,
@@ -473,7 +544,6 @@ private fun SduiComponentView(
                             textAlign = textAlign,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.wrapContentWidth(),
                         )
                     }
                 }
@@ -521,6 +591,37 @@ private fun sduiBarPadding(style: ComponentStyle?): PaddingValues {
         top = (p.top ?: p.all ?: 10.0).dp,
         end = (p.right ?: p.all ?: 8.0).dp,
         bottom = (p.bottom ?: p.all ?: 10.0).dp,
+    )
+}
+
+private fun sduiHorizontalBarPadding(style: ComponentStyle?): PaddingValues {
+    val p = style?.padding ?: return PaddingValues(horizontal = 12.dp)
+    return PaddingValues(
+        start = (p.left ?: p.all ?: 12.0).dp,
+        end = (p.right ?: p.all ?: 12.0).dp,
+    )
+}
+
+private fun sduiRaisedSurfaceModifier(
+    bg: Color,
+    shape: RoundedCornerShape,
+    elevation: androidx.compose.ui.unit.Dp,
+    raised: Boolean,
+): Modifier {
+    if (!raised) return Modifier.background(bg, shape)
+    return Modifier
+        .shadow(elevation, shape, clip = false)
+        .background(bg, shape)
+        .border(2.dp, sduiShadeColor(bg, 0.32f), shape)
+}
+
+private fun sduiShadeColor(color: Color, amount: Float): Color {
+    val factor = 1f - amount.coerceIn(0f, 0.45f)
+    return Color(
+        red = color.red * factor,
+        green = color.green * factor,
+        blue = color.blue * factor,
+        alpha = color.alpha,
     )
 }
 

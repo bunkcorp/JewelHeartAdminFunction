@@ -38,8 +38,15 @@ data class ComponentStyle(
     @SerializedName("padding") val padding: PaddingSpec?,
     @SerializedName("margin") val margin: MarginSpec?,
     @SerializedName("height") val height: DimensionSpec?,
+    @SerializedName("width") val width: DimensionSpec?,
     @SerializedName("backgroundColor") val backgroundColor: String?,
     @SerializedName("borderRadius") val borderRadius: Double?,
+    @SerializedName("fullBleed") val fullBleed: Boolean?,
+    @SerializedName("elevation") val elevation: Double?,
+    @SerializedName("buttonVariant") val buttonVariant: String?,
+    @SerializedName("equalWidthChildren") val equalWidthChildren: Boolean?,
+    @SerializedName("parentCentered") val parentCentered: Boolean?,
+    @SerializedName("flexGrow") val flexGrow: Boolean?,
 )
 
 data class PaddingSpec(

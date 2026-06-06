@@ -61,6 +61,9 @@ class JewelHeartViewModel(
                 error = e.message ?: e.toString()
                 envelope = null
             } finally {
+                if (screenId == "jewelheart.volunteer.checkin") {
+                    extraParams = extraParams.toMutableMap().apply { remove("checkinOp") }
+                }
                 loading = false
             }
         }
@@ -83,15 +86,21 @@ class JewelHeartViewModel(
                         val days = action.payload?.get("selectedDays")
                         val jobs = action.payload?.get("selectedJobs")
                         val taskId = action.payload?.get("taskId")
+                        val checkinOp = action.payload?.get("checkinOp")
+                        val returnTo = action.payload?.get("returnTo")
                         extraParams = extraParams.toMutableMap().apply {
                             if (days != null) put("selectedDays", days) else if (screenId == "jewelheart.volunteer.search") remove("selectedDays")
                             if (jobs != null) put("selectedJobs", jobs) else if (screenId == "jewelheart.volunteer.search") remove("selectedJobs")
                             if (taskId != null) put("taskId", taskId) else if (screenId == "jewelheart.volunteer.checkin") remove("taskId")
+                            if (checkinOp != null) put("checkinOp", checkinOp)
+                            else if (screenId == "jewelheart.volunteer.checkin") remove("checkinOp")
+                            if (returnTo != null) put("returnTo", returnTo)
+                            else if (screenId == "jewelheart.home") remove("returnTo")
                         }
                     }
                     "retreat.schedule", "retreat.home", "retreat.list", "jewelheart.home" ->
                         extraParams = extraParams.filterKeys {
-                            it != "day" && it != "weekMonday" && it != "selectedDays" && it != "selectedJobs" && it != "taskId"
+                            it != "day" && it != "weekMonday" && it != "selectedDays" && it != "selectedJobs" && it != "taskId" && it != "returnTo" && it != "checkinOp"
                         }
                     "retreat.schedule.day" -> {
                         val d = action.payload?.get("day")?.takeIf { it.isNotBlank() }
