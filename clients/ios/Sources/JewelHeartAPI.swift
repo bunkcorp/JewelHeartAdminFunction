@@ -333,7 +333,7 @@ actor JewelHeartAPI {
         let bodyData = try JSONSerialization.data(withJSONObject: body)
         let data: Data
         if params["checkinOp"] != nil {
-            data = try await authorizedDataRequest(
+            (data, _) = try await authorizedDataRequest(
                 path: "jewelheart/sdui/screen",
                 method: "POST",
                 httpBody: bodyData,

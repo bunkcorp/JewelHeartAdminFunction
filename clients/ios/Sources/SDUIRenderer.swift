@@ -198,15 +198,18 @@ struct SDUIComponentView: View {
         }
         .buttonStyle(.plain)
 
-        if parentCentered {
-            return HStack {
-                Spacer(minLength: 0)
+        return Group {
+            if parentCentered {
+                HStack {
+                    Spacer(minLength: 0)
+                    tapButton
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
                 tapButton
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity)
         }
-        return tapButton
     }
 
     private var spacerBody: some View {
