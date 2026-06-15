@@ -49,7 +49,16 @@ function volunteerHomeCompactJobPhrase(text) {
     .replace(/\s-\sEnd of Day$/i, ' · EOD')
     .replace(/\s-\send of lunch break$/i, ' · lunch')
     .replace(/\s-\send of day$/i, ' · EOD')
-    .replace(/\s-\s/g, ' · ');
+    .replace(/\s-\s/g, ' · ')
+    .replace(/\s*—\s*/g, ' · ');
+}
+
+/** “Job – Wd” with the job name fitted first so the day never truncates away. */
+function volunteerHomeJobDayLabel(jobName, dayIso, maxChars, warnings, code) {
+  const weekday = volunteerHomeWeekdayShort(dayIso);
+  const suffix = `${VOLUNTEER_HOME_EN_DASH}${weekday}`;
+  const fitted = volunteerHomeFitLine(jobName, maxChars - suffix.length, warnings, code);
+  return `${fitted}${suffix}`;
 }
 
 function volunteerHomeFitLine(text, maxChars, warnings, code) {
@@ -59,26 +68,11 @@ function volunteerHomeFitLine(text, maxChars, warnings, code) {
   return `${s.slice(0, maxChars - 1)}…`;
 }
 
-function volunteerHomeShortPersonName(name) {
-  const parts = String(name || 'Volunteer').trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0][0]}. ${parts[parts.length - 1]}`;
-  return parts[0] || 'Volunteer';
-}
-
 function volunteerHomeFitRetreatTitle(name, warnings) {
   let s = volunteerHomeRetreatShortName(name);
   s = s.replace(/\b(20(\d{2}))\b/g, "'$2");
   s = s.replace(/\s+/g, ' ').trim();
   return volunteerHomeFitLine(s, VOLUNTEER_HOME_MAX_BAR_CHARS, warnings, 'retreat_title');
-}
-
-function volunteerHomeFitSummary(name, shiftCount, todayCount, warnings) {
-  const shiftWord = shiftCount === 1 ? 'shift' : 'shifts';
-  let line = `${name} - ${shiftCount} ${shiftWord} - ${todayCount} today:`;
-  if (line.length > VOLUNTEER_HOME_MAX_BAR_CHARS) {
-    line = `${volunteerHomeShortPersonName(name)} - ${shiftCount} ${shiftWord} - ${todayCount} today:`;
-  }
-  return volunteerHomeFitLine(line, VOLUNTEER_HOME_MAX_BAR_CHARS, warnings, 'summary');
 }
 
 function volunteerHomeLayoutWarningComponents(warnings) {
@@ -120,15 +114,32 @@ const VOLUNTEER_HOME_DEMO_TASKS = {
   },
 };
 
-/** Demo retreat announcements (id order = display / seen cursor). */
-const VOLUNTEER_HOME_DEMO_ANNOUNCEMENTS = [
-  { id: 1, when: 'Mon 8:01 AM', text: 'Welcome to Jewel Heart Summer Retreat!' },
-  {
-    id: 2,
-    when: 'Mon 8:03 AM',
-    text: 'First session is White Tara practice, Monday, 8:30 AM.',
-  },
+/**
+ * Poster tab jobs + abbreviations + scheduled days (v8 spreadsheet).
+ * Blank day cell = scheduled; XXXXX = not scheduled that day.
+ */
+const VOLUNTEER_POSTER_SEARCH_JOBS = [
+  { id: 'poster-cafe-lunch-light', title: 'Café, lunch break / Light cleanup', abbrev: 'Café light clean @ lunch', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-cafe-eod-full', title: 'Café, end of day / Full cleanup', abbrev: 'Café, clean @ end of day', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-kitchen-lunch-light', title: 'Kitchen, lunch brk / Light cleanup', abbrev: 'Ktchn light clean @ lunch', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-kitchen-eod-full', title: 'Kitchen, end of day / Full cleanup', abbrev: 'Ktchn clean @ end of day', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-coffee-morning', title: 'Coffee & snacks / Morning setup', abbrev: 'Coffee, snacks Morn setup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-coffee-evening', title: 'Coffee & snacks / Evening brkdwn', abbrev: 'Coffee, snacks Eve brkdwn', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-tara-vacuum', title: 'Tara Paradse, store / Vacuum', abbrev: 'Tara Paradse, store Vacuum', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
+  { id: 'poster-jh-hallway-vacuum', title: 'JH off, main hallway / Vacuum', abbrev: 'JH office, hallway Vacuum', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
+  { id: 'poster-coatrm-vacuum', title: 'Coatrm, café hallwy / Vacuum', abbrev: 'Coatrm, café, Vacuum', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-foyer-vacuum', title: 'Foyer & lobby / Vacuum', abbrev: 'Foyer,lobby Vacuum', scheduledDayIsos: ['2026-07-22', '2026-07-25'] },
+  { id: 'poster-lama-offices', title: 'Lama offices / Clean', abbrev: 'Lama offices Clean', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
+  { id: 'poster-mens-room', title: "Men's room / Clean & stock", abbrev: "Men's room Clean & stock", scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-urinals', title: 'Urinals / Check pads & mop', abbrev: 'Urinals Check pads, mop', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-womens-room', title: "Women's room / Clean & stock", abbrev: "Women's room Clean, stock", scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-unisex-lama', title: 'Unisx, Lama bathrooms', abbrev: 'Unisx, Lama bathrooms', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
+  { id: 'poster-front-windows', title: 'Front windows / Clean', abbrev: 'Front windows Clean', scheduledDayIsos: ['2026-07-22', '2026-07-25'] },
+  { id: 'poster-towels-launder', title: 'Towels, mop pads / launder at home', abbrev: 'Towels, mop pads launder', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
 ];
+
+/** Posted announcements (persistent store TBD; empty until admin “Post announcement”). */
+const VOLUNTEER_HOME_DEMO_ANNOUNCEMENTS = [];
 
 /** In-memory volunteer demo state (announcements seen + check-in sessions) until DB tables exist. */
 const volunteerDemoStateByFirebaseUid = new Map();
@@ -142,6 +153,16 @@ function volunteerDemoState(firebaseUid) {
     });
   }
   return volunteerDemoStateByFirebaseUid.get(key);
+}
+
+function volunteerHighestAnnouncementPosted() {
+  if (!VOLUNTEER_HOME_DEMO_ANNOUNCEMENTS.length) return 0;
+  return Math.max(...VOLUNTEER_HOME_DEMO_ANNOUNCEMENTS.map((a) => a.id));
+}
+
+function volunteerHasUnreadAnnouncements(firebaseUid) {
+  const st = volunteerDemoState(firebaseUid);
+  return volunteerHighestAnnouncementPosted() > st.highestAnnouncementSeen;
 }
 
 function volunteerUnseenAnnouncements(firebaseUid) {
@@ -314,6 +335,25 @@ function volunteerHomeMonthDayLong(iso) {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }).format(dt);
 }
 
+/** Compact date for blue sub-header bars (e.g. 7/21). */
+function volunteerHomeMonthDaySlash(iso) {
+  const [, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  return `${m}/${d}`;
+}
+
+function volunteerHomeUtcWeekday(iso) {
+  const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+}
+
+/** Retreat weekdays Mon–Fri only (for sign-up day filters). */
+function volunteerHomeRetreatWeekdaysMonFri(isos) {
+  return (isos || []).filter((iso) => {
+    const w = volunteerHomeUtcWeekday(iso);
+    return w >= 1 && w <= 5;
+  });
+}
+
 function volunteerHomeFormatJulDay(iso) {
   const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
   const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
@@ -322,14 +362,18 @@ function volunteerHomeFormatJulDay(iso) {
 }
 
 function volunteerHomeFormatJulDateRange(startIso, endIso) {
-  if (!startIso || !endIso) return 'Jul 20–26, 2026';
-  const year = startIso.slice(0, 4);
-  const start = volunteerHomeFormatJulDay(startIso);
-  const end = volunteerHomeFormatJulDay(endIso);
-  const [startMonth, startDay] = start.split(' ');
-  const [endMonth, endDay] = end.split(' ');
-  if (startMonth === endMonth) return `${startMonth} ${startDay}–${endDay}, ${year}`;
-  return `${start}–${end}, ${year}`;
+  if (!startIso || !endIso) return '7/20-7/26';
+  const start = volunteerHomeMonthDaySlash(startIso);
+  const end = volunteerHomeMonthDaySlash(endIso);
+  return `${start}-${end}`;
+}
+
+/** Second blue bar: “{screen} – Day n, Weekday, m/d” (e.g. Day 2, Tue, 7/21). */
+function volunteerHomeScreenSubtitleLine(screenTitle, retreat, contextIso) {
+  const r = retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
+  const dayNum = volunteerHomeDayNumber(r, contextIso);
+  const weekday = volunteerHomeWeekdayShort(contextIso);
+  return `${screenTitle}${VOLUNTEER_HOME_EN_DASH}Day ${dayNum}, ${weekday}, ${volunteerHomeMonthDaySlash(contextIso)}`;
 }
 
 function volunteerHomeRetreatBannerLine(retreat) {
@@ -337,23 +381,239 @@ function volunteerHomeRetreatBannerLine(retreat) {
   return `JH Summer Retreat${VOLUNTEER_HOME_EN_DASH}${range}`;
 }
 
-function volunteerHomeVolunteerHomeLine(dayNum, todayIso) {
-  const weekday = volunteerHomeWeekdayShort(todayIso);
-  const monthDay = volunteerHomeMonthDayLong(todayIso);
-  return `Volunteer Home${VOLUNTEER_HOME_EN_DASH}Day ${dayNum}, ${weekday} ${monthDay}`;
+function volunteerHomeHeaderChildren(ctx, screenTitle, contextIso = undefined) {
+  const iso = contextIso || ctx.todayIso;
+  const line = volunteerHomeFitLine(
+    volunteerHomeScreenSubtitleLine(screenTitle, ctx.retreat, iso),
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    ctx.layoutWarnings,
+    'header_line',
+  );
+  return [...volunteerHomeTopBlueBars(ctx, line), volunteerHomeGap()];
 }
 
-function volunteerHomeJobCheckinLine(dayNum, todayIso) {
-  const weekday = volunteerHomeWeekdayShort(todayIso);
-  const monthDay = volunteerHomeMonthDayLong(todayIso);
-  return `Job check in${VOLUNTEER_HOME_EN_DASH}Day ${dayNum}, ${weekday} ${monthDay}`;
+/** Retreat days from today through Saturday (inclusive). */
+function volunteerHomeSearchDayIsos(retreat, todayIso) {
+  const dates = volunteerHomeRetreatDates(retreat || VOLUNTEER_HOME_DEFAULT_RETREAT).filter(
+    (iso) => iso >= todayIso,
+  );
+  if (!dates.length) return [todayIso];
+  const out = [];
+  for (const iso of dates) {
+    out.push(iso);
+    if (volunteerHomeUtcWeekday(iso) === 6) break;
+  }
+  return out;
 }
 
+function volunteerHomePosterJobAbbrev(job) {
+  return String(job.abbrev || job.title || '')
+    .replace(/\r?\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function volunteerHomePosterSearchJobs() {
+  return VOLUNTEER_POSTER_SEARCH_JOBS;
+}
+
+/** True when live retreat jobs/tasks are available (search + assignments hit the DB). */
+function volunteerHomeDbSearchAvailable(ctx) {
+  return Boolean(ctx.retreatId && ctx.volunteerId && (ctx.jobs || []).length);
+}
+
+/** Job list driving the search filter buttons: live DB jobs, else poster fallback. */
+function volunteerHomeSearchJobsList(ctx) {
+  if (volunteerHomeDbSearchAvailable(ctx)) {
+    return ctx.jobs.map((j) => ({
+      id: String(j.id),
+      title: String(j.title || 'Job'),
+      abbrev: String(j.title || 'Job').replace(/\s*—\s*/g, ' · '),
+    }));
+  }
+  return VOLUNTEER_POSTER_SEARCH_JOBS;
+}
+
+function volunteerSearchDaysAllParam(params) {
+  const v = params.daysAll;
+  if (v === '0' || v === '1') return v;
+  return parseCsvParam(params.selectedDays).size ? '0' : '1';
+}
+
+function volunteerSearchJobsAllParam(params) {
+  const v = params.jobsAll;
+  if (v === '0' || v === '1') return v;
+  return parseCsvParam(params.selectedJobs).size ? '0' : '1';
+}
+
+function volunteerSearchNormalizeDaysState(params, dayIsos, todayIso) {
+  const lastDayOnly = dayIsos.length === 1;
+  if (lastDayOnly) {
+    return { daysAll: '0', selectedDays: dayIsos[0] };
+  }
+  let daysAll = volunteerSearchDaysAllParam(params);
+  let selectedDays = String(params.selectedDays || '').trim();
+  if (daysAll === '0' && !parseCsvParam(selectedDays).size) {
+    daysAll = '1';
+    selectedDays = '';
+  }
+  return { daysAll, selectedDays };
+}
+
+function volunteerSearchNextDaysOnAllTap(state, todayIso, dayIsos) {
+  if (dayIsos.length === 1) return state;
+  if (state.daysAll === '1') {
+    return { daysAll: '0', selectedDays: todayIso };
+  }
+  return { daysAll: '1', selectedDays: '' };
+}
+
+function volunteerSearchNextDaysOnDayTap(state, tappedIso, dayIsos) {
+  if (dayIsos.length === 1) return state;
+  if (state.daysAll === '1') {
+    return { daysAll: '0', selectedDays: tappedIso };
+  }
+  const set = parseCsvParam(state.selectedDays);
+  if (set.has(tappedIso)) set.delete(tappedIso);
+  else set.add(tappedIso);
+  if (!set.size) {
+    return { daysAll: '1', selectedDays: '' };
+  }
+  return { daysAll: '0', selectedDays: [...set].sort().join(',') };
+}
+
+function volunteerSearchNextJobsOnAllTap(state) {
+  if (state.jobsAll === '1') return state;
+  return { jobsAll: '1', selectedJobs: '' };
+}
+
+function volunteerSearchNextJobsOnJobTap(state, jobId) {
+  if (state.jobsAll === '1') {
+    return { jobsAll: '0', selectedJobs: jobId };
+  }
+  const set = parseCsvParam(state.selectedJobs);
+  if (set.has(jobId)) set.delete(jobId);
+  else set.add(jobId);
+  if (!set.size) {
+    return { jobsAll: '1', selectedJobs: '' };
+  }
+  return { jobsAll: '0', selectedJobs: [...set].sort().join(',') };
+}
+
+function volunteerSearchFilterPayload(base, daysState, jobsState, returnTo) {
+  return volunteerHomeWithReturnTo(
+    {
+      ...base,
+      daysAll: daysState.daysAll,
+      selectedDays: daysState.selectedDays || '',
+      jobsAll: jobsState.jobsAll,
+      selectedJobs: jobsState.selectedJobs || '',
+    },
+    returnTo,
+  );
+}
+
+function volunteerSearchResolveTargetDayIsos(params, retreat, todayIso) {
+  const dayIsos = volunteerHomeSearchDayIsos(retreat, todayIso);
+  const daysState = volunteerSearchNormalizeDaysState(params, dayIsos, todayIso);
+  if (daysState.daysAll === '1') return dayIsos;
+  const picked = parseCsvParam(daysState.selectedDays);
+  return dayIsos.filter((iso) => picked.has(iso));
+}
+
+function volunteerSearchResolveTargetJobIds(params, searchJobs) {
+  let jobsAll = volunteerSearchJobsAllParam(params);
+  let selectedJobs = String(params.selectedJobs || '').trim();
+  if (jobsAll === '0' && !parseCsvParam(selectedJobs).size) {
+    jobsAll = '1';
+    selectedJobs = '';
+  }
+  if (jobsAll === '1') return searchJobs.map((j) => j.id);
+  return [...parseCsvParam(selectedJobs)];
+}
+
+function volunteerHomePosterJobDisplayName(job) {
+  return volunteerHomeDisplayJobName(String(job.title || '').replace(/\s*\/\s*/g, ' – '));
+}
+
+function volunteerSearchPosterShifts(targetDayIsos, targetJobIds, todayIso) {
+  const jobSet = new Set(targetJobIds);
+  const rows = [];
+  for (const job of volunteerHomePosterSearchJobs()) {
+    if (!jobSet.has(job.id)) continue;
+    for (const dayIso of job.scheduledDayIsos || []) {
+      if (!targetDayIsos.includes(dayIso)) continue;
+      if (dayIso < todayIso) continue;
+      rows.push({
+        jobId: job.id,
+        dayIso,
+        taskId: job.id,
+        label: volunteerHomePosterJobDisplayName(job),
+      });
+    }
+  }
+  rows.sort(
+    (a, b) => a.dayIso.localeCompare(b.dayIso) || a.label.localeCompare(b.label),
+  );
+  return rows;
+}
+
+/**
+ * Open shifts matching the day/job filters. A shift is one (job, day); it is
+ * open when at least one of its tasks still has capacity and I'm not on it.
+ * Backed by the live schedule (assignments filter results); poster fallback offline.
+ */
+async function volunteerSearchMatchingShifts(ctx, params, firebaseUid, authToken) {
+  const retreat = ctx.retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
+  const searchJobs = volunteerHomeSearchJobsList(ctx);
+  const targetDayIsos = volunteerSearchResolveTargetDayIsos(params, retreat, ctx.todayIso);
+  const targetJobIds = volunteerSearchResolveTargetJobIds(params, searchJobs);
+
+  if (!volunteerHomeDbSearchAvailable(ctx)) {
+    return volunteerSearchPosterShifts(targetDayIsos, targetJobIds, ctx.todayIso);
+  }
+
+  const jobSet = new Set(targetJobIds);
+  const myJobDays = new Set((ctx.myShifts || []).map((s) => `${s.jobId}|${s.dayIso}`));
+  const rows = [];
+  for (const dayIso of targetDayIsos) {
+    if (dayIso < ctx.todayIso) continue;
+    const day = await getScheduleByDay(firebaseUid, ctx.retreatId, dayIso, authToken);
+    const seenJobIds = new Set();
+    for (const item of day?.items || []) {
+      const jobId = String((item.task && item.task.jobId) || (item.job && item.job.id) || '');
+      if (!jobId || !jobSet.has(jobId)) continue;
+      if (seenJobIds.has(jobId)) continue;
+      // A shift is (job, day): hide it entirely once I'm assigned to any of its tasks.
+      if (myJobDays.has(`${jobId}|${dayIso}`)) continue;
+      const assigns = item.assignments || [];
+      const needed =
+        item.task?.volunteersNeeded ?? item.job?.volunteersNeeded ?? 1;
+      const count = item.task?.assignmentCount ?? assigns.length;
+      if (count >= needed) continue;
+      seenJobIds.add(jobId);
+      rows.push({
+        jobId,
+        dayIso,
+        taskId: item.task?.id ? String(item.task.id) : jobId,
+        label: volunteerHomeDisplayJobName(
+          (item.job && item.job.title) || (item.task && item.task.jobTitle) || 'Shift',
+        ),
+      });
+    }
+  }
+  rows.sort(
+    (a, b) => a.dayIso.localeCompare(b.dayIso) || a.label.localeCompare(b.label),
+  );
+  return rows;
+}
+
+/** “no shifts” / “1 shift, none today” / “3 shifts, 2 today – tap to check in”. */
 function volunteerHomeShiftsSummaryLine(shiftCount, todayCount) {
+  if (!shiftCount) return 'no shifts';
   const shiftWord = shiftCount === 1 ? 'shift' : 'shifts';
-  if (!todayCount) return `${shiftCount} ${shiftWord}, none today${VOLUNTEER_HOME_EN_DASH}tap to check in...`;
-  const todayWord = todayCount === 1 ? '1' : String(todayCount);
-  return `${shiftCount} ${shiftWord}, ${todayWord} today${VOLUNTEER_HOME_EN_DASH}tap to check in...`;
+  if (!todayCount) return `${shiftCount} ${shiftWord}, none today`;
+  return `${shiftCount} ${shiftWord}, ${todayCount} today${VOLUNTEER_HOME_EN_DASH}tap to check in`;
 }
 
 function volunteerHomeDisplayJobName(label) {
@@ -511,10 +771,11 @@ function volunteerHomeWithReturnTo(payload, returnTo) {
 
 /** Short titles for ← back buttons (returnTo screen id). */
 const VOLUNTEER_SCREEN_BACK_LABELS = {
-  'jewelheart.home': 'Volunteer Home',
+  'jewelheart.home': 'Home',
   'jewelheart.volunteer.checkin': 'Job check in',
-  'jewelheart.volunteer.search': 'Search available shifts',
-  'jewelheart.volunteer.assign': 'Assign shifts',
+  'jewelheart.volunteer.search': 'Find open shifts',
+  'jewelheart.volunteer.assign': 'Open shifts',
+  'jewelheart.volunteer.shift': 'Shift',
   'jewelheart.volunteer.messages': 'Announcements',
   'jewelheart.volunteer.mine': 'My assigned shifts',
   'jewelheart.volunteer.account': 'Account',
@@ -532,49 +793,80 @@ function volunteerHomeBackPayload(params, backTarget) {
     p.taskId = String(params.taskId);
     p.returnTo = 'jewelheart.home';
   }
-  if (backTarget === 'jewelheart.volunteer.search') {
-    p.returnTo = 'jewelheart.home';
+  if (backTarget === 'jewelheart.volunteer.shift') {
+    if (params.taskId) p.taskId = String(params.taskId);
+    if (params.jobId) p.jobId = String(params.jobId);
+    if (params.dayIso) p.dayIso = String(params.dayIso);
+    p.shiftOp = params.shiftOp ? String(params.shiftOp) : 'mine';
+    p.returnTo = 'jewelheart.volunteer.mine';
+  }
+  if (backTarget === 'jewelheart.volunteer.search' || backTarget === 'jewelheart.volunteer.assign') {
+    if (backTarget === 'jewelheart.volunteer.search') p.returnTo = 'jewelheart.home';
+    if (params.daysAll != null) p.daysAll = String(params.daysAll);
     if (params.selectedDays) p.selectedDays = String(params.selectedDays);
+    if (params.jobsAll != null) p.jobsAll = String(params.jobsAll);
     if (params.selectedJobs) p.selectedJobs = String(params.selectedJobs);
   }
   return p;
 }
 
-/** Bottom nav: ← {returnTo screen title}; second ← Volunteer Home only when that differs. */
-function volunteerHomeBottomNavRow(params = {}, options = {}) {
+/** Bottom nav pills: ← {returnTo} when not Home, plus ← Home on every sub-screen. */
+function volunteerHomeBottomNavChildren(params = {}) {
   const backTarget = params.returnTo || 'jewelheart.home';
-  const backLabel = `← ${volunteerHomeScreenBackLabel(backTarget)}`;
-  const children = [
-    volunteerHomePillButton(
-      backLabel,
-      backTarget,
-      volunteerHomeBackPayload(params, backTarget),
-      volunteerHomeSummaryBlue,
-      '#FFFFFF',
-      { hPad: 10 },
-    ),
-  ];
-  const showVolunteerHomeShortcut =
-    options.includeVolunteerHomeShortcut && backTarget !== 'jewelheart.home';
-  if (showVolunteerHomeShortcut) {
-    const homePayload = params.retreatId ? { retreatId: String(params.retreatId) } : {};
+  const children = [];
+  if (backTarget !== 'jewelheart.home') {
+    const backLabel = `← ${volunteerHomeScreenBackLabel(backTarget)}`;
     children.push(
       volunteerHomePillButton(
-        '← Volunteer Home',
-        'jewelheart.home',
-        homePayload,
+        backLabel,
+        backTarget,
+        volunteerHomeBackPayload(params, backTarget),
         volunteerHomeSummaryBlue,
         '#FFFFFF',
         { hPad: 10 },
       ),
     );
   }
+  const homePayload = params.retreatId ? { retreatId: String(params.retreatId) } : {};
+  children.push(
+    volunteerHomePillButton(
+      '← Home',
+      'jewelheart.home',
+      homePayload,
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+      { hPad: 10 },
+    ),
+  );
+  return children;
+}
+
+function volunteerHomeBottomNavRow(params = {}) {
   return {
     type: 'container',
     layout: 'row',
     spacing: 8,
-    textStyle: { textAlign: 'left' },
+    textStyle: { textAlign: 'center' },
     style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
+    children: volunteerHomeBottomNavChildren(params),
+  };
+}
+
+function volunteerHomeStickyFooterRow(params = {}, options = {}) {
+  const children = [];
+  if (options.searchTarget && options.searchPayload) {
+    children.push(volunteerHomeSearchRunButton(options.searchTarget, options.searchPayload));
+  }
+  children.push(...volunteerHomeBottomNavChildren(params));
+  return {
+    type: 'container',
+    layout: 'row',
+    spacing: 8,
+    textStyle: { textAlign: 'center' },
+    style: {
+      padding: { top: 8, bottom: 8, left: 8, right: 8 },
+      stickyFooter: true,
+    },
     children,
   };
 }
@@ -697,7 +989,7 @@ function volunteerHomeMaroonButton(label, target, payload = {}) {
 
 function volunteerHomeShiftsSummaryBar(ctx) {
   const fg = ctx.todayCount > 0 ? '#000000' : '#FFFFFF';
-  const bg = ctx.todayCount > 0 ? volunteerHomeGold : volunteerHomeSummaryBlue;
+  const bg = ctx.todayCount > 0 ? volunteerHomeGold : volunteerHomeMaroon;
   return volunteerHomeBar(ctx.shiftsSummaryLine, bg, fg);
 }
 
@@ -768,11 +1060,7 @@ function volunteerHomeCheckinActionRow(buttonLabel, timeText, target, payload, o
 }
 
 function volunteerHomeCheckinHeaderChildren(ctx) {
-  const dayNum = ctx.retreat
-    ? volunteerHomeDayNumber(ctx.retreat, ctx.todayIso)
-    : volunteerHomeDayNumber({ startDate: '2026-07-20' }, ctx.todayIso);
-  const secondLine = volunteerHomeJobCheckinLine(dayNum, ctx.todayIso);
-  return [...volunteerHomeTopBlueBars(ctx, secondLine), volunteerHomeGap()];
+  return volunteerHomeHeaderChildren(ctx, 'Job check in');
 }
 
 function volunteerHomeAnnouncementsButton(ctx) {
@@ -805,8 +1093,8 @@ function volunteerHomeCheckinPill(row, index, ctx, checkInPayload) {
     label,
     'jewelheart.volunteer.checkin',
     volunteerHomeWithReturnTo(payload, 'jewelheart.home'),
-    volunteerHomeMaroon,
-    '#FFFFFF',
+    volunteerHomeGold,
+    '#000000',
     { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
   );
 }
@@ -823,8 +1111,8 @@ function volunteerHomeTodayShiftButtons(ctx, checkInPayload) {
         pills[0].label,
         pills[0].action.target,
         pills[0].action.payload,
-        volunteerHomeMaroon,
-        '#FFFFFF',
+        volunteerHomeGold,
+        '#000000',
         { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
       ));
     } else {
@@ -841,7 +1129,7 @@ function volunteerHomeIWantToSection(ctx, searchPayload) {
     volunteerHomeCenteredPlainLabel('I want to...'),
     volunteerHomeGap(),
     volunteerHomeCenteredAction(
-      ctx.shiftCount === 0 ? 'Sign up for shifts' : 'Sign up for more shifts',
+      'Find and sign up for open shifts',
       'jewelheart.volunteer.search',
       volunteerHomeWithReturnTo(searchPayload, 'jewelheart.home'),
     ),
@@ -892,10 +1180,18 @@ function volunteerHomeAccountPreferencesRow(ctx) {
 }
 
 function volunteerHomeToggleButton(label, selected, target, payload) {
-  return {
-    type: 'text',
-    content: label,
-    action: { type: 'navigate', target, payload },
+  return volunteerHomeFilterToggleButton(label, selected, target, payload);
+}
+
+/** Day/job filter pill: light maroon off, dark maroon on; past days show × and do not toggle. */
+function volunteerHomeFilterToggleButton(label, selected, target, payload, options = {}) {
+  const disabled = options.disabled === true;
+  const displayLabel = disabled ? `× ${label}` : label;
+  const bg = selected && !disabled ? volunteerHomeMaroon : volunteerHomeLightMaroon;
+  const node = {
+    type: 'button',
+    label: displayLabel,
+    content: displayLabel,
     textStyle: {
       fontSize: 14,
       fontWeight: 'bold',
@@ -903,15 +1199,40 @@ function volunteerHomeToggleButton(label, selected, target, payload) {
       color: '#FFFFFF',
     },
     style: {
-      backgroundColor: selected ? volunteerHomeMaroon : volunteerHomeLightMaroon,
-      padding: { top: 8, bottom: 8, left: 10, right: 10 },
+      backgroundColor: bg,
+      borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
+      buttonVariant: disabled ? undefined : 'raised',
+      elevation: disabled ? 0 : VOLUNTEER_HOME_BUTTON_ELEVATION_DP,
+      height: { value: VOLUNTEER_HOME_BAR_MIN_HEIGHT_DP },
+      padding: { top: 0, bottom: 0, left: 8, right: 8 },
     },
+  };
+  if (!disabled && options.noAction !== true) {
+    node.action = { type: 'navigate', target, payload };
+  }
+  return node;
+}
+
+function volunteerHomeWrappedFilterRow(buttons) {
+  return {
+    type: 'container',
+    layout: 'row',
+    spacing: 6,
+    textStyle: { textAlign: 'center' },
+    style: { padding: { top: 0, bottom: 0, left: 6, right: 6 } },
+    children: buttons,
   };
 }
 
+function volunteerHomeSearchRunButton(target, payload) {
+  return volunteerHomePillButton('Search', target, payload, volunteerHomeMaroon, '#FFFFFF', {
+    hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+  });
+}
+
 /** Blue header bars for volunteer sub-screens (no home-only controls). */
-function volunteerHomeBlueHeaderChildren(ctx) {
-  return [...volunteerHomeTopBlueBars(ctx), volunteerHomeGap()];
+function volunteerHomeBlueHeaderChildren(ctx, screenTitle) {
+  return volunteerHomeHeaderChildren(ctx, screenTitle || 'JewelHeart');
 }
 
 function volunteerHomeGoldPageTitleBar(pageTitle, warnings) {
@@ -919,16 +1240,25 @@ function volunteerHomeGoldPageTitleBar(pageTitle, warnings) {
   return [volunteerHomeBar(fitted, volunteerHomeGold, '#000000'), volunteerHomeSpacer(16)];
 }
 
-function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = []) {
+const VOLUNTEER_SCREEN_TITLES = {
+  'jewelheart.home': 'Home',
+  'jewelheart.volunteer.search': 'Find open shifts',
+  'jewelheart.volunteer.assign': 'Open shifts',
+};
+
+function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], extraMeta = {}) {
   const isHome = id === 'jewelheart.home';
+  const stickyFooterComponents = extraMeta.stickyFooterComponents || [];
   return {
     id,
-    title: 'JewelHeart',
+    title: VOLUNTEER_SCREEN_TITLES[id] || title || 'JewelHeart',
     metadata: {
       app: 'jewelheart',
       layoutWarnings,
       minWidthDp: VOLUNTEER_HOME_MIN_WIDTH_DP,
       edgeToEdgeBars: isHome,
+      stickyFooter: extraMeta.stickyFooter === true,
+      stickyFooterComponents,
     },
     components: [
       {
@@ -970,58 +1300,140 @@ async function resolveVolunteerIdForHome(firebaseUid, retreatId) {
   return null;
 }
 
-function volunteerHomeDemoContext(todayIso, retreat) {
-  const demoRetreat = volunteerHomeDefaultRetreat(retreat);
-  const dayNum = volunteerHomeDayNumber(demoRetreat, todayIso);
+async function volunteerHomeLoadMyShifts(firebaseUid, retreat, volunteerId, todayIso, authToken) {
+  const dates = volunteerHomeRetreatDates(retreat);
+  const mine = [];
+  for (const iso of dates) {
+    const day = await getScheduleByDay(firebaseUid, retreat.id, iso, authToken);
+    for (const item of day?.items || []) {
+      const assigns = item.assignments || [];
+      const myAssign = assigns.find((a) => a.volunteerId === volunteerId);
+      if (!myAssign) continue;
+      const taskId = item.task && item.task.id;
+      mine.push({
+        date: iso,
+        dayIso: iso,
+        taskId: taskId ? String(taskId) : '',
+        jobId: item.job?.id ? String(item.job.id) : '',
+        assignmentId: myAssign.id ? String(myAssign.id) : '',
+        jobTitle: (item.job && item.job.title) || '',
+        label: volunteerHomeJobLine(item),
+      });
+    }
+  }
+  const todayMine = mine.filter((m) => m.date === todayIso);
   return {
-    shiftCount: 4,
-    todayCount: 2,
-    retreatBannerLine: volunteerHomeRetreatBannerLine(demoRetreat),
-    volunteerHomeLine: volunteerHomeVolunteerHomeLine(dayNum, todayIso),
-    todayShifts: [
-      { taskId: 'demo-kitchen-full', label: 'Kitchen full clean' },
-      { taskId: 'demo-urinals', label: 'Urinals' },
-    ],
+    shiftCount: mine.length,
+    todayCount: todayMine.length,
+    rawTodayShifts: todayMine,
+    myShifts: mine,
   };
 }
 
-function buildVolunteerHomeContextFromDemo(todayIso, retreat, layoutWarnings = []) {
-  const demo = volunteerHomeDemoContext(todayIso, retreat);
+/** Volunteer record for the signed-in user (firebase uid match, else first linked). */
+async function volunteerResolveSelf(firebaseUid, retreatId) {
+  return resolveVolunteerIdForHome(firebaseUid, retreatId);
+}
+
+/**
+ * Self-service assignment writes — direct SQL (volunteer action, not admin),
+ * so anonymous Firebase sessions are not blocked by the admin retreat ACL.
+ */
+async function volunteerSelfAssign(retreatId, taskId, volunteerId) {
+  const { rows } = await query(
+    `INSERT INTO jewelheart_assignments (task_id, volunteer_id)
+     SELECT t.id, $3
+     FROM jewelheart_tasks t
+     JOIN jewelheart_jobs j ON j.id = t.job_id
+     WHERE t.id = $2 AND t.retreat_id = $1
+       AND NOT EXISTS (
+         SELECT 1 FROM jewelheart_assignments a WHERE a.task_id = t.id AND a.volunteer_id = $3
+       )
+       AND (SELECT count(*) FROM jewelheart_assignments a WHERE a.task_id = t.id) < j.volunteers_needed
+     RETURNING id`,
+    [retreatId, taskId, volunteerId],
+  );
+  return rows.length > 0;
+}
+
+async function volunteerSelfUnassign(retreatId, taskId, volunteerId) {
+  const { rows } = await query(
+    `DELETE FROM jewelheart_assignments a
+     USING jewelheart_tasks t
+     WHERE a.task_id = t.id AND t.id = $2 AND t.retreat_id = $1 AND a.volunteer_id = $3
+     RETURNING a.id`,
+    [retreatId, taskId, volunteerId],
+  );
+  return rows.length > 0;
+}
+
+/** Already assigned to this task (per loaded context)? */
+function volunteerHomeIsMyTask(ctx, taskId) {
+  return Boolean(taskId && (ctx.myShifts || []).some((s) => s.taskId === String(taskId)));
+}
+
+function volunteerHomeMapTodayShifts(rawTodayShifts, layoutWarnings) {
+  return rawTodayShifts.map((row, index) => {
+    const name = volunteerHomeDisplayJobName(row.jobTitle || row.label);
+    return {
+      taskId: row.taskId,
+      label: volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
+    };
+  });
+}
+
+function volunteerHomeBuildContextFields(
+  todayIso,
+  retreat,
+  shiftCount,
+  todayCount,
+  rawTodayShifts,
+  layoutWarnings,
+  extras = {},
+) {
+  const effectiveRetreat = retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
+  const retreatBannerLine = volunteerHomeFitLine(
+    volunteerHomeRetreatBannerLine(effectiveRetreat),
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    layoutWarnings,
+    'retreat_banner',
+  );
+  const volunteerHomeLine = volunteerHomeFitLine(
+    volunteerHomeScreenSubtitleLine('Home', effectiveRetreat, todayIso),
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    layoutWarnings,
+    'volunteer_home_line',
+  );
+  const shiftsSummaryLine = volunteerHomeFitLine(
+    volunteerHomeShiftsSummaryLine(shiftCount, todayCount),
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    layoutWarnings,
+    'shifts_summary',
+  );
   return {
     todayIso,
     retreat: retreat || null,
     retreatId: retreat?.id || null,
-    retreatBannerLine: volunteerHomeFitLine(demo.retreatBannerLine, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, 'retreat_banner'),
-    volunteerHomeLine: volunteerHomeFitLine(demo.volunteerHomeLine, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, 'volunteer_home_line'),
-    shiftsSummaryLine: volunteerHomeFitLine(
-      volunteerHomeShiftsSummaryLine(demo.shiftCount, demo.todayCount),
-      VOLUNTEER_HOME_MAX_BAR_CHARS,
-      layoutWarnings,
-      'shifts_summary',
-    ),
-    shiftCount: demo.shiftCount,
-    todayCount: demo.todayCount,
-    todayShifts: demo.todayShifts.map((row, index) => {
-      const name = volunteerHomeDisplayJobName(row.label);
-      return {
-        taskId: row.taskId,
-        label: volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
-      };
-    }),
-    searchableDayIsos: [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)],
-    jobs: [
-      { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
-      { id: 'demo-urinals', title: 'Urinals - end of day' },
-      { id: 'demo-caf-light', title: 'Cafe light clean - end of lunch break' },
-      { id: 'demo-kitchen-light', title: 'Kitchen light clean - end of lunch break' },
-    ],
-    usingDemo: true,
-    hasAnnouncements: true,
-    firebaseUid: null,
-    volunteerName: 'Volunteer',
-    errorNote: null,
+    retreatBannerLine,
+    volunteerHomeLine,
+    shiftsSummaryLine,
+    shiftCount,
+    todayCount,
+    todayShifts: volunteerHomeMapTodayShifts(rawTodayShifts, layoutWarnings),
+    searchableDayIsos: volunteerHomeSearchableDates(effectiveRetreat, todayIso),
+    allRetreatDayIsos: volunteerHomeRetreatDates(effectiveRetreat),
     layoutWarnings,
+    ...extras,
   };
+}
+
+function volunteerHomeGroupMatchesByDay(matches) {
+  const byDay = new Map();
+  for (const row of matches) {
+    if (!byDay.has(row.dayIso)) byDay.set(row.dayIso, []);
+    byDay.get(row.dayIso).push(row);
+  }
+  return [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 /** Shared header data for home and volunteer search screens. */
@@ -1030,26 +1442,64 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
   const todayIso = volunteerHomeDemoTodayIso(tz);
 
   if (volunteerHomePinSummer2026Demo()) {
-    let retreat = null;
+    const todayIso = VOLUNTEER_HOME_DEMO_DAY_ISO;
+    let retreat = volunteerHomeDefaultRetreat(null);
     let volunteerName = 'Volunteer';
+    let volunteerId = null;
+    let errorNote = null;
+    let usingDemo = false;
+    let shiftCount = 0;
+    let todayCount = 0;
+    let rawTodayShifts = [];
+    let myShifts = [];
+    let jobs = [];
     try {
       const { items: retreats } = await listRetreats(firebaseUid, authToken);
-      retreat = volunteerHomePickRetreat(retreats, VOLUNTEER_HOME_DEMO_DAY_ISO);
+      const picked = volunteerHomePickRetreat(retreats, todayIso);
+      if (picked) retreat = picked;
       const volunteerRow = await resolveVolunteerIdForHome(firebaseUid, retreat?.id);
       if (volunteerRow?.displayName) volunteerName = volunteerRow.displayName;
-    } catch {
-      retreat = null;
+      volunteerId = volunteerRow?.id || null;
+      if (volunteerId && retreat?.id) {
+        const loaded = await volunteerHomeLoadMyShifts(
+          firebaseUid,
+          retreat,
+          volunteerId,
+          todayIso,
+          authToken,
+        );
+        shiftCount = loaded.shiftCount;
+        todayCount = loaded.todayCount;
+        rawTodayShifts = loaded.rawTodayShifts;
+        myShifts = loaded.myShifts;
+        try {
+          const jobRes = await listJobs(firebaseUid, retreat.id, authToken);
+          jobs = (jobRes?.items || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));
+        } catch {
+          jobs = [];
+        }
+      } else {
+        usingDemo = true;
+        errorNote = volunteerId ? null : 'Volunteer not linked to retreat.';
+      }
+    } catch (err) {
+      usingDemo = true;
+      errorNote = err && err.message ? err.message : String(err);
     }
-    const ctx = buildVolunteerHomeContextFromDemo(
-      VOLUNTEER_HOME_DEMO_DAY_ISO,
-      volunteerHomeDefaultRetreat(retreat),
-      [],
-    );
+    const layoutWarnings = [];
     return {
-      ...ctx,
+      ...volunteerHomeBuildContextFields(
+        todayIso,
+        retreat,
+        shiftCount,
+        todayCount,
+        rawTodayShifts,
+        layoutWarnings,
+        { jobs, usingDemo, errorNote, volunteerId, myShifts },
+      ),
       firebaseUid,
       volunteerName,
-      hasAnnouncements: volunteerUnseenAnnouncements(firebaseUid).length > 0,
+      hasAnnouncements: volunteerHasUnreadAnnouncements(firebaseUid),
     };
   }
 
@@ -1057,11 +1507,13 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
   let shiftCount = 0;
   let todayCount = 0;
   let rawTodayShifts = [];
+  let myShifts = [];
   let usingDemo = false;
   let errorNote = null;
   let searchableDayIsos = [];
   let jobs = [];
   let volunteerName = 'Volunteer';
+  let volunteerId = null;
 
   try {
     const { items: retreats } = await listRetreats(firebaseUid, authToken);
@@ -1073,34 +1525,22 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
       searchableDayIsos = volunteerHomeSearchableDates(retreat, todayIso);
 
       const volunteerRow = await resolveVolunteerIdForHome(firebaseUid, retreat.id);
-      const volunteerId = volunteerRow && volunteerRow.id;
+      volunteerId = (volunteerRow && volunteerRow.id) || null;
       if (volunteerRow?.displayName) volunteerName = volunteerRow.displayName;
       if (!volunteerId) {
         usingDemo = true;
       } else {
-        const dates = volunteerHomeRetreatDates(retreat);
-        const mine = [];
-        for (const iso of dates) {
-          const day = await getScheduleByDay(firebaseUid, retreat.id, iso, authToken);
-          for (const item of day?.items || []) {
-            const assigns = item.assignments || [];
-            if (!assigns.some((a) => a.volunteerId === volunteerId)) continue;
-            const taskId = item.task && item.task.id;
-            mine.push({
-              date: iso,
-              taskId: taskId ? String(taskId) : '',
-              label: volunteerHomeJobLine(item),
-            });
-          }
-        }
-        if (!mine.length) {
-          usingDemo = true;
-        } else {
-          shiftCount = mine.length;
-          const todayMine = mine.filter((m) => m.date === todayIso);
-          todayCount = todayMine.length;
-          rawTodayShifts = todayMine;
-        }
+        const loaded = await volunteerHomeLoadMyShifts(
+          firebaseUid,
+          retreat,
+          volunteerId,
+          todayIso,
+          authToken,
+        );
+        shiftCount = loaded.shiftCount;
+        todayCount = loaded.todayCount;
+        rawTodayShifts = loaded.rawTodayShifts;
+        myShifts = loaded.myShifts;
         try {
           const jobRes = await listJobs(firebaseUid, retreat.id, authToken);
           jobs = (jobRes?.items || []).slice().sort((a, b) => String(a.title).localeCompare(String(b.title)));
@@ -1114,69 +1554,23 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
     errorNote = err && err.message ? err.message : String(err);
   }
 
-  if (usingDemo) {
-    const demo = volunteerHomeDemoContext(todayIso, retreat);
-    shiftCount = demo.shiftCount;
-    todayCount = demo.todayCount;
-    rawTodayShifts = demo.todayShifts;
-    searchableDayIsos = [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)];
-    jobs = [
-      { id: 'demo-caf-light', title: 'Cafe light clean - end of lunch break' },
-      { id: 'demo-kitchen-light', title: 'Kitchen light clean - end of lunch break' },
-      { id: 'demo-caf-full', title: 'Cafe full clean - end of day' },
-      { id: 'demo-kitchen-full', title: 'Kitchen full clean - end of day' },
-    ];
-  }
-
   const layoutWarnings = [];
-  const dayNum = retreat ? volunteerHomeDayNumber(retreat, todayIso) : volunteerHomeDayNumber(
-    { startDate: '2026-07-20' },
-    todayIso,
-  );
-  const retreatBannerLine = volunteerHomeFitLine(
-    volunteerHomeRetreatBannerLine(retreat || { name: 'JH Summer Retreat 2026', startDate: '2026-07-20', endDate: '2026-07-26' }),
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    layoutWarnings,
-    'retreat_banner',
-  );
-  const volunteerHomeLine = volunteerHomeFitLine(
-    volunteerHomeVolunteerHomeLine(dayNum, todayIso),
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    layoutWarnings,
-    'volunteer_home_line',
-  );
-  const shiftsSummaryLine = volunteerHomeFitLine(
-    volunteerHomeShiftsSummaryLine(shiftCount, todayCount),
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    layoutWarnings,
-    'shifts_summary',
-  );
-  const todayShifts = rawTodayShifts.map((row, index) => {
-    const name = volunteerHomeDisplayJobName(row.label);
-    return {
-      taskId: row.taskId,
-      label: volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`),
-    };
-  });
-
   return {
-    todayIso,
-    retreat,
-    retreatId: retreat?.id || null,
-    retreatBannerLine,
-    volunteerHomeLine,
-    shiftsSummaryLine,
-    shiftCount,
-    todayCount,
-    todayShifts,
-    searchableDayIsos,
-    jobs,
-    usingDemo,
-    hasAnnouncements: volunteerUnseenAnnouncements(firebaseUid).length > 0,
+    ...volunteerHomeBuildContextFields(
+      todayIso,
+      retreat,
+      shiftCount,
+      todayCount,
+      rawTodayShifts,
+      layoutWarnings,
+      { jobs, usingDemo, errorNote, volunteerId, myShifts },
+    ),
+    searchableDayIsos: usingDemo
+      ? [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)]
+      : searchableDayIsos,
+    hasAnnouncements: volunteerHasUnreadAnnouncements(firebaseUid),
     firebaseUid,
     volunteerName,
-    errorNote,
-    layoutWarnings,
   };
 }
 
@@ -1193,8 +1587,7 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
   const children = [
     ...volunteerHomeTopBlueBars(ctx),
     volunteerHomeGap(),
-    volunteerHomeAnnouncementsButton(ctx),
-    volunteerHomeGap(),
+    ...(ctx.hasAnnouncements ? [volunteerHomeAnnouncementsButton(ctx), volunteerHomeGap()] : []),
     volunteerHomeShiftsSummaryBar(ctx),
     ...(ctx.todayShifts.length ? [volunteerHomeGap(), ...volunteerHomeTodayShiftButtons(ctx, checkInPayload)] : []),
     volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
@@ -1231,76 +1624,126 @@ export async function buildJewelheartVolunteerSearchScreen(
 ) {
   const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
   const retreatId = params.retreatId || ctx.retreatId || '';
-  const selectedDays = parseCsvParam(params.selectedDays);
-  const selectedJobs = parseCsvParam(params.selectedJobs);
+  const retreat = ctx.retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
+  const dayIsos = volunteerHomeSearchDayIsos(retreat, ctx.todayIso);
+  const lastDayOnly = dayIsos.length === 1;
+  const daysState = volunteerSearchNormalizeDaysState(params, dayIsos, ctx.todayIso);
+  const jobsState = {
+    jobsAll: volunteerSearchJobsAllParam(params),
+    selectedJobs: String(params.selectedJobs || '').trim(),
+  };
+  if (jobsState.jobsAll === '0' && !parseCsvParam(jobsState.selectedJobs).size) {
+    jobsState.jobsAll = '1';
+    jobsState.selectedJobs = '';
+  }
+  const selectedDaySet = parseCsvParam(daysState.selectedDays);
+  const selectedJobSet = parseCsvParam(jobsState.selectedJobs);
 
   const navParams = {
     retreatId: retreatId || '',
     returnTo: params.returnTo || 'jewelheart.home',
-    selectedDays: params.selectedDays || '',
-    selectedJobs: params.selectedJobs || '',
+    daysAll: daysState.daysAll,
+    selectedDays: daysState.selectedDays,
+    jobsAll: jobsState.jobsAll,
+    selectedJobs: jobsState.selectedJobs,
   };
   const basePayload = retreatId ? { retreatId } : {};
   const searchTarget = 'jewelheart.volunteer.search';
-
-  const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
-    ...volunteerHomeGoldPageTitleBar('Search available shifts', ctx.layoutWarnings),
-    volunteerHomeBodyText('Tap days (skip = all days)', ctx.layoutWarnings, 'search_days_hint'),
-  ];
-
-  const dayButtons = ctx.searchableDayIsos.map((iso) => {
-    const label = volunteerHomeWeekdayShort(iso);
-    const selected = selectedDays.has(iso);
-    const payload = volunteerHomeWithReturnTo(
-      {
-        ...basePayload,
-        selectedDays: toggleCsvValue(params.selectedDays, iso),
-        selectedJobs: params.selectedJobs || '',
-      },
-      navParams.returnTo,
-    );
-    return volunteerHomeToggleButton(label, selected, searchTarget, payload);
+  const assignTarget = 'jewelheart.volunteer.assign';
+  const stickyFooter = volunteerHomeStickyFooterRow(navParams, {
+    searchTarget: assignTarget,
+    searchPayload: volunteerSearchFilterPayload(basePayload, daysState, jobsState, searchTarget),
   });
 
-  if (dayButtons.length) {
-    children.push({
-      type: 'container',
-      layout: 'row',
-      spacing: 8,
-      style: { padding: { top: 4, bottom: 8, left: 4, right: 4 } },
-      children: dayButtons,
-    });
+  const children = [
+    ...volunteerHomeHeaderChildren(ctx, 'Find open shifts'),
+    volunteerHomeGap(),
+    volunteerHomeCenteredInlineRow([
+      volunteerHomeInlineSectionLabel('Find open shifts'),
+      volunteerHomeSearchRunButton(
+        assignTarget,
+        volunteerSearchFilterPayload(basePayload, daysState, jobsState, searchTarget),
+      ),
+    ]),
+    volunteerHomeGap(),
+  ];
+
+  const dayButtons = [];
+  if (!lastDayOnly) {
+    const allSelected = daysState.daysAll === '1';
+    dayButtons.push(
+      volunteerHomeFilterToggleButton(
+        'all days',
+        allSelected,
+        searchTarget,
+        volunteerSearchFilterPayload(
+          basePayload,
+          volunteerSearchNextDaysOnAllTap(daysState, ctx.todayIso, dayIsos),
+          jobsState,
+          navParams.returnTo,
+        ),
+      ),
+    );
   }
-
-  children.push(volunteerHomeBodyText('Tap jobs (skip = all jobs)', ctx.layoutWarnings, 'search_jobs_hint'));
-
-  for (const job of ctx.jobs) {
-    const jobId = job.id;
-    const selected = selectedJobs.has(jobId);
-    const jobLabel = volunteerHomeFitLine(job.title, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, `job_${jobId}`);
-    const payload = volunteerHomeWithReturnTo(
-      {
-        ...basePayload,
-        selectedDays: params.selectedDays || '',
-        selectedJobs: toggleCsvValue(params.selectedJobs, jobId),
-      },
+  for (const iso of dayIsos) {
+    const label = volunteerHomeWeekdayShort(iso);
+    const selected = lastDayOnly || (daysState.daysAll === '0' && selectedDaySet.has(iso));
+    const payload = volunteerSearchFilterPayload(
+      basePayload,
+      volunteerSearchNextDaysOnDayTap(daysState, iso, dayIsos),
+      jobsState,
       navParams.returnTo,
     );
-    children.push(volunteerHomeToggleButton(jobLabel, selected, searchTarget, payload));
+    dayButtons.push(
+      volunteerHomeFilterToggleButton(label, selected, searchTarget, payload, {
+        disabled: lastDayOnly,
+        noAction: lastDayOnly,
+      }),
+    );
+  }
+  if (dayButtons.length) {
+    children.push(volunteerHomeWrappedFilterRow(dayButtons), volunteerHomeGap());
   }
 
-  const searchRunPayload = volunteerHomeWithReturnTo(
-    {
-      ...basePayload,
-      selectedDays: params.selectedDays || '',
-      selectedJobs: params.selectedJobs || '',
-    },
-    'jewelheart.volunteer.search',
+  const jobButtons = [];
+  const allJobsSelected = jobsState.jobsAll === '1';
+  jobButtons.push(
+    volunteerHomeFilterToggleButton(
+      'All jobs',
+      allJobsSelected,
+      searchTarget,
+      volunteerSearchFilterPayload(
+        basePayload,
+        daysState,
+        volunteerSearchNextJobsOnAllTap(jobsState),
+        navParams.returnTo,
+      ),
+      { noAction: allJobsSelected },
+    ),
   );
-  children.push(
-    volunteerHomeMaroonButton('Search', 'jewelheart.volunteer.assign', searchRunPayload),
-  );
+  for (const job of volunteerHomeSearchJobsList(ctx)) {
+    const selected = jobsState.jobsAll === '0' && selectedJobSet.has(job.id);
+    const abbrev = volunteerHomeFitLine(
+      volunteerHomePosterJobAbbrev(job),
+      28,
+      ctx.layoutWarnings,
+      `job_abbrev_${job.id}`,
+    );
+    jobButtons.push(
+      volunteerHomeFilterToggleButton(
+        abbrev,
+        selected,
+        searchTarget,
+        volunteerSearchFilterPayload(
+          basePayload,
+          daysState,
+          volunteerSearchNextJobsOnJobTap(jobsState, job.id),
+          navParams.returnTo,
+        ),
+      ),
+    );
+  }
+  children.push(volunteerHomeWrappedFilterRow(jobButtons));
 
   if (ctx.errorNote) {
     children.push({
@@ -1310,73 +1753,371 @@ export async function buildJewelheartVolunteerSearchScreen(
     });
   }
 
-  children.push(
-    volunteerHomeGap(),
-    volunteerHomeBottomNavRow(navParams),
-  );
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
 
-  return volunteerHomeScreenEnvelope('jewelheart.volunteer.search', 'JewelHeart', children, ctx.layoutWarnings);
+  return volunteerHomeScreenEnvelope('jewelheart.volunteer.search', 'JewelHeart', children, ctx.layoutWarnings, {
+    stickyFooter: true,
+    stickyFooterComponents: [stickyFooter],
+  });
 }
 
-/** Placeholder until assign-results screen is built. */
+/** Search results — tap a row to open jewelheart.volunteer.shift. */
 export async function buildJewelheartVolunteerAssignScreen(
   firebaseUid,
   authToken = undefined,
   params = {},
 ) {
   const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
+  const retreatId = params.retreatId || ctx.retreatId || '';
+  const basePayload = retreatId ? { retreatId } : {};
   const navParams = {
-    retreatId: params.retreatId || ctx.retreatId || '',
+    retreatId: retreatId || '',
     returnTo: params.returnTo || 'jewelheart.volunteer.search',
+    daysAll: volunteerSearchDaysAllParam(params),
     selectedDays: params.selectedDays || '',
+    jobsAll: volunteerSearchJobsAllParam(params),
     selectedJobs: params.selectedJobs || '',
   };
+  const shiftBase = volunteerHomeWithReturnTo(
+    { ...basePayload, returnTo: 'jewelheart.volunteer.assign' },
+    navParams.returnTo,
+  );
+
+  const matches = await volunteerSearchMatchingShifts(ctx, params, firebaseUid, authToken);
+  const totalLine = `${matches.length} Open shifts found altogether`;
+
   const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
-    ...volunteerHomeGoldPageTitleBar('Assign shifts to me', ctx.layoutWarnings),
-    volunteerHomeBodyText('Tap a shift to assign it.', ctx.layoutWarnings, 'assign_hint'),
-    volunteerHomeBodyText(
-      selectedDaysJobsHint(params) || 'No filters — all open shifts.',
-      ctx.layoutWarnings,
-      'assign_filters',
+    ...volunteerHomeHeaderChildren(ctx, 'Open shifts'),
+    volunteerHomeGap(),
+    volunteerHomeCenteredPlainLabel(
+      volunteerHomeFitLine(totalLine, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'open_shifts_total'),
     ),
     volunteerHomeGap(),
-    volunteerHomeBottomNavRow(navParams),
   ];
+
+  if (!matches.length) {
+    children.push(
+      volunteerHomeBodyText('No open shifts match your filters.', ctx.layoutWarnings, 'assign_empty'),
+    );
+  }
+  for (const [dayIso, dayRows] of volunteerHomeGroupMatchesByDay(matches)) {
+    const weekday = volunteerHomeWeekdayShort(dayIso);
+    const barText = volunteerHomeFitLine(
+      `${dayRows.length} ${weekday} -- tap to sign up`,
+      VOLUNTEER_HOME_MAX_BAR_CHARS,
+      ctx.layoutWarnings,
+      `open_shifts_day_${dayIso}`,
+    );
+    children.push(volunteerHomeBar(barText, volunteerHomeSummaryBlue, '#FFFFFF'));
+    for (const row of dayRows) {
+      const rowLabel = volunteerHomeJobDayLabel(
+        row.label,
+        dayIso,
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        `open_shift_${row.jobId}_${dayIso}`,
+      );
+      children.push(
+        volunteerHomeGap(),
+        volunteerHomeCenteredPill(
+          rowLabel,
+          'jewelheart.volunteer.shift',
+          {
+            ...shiftBase,
+            shiftOp: 'assign_me',
+            jobId: row.jobId,
+            dayIso: row.dayIso,
+            taskId: row.taskId || row.jobId,
+            volunteerId: 'me',
+          },
+          volunteerHomeMaroon,
+          '#FFFFFF',
+          { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+        ),
+      );
+    }
+    children.push(volunteerHomeGap());
+  }
+
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
-  return volunteerHomeScreenEnvelope('jewelheart.volunteer.assign', 'JewelHeart', children, ctx.layoutWarnings);
+  const stickyFooter = volunteerHomeStickyFooterRow(navParams);
+  return volunteerHomeScreenEnvelope('jewelheart.volunteer.assign', 'JewelHeart', children, ctx.layoutWarnings, {
+    stickyFooter: true,
+    stickyFooterComponents: [stickyFooter],
+  });
+}
+
+/** Instruction lines for a job: DB subjobs, else demo task lines, else placeholder. */
+function volunteerHomeJobInstructionLines(ctx, jobId, taskId) {
+  const job = (ctx.jobs || []).find((j) => String(j.id) === String(jobId));
+  const subjobs = (job?.subjobs || [])
+    .slice()
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((s) => String(s.text || '').trim())
+    .filter(Boolean);
+  if (subjobs.length) return subjobs;
+  const demoTask = VOLUNTEER_HOME_DEMO_TASKS[taskId] || VOLUNTEER_HOME_DEMO_TASKS[jobId];
+  if (demoTask?.instructions?.length) return demoTask.instructions;
+  return ['No instructions on file for this job.'];
+}
+
+function volunteerHomeShiftJobName(ctx, jobId, taskId) {
+  const job = (ctx.jobs || []).find((j) => String(j.id) === String(jobId));
+  if (job?.title) return volunteerHomeDisplayJobName(job.title);
+  const posterJob = VOLUNTEER_POSTER_SEARCH_JOBS.find((j) => j.id === jobId || j.id === taskId);
+  const demoTask = VOLUNTEER_HOME_DEMO_TASKS[taskId] || VOLUNTEER_HOME_DEMO_TASKS[jobId];
+  return volunteerHomeDisplayJobName(posterJob?.title || demoTask?.jobName || 'Shift');
+}
+
+/** Wrapping instruction text (not width-limited; clients wrap + scroll). */
+function volunteerHomeInstructionText(content) {
+  return {
+    type: 'text',
+    content,
+    textStyle: { fontSize: 15, textAlign: 'left' },
+    style: { padding: { top: 4, bottom: 4, left: 12, right: 12 } },
+  };
+}
+
+/**
+ * Shift page — `jewelheart.volunteer.shift`.
+ * Params: shiftOp ('assign_me' from Open shifts, 'mine' from My assigned shifts),
+ * jobId, dayIso, taskId, checkinOp ('assign' performs the DB assignment).
+ *
+ * Shows day+job bar (gold if today, blue otherwise), assign or check-in button,
+ * then the job instructions (scrolling).
+ */
+export async function buildJewelheartVolunteerShiftScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const shiftOp = String(params.shiftOp || 'view');
+  let jobId = String(params.jobId || '');
+  const taskId = String(params.taskId || jobId || '');
+  const checkinOp = params.checkinOp ? String(params.checkinOp) : '';
+  const paramRetreatId = params.retreatId ? String(params.retreatId) : '';
+
+  // One-shot DB write before loading context so the page reflects the result.
+  let assignAttempted = false;
+  if (checkinOp === 'assign' && taskId && paramRetreatId) {
+    assignAttempted = true;
+    const vol = await volunteerResolveSelf(firebaseUid, paramRetreatId);
+    if (vol?.id) {
+      try {
+        await volunteerSelfAssign(paramRetreatId, taskId, vol.id);
+      } catch {
+        /* surfaced below via assignment state */
+      }
+    }
+  } else if ((checkinOp === 'start' || checkinOp === 'finish') && taskId) {
+    volunteerApplyCheckinOp(firebaseUid, taskId, checkinOp, 'Volunteer');
+  }
+
+  const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
+  const myShiftForTask = taskId
+    ? (ctx.myShifts || []).find((s) => s.taskId === taskId)
+    : null;
+  if (!jobId && myShiftForTask) jobId = myShiftForTask.jobId;
+  const retreatId = paramRetreatId || ctx.retreatId || '';
+  const dayIso = String(params.dayIso || myShiftForTask?.dayIso || ctx.todayIso);
+  const basePayload = retreatId ? { retreatId } : {};
+  const returnTo = params.returnTo || 'jewelheart.volunteer.assign';
+  const navParams = { ...basePayload, returnTo, shiftOp, jobId, dayIso, taskId, volunteerId: params.volunteerId || 'me' };
+
+  const jobName = volunteerHomeShiftJobName(ctx, jobId, taskId);
+  const isToday = dayIso === ctx.todayIso;
+  const isMine = volunteerHomeIsMyTask(ctx, taskId);
+  const title = shiftOp === 'mine' || isMine ? 'My shift info' : 'Sign up';
+
+  const dayJobBarText = volunteerHomeJobDayLabel(
+    jobName,
+    dayIso,
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    ctx.layoutWarnings,
+    'shift_day_job',
+  );
+  const children = [
+    ...volunteerHomeHeaderChildren(ctx, title, dayIso),
+    volunteerHomeGap(),
+    isToday
+      ? volunteerHomeBar(dayJobBarText, volunteerHomeGold, '#000000')
+      : volunteerHomeBar(dayJobBarText, volunteerHomeSummaryBlue, '#FFFFFF'),
+    volunteerHomeGap(),
+  ];
+
+  const shiftPayload = (extra = {}) =>
+    volunteerHomeWithReturnTo(
+      { ...basePayload, shiftOp, jobId, dayIso, taskId, volunteerId: 'me', ...extra },
+      returnTo,
+    );
+
+  if (isMine) {
+    children.push(
+      volunteerHomeBodyText('✓ This shift is assigned to you.', ctx.layoutWarnings, 'shift_assigned'),
+    );
+    if (isToday && taskId) {
+      const checkinLabel = volunteerHomeFitLine(
+        `Check in for ${jobName}`,
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        'shift_checkin_btn',
+      );
+      children.push(
+        volunteerHomeGap(),
+        volunteerHomeCenteredPill(
+          checkinLabel,
+          'jewelheart.volunteer.checkin',
+          volunteerHomeWithReturnTo({ ...basePayload, taskId }, 'jewelheart.volunteer.shift'),
+          volunteerHomeGold,
+          '#000000',
+          { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+        ),
+      );
+    }
+  } else if (assignAttempted) {
+    children.push(
+      volunteerHomeBodyText(
+        'Could not assign this shift — it may already be filled.',
+        ctx.layoutWarnings,
+        'shift_assign_fail',
+      ),
+    );
+  } else {
+    children.push(
+      volunteerHomeCenteredPill(
+        'Assign this shift to me',
+        'jewelheart.volunteer.shift',
+        shiftPayload({ checkinOp: 'assign' }),
+        volunteerHomeMaroon,
+        '#FFFFFF',
+        { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+      ),
+    );
+  }
+
+  children.push(volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER));
+  for (const line of volunteerHomeJobInstructionLines(ctx, jobId, taskId)) {
+    children.push(volunteerHomeInstructionText(line));
+  }
+
+  children.push(volunteerHomeGap(), volunteerHomeBottomNavRow({ ...navParams, returnTo }));
+  children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
+  return volunteerHomeScreenEnvelope('jewelheart.volunteer.shift', 'JewelHeart', children, ctx.layoutWarnings);
 }
 
 function selectedDaysJobsHint(params) {
-  const days = params.selectedDays;
-  const jobs = params.selectedJobs;
   const parts = [];
-  if (days && String(days).trim()) parts.push(`Days: ${days}`);
-  if (jobs && String(jobs).trim()) parts.push(`Jobs: ${jobs}`);
+  const daysAll = volunteerSearchDaysAllParam(params);
+  const jobsAll = volunteerSearchJobsAllParam(params);
+  if (daysAll === '1') parts.push('Days: all');
+  else if (params.selectedDays && String(params.selectedDays).trim()) {
+    parts.push(`Days: ${params.selectedDays}`);
+  }
+  if (jobsAll === '1') parts.push('Jobs: all');
+  else if (params.selectedJobs && String(params.selectedJobs).trim()) {
+    parts.push(`Jobs: ${params.selectedJobs}`);
+  }
   const raw = parts.length ? parts.join(' · ') : '';
   if (raw.length <= VOLUNTEER_HOME_MAX_HINT_CHARS) return raw;
   return `${raw.slice(0, VOLUNTEER_HOME_MAX_HINT_CHARS - 1)}…`;
 }
 
-/** Placeholder — review / edit assigned shifts (mockup §1.1). */
+/**
+ * My assigned shifts — one row per shift: 🗑 (unassign, stays here) + dark
+ * maroon button (job – day) opening My shift info. Third bar (blue):
+ * “🗑 unassigns – tap for detail”. checkinOp='unassign' + taskId performs the
+ * one-shot DB delete before rendering.
+ */
 export async function buildJewelheartVolunteerMineScreen(
   firebaseUid,
   authToken = undefined,
   params = {},
 ) {
+  const checkinOp = params.checkinOp ? String(params.checkinOp) : '';
+  const taskId = params.taskId ? String(params.taskId) : '';
+  const paramRetreatId = params.retreatId ? String(params.retreatId) : '';
+  if (checkinOp === 'unassign' && taskId && paramRetreatId) {
+    const vol = await volunteerResolveSelf(firebaseUid, paramRetreatId);
+    if (vol?.id) {
+      try {
+        await volunteerSelfUnassign(paramRetreatId, taskId, vol.id);
+      } catch {
+        /* row simply remains if the delete failed */
+      }
+    }
+  }
+
   const ctx = await gatherVolunteerHomeContext(firebaseUid, authToken);
+  const retreatId = ctx.retreatId || paramRetreatId || '';
+  const basePayload = retreatId ? { retreatId } : {};
   const navParams = {
-    retreatId: ctx.retreatId || params.retreatId || '',
+    retreatId,
     returnTo: params.returnTo || 'jewelheart.home',
   };
+
   const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
-    ...volunteerHomeGoldPageTitleBar('My assigned shifts', ctx.layoutWarnings),
-    volunteerHomeBodyText('Tap a shift to review or remove it.', ctx.layoutWarnings, 'mine_hint'),
+    ...volunteerHomeHeaderChildren(ctx, 'My assigned shifts'),
     volunteerHomeGap(),
-    volunteerHomeBottomNavRow(navParams),
+    volunteerHomeBar(
+      `🗑 unassigns${VOLUNTEER_HOME_EN_DASH}tap for detail`,
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+    ),
+    volunteerHomeGap(),
   ];
+
+  const sorted = (ctx.myShifts || [])
+    .slice()
+    .sort((a, b) => a.dayIso.localeCompare(b.dayIso) || a.label.localeCompare(b.label));
+  if (!sorted.length) {
+    children.push(
+      volunteerHomeBodyText('No shifts are assigned to you yet.', ctx.layoutWarnings, 'mine_empty'),
+    );
+  }
+  sorted.forEach((shift, index) => {
+    const jobName = volunteerHomeDisplayJobName(shift.jobTitle || shift.label);
+    const rowLabel = volunteerHomeJobDayLabel(
+      jobName,
+      shift.dayIso,
+      VOLUNTEER_HOME_MAX_BAR_CHARS - 6,
+      ctx.layoutWarnings,
+      `mine_shift_${index}`,
+    );
+    const trashButton = volunteerHomePillButton(
+      '🗑',
+      'jewelheart.volunteer.mine',
+      volunteerHomeWithReturnTo(
+        { ...basePayload, taskId: shift.taskId, checkinOp: 'unassign' },
+        navParams.returnTo,
+      ),
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+      { hPad: 10 },
+    );
+    const shiftButton = volunteerHomePillButton(
+      rowLabel,
+      'jewelheart.volunteer.shift',
+      volunteerHomeWithReturnTo(
+        {
+          ...basePayload,
+          shiftOp: 'mine',
+          jobId: shift.jobId,
+          dayIso: shift.dayIso,
+          taskId: shift.taskId,
+          volunteerId: 'me',
+        },
+        'jewelheart.volunteer.mine',
+      ),
+      volunteerHomeMaroon,
+      '#FFFFFF',
+      { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+    );
+    if (index > 0) children.push(volunteerHomeGap());
+    children.push(volunteerHomeCenteredRow([trashButton, shiftButton], 6));
+  });
+
+  children.push(volunteerHomeGap(), volunteerHomeBottomNavRow(navParams));
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.mine', 'JewelHeart', children, ctx.layoutWarnings);
 }
@@ -1491,7 +2232,7 @@ export async function buildJewelheartVolunteerMessagesScreen(
   volunteerMarkAllAnnouncementsSeen(firebaseUid);
 
   const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
+    ...volunteerHomeBlueHeaderChildren(ctx, 'Announcements'),
     ...volunteerHomeGoldPageTitleBar('Announcements', ctx.layoutWarnings),
   ];
   VOLUNTEER_HOME_DEMO_ANNOUNCEMENTS.forEach((ann, index) => {
@@ -1500,9 +2241,7 @@ export async function buildJewelheartVolunteerMessagesScreen(
   });
   children.push(
     volunteerHomeGap(),
-    volunteerHomeBottomNavRow(navParams, {
-      includeVolunteerHomeShortcut: navParams.returnTo !== 'jewelheart.home',
-    }),
+    volunteerHomeBottomNavRow(navParams),
   );
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.messages', 'JewelHeart', children, ctx.layoutWarnings);
@@ -1514,7 +2253,7 @@ function volunteerHomeSimplePlaceholderScreen(ctx, title, body, params, screenId
     returnTo: params.returnTo || 'jewelheart.home',
   };
   const children = [
-    ...volunteerHomeBlueHeaderChildren(ctx),
+    ...volunteerHomeBlueHeaderChildren(ctx, title),
     ...volunteerHomeGoldPageTitleBar(title, ctx.layoutWarnings),
     volunteerHomeBodyText(body, ctx.layoutWarnings, `${screenId}_body`),
     volunteerHomeGap(),

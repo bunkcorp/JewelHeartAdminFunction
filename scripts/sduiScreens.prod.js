@@ -10,6 +10,7 @@ import {
   buildJewelheartHomeScreen,
   buildJewelheartVolunteerSearchScreen,
   buildJewelheartVolunteerAssignScreen,
+  buildJewelheartVolunteerShiftScreen,
   buildJewelheartVolunteerCheckinScreen,
   buildJewelheartVolunteerMessagesScreen,
   buildJewelheartVolunteerMineScreen,
@@ -116,6 +117,13 @@ export async function buildSduiResponse(firebaseUid, body, api, authToken = unde
     case 'jewelheart.volunteer.assign':
       return wrap(
         await buildJewelheartVolunteerAssignScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.shift':
+      return wrap(
+        await buildJewelheartVolunteerShiftScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),

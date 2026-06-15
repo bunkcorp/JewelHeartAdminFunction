@@ -61,7 +61,9 @@ class JewelHeartViewModel(
                 error = e.message ?: e.toString()
                 envelope = null
             } finally {
-                if (screenId == "jewelheart.volunteer.checkin") {
+                if (screenId == "jewelheart.volunteer.checkin" || screenId == "jewelheart.volunteer.shift" ||
+                    screenId == "jewelheart.volunteer.mine"
+                ) {
                     extraParams = extraParams.toMutableMap().apply { remove("checkinOp") }
                 }
                 loading = false
@@ -79,7 +81,7 @@ class JewelHeartViewModel(
                     }
                 when (screenId) {
                     "jewelheart.volunteer.search", "jewelheart.volunteer.assign",
-                    "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
+                    "jewelheart.volunteer.shift", "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
                     "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
                     "jewelheart.volunteer.preferences" -> {
                         action.payload?.get("retreatId")?.takeIf { it.isNotBlank() }?.let { retreatId = it }
@@ -88,12 +90,28 @@ class JewelHeartViewModel(
                         val taskId = action.payload?.get("taskId")
                         val checkinOp = action.payload?.get("checkinOp")
                         val returnTo = action.payload?.get("returnTo")
+                        val shiftOp = action.payload?.get("shiftOp")
+                        val jobId = action.payload?.get("jobId")
+                        val dayIso = action.payload?.get("dayIso")
+                        val volunteerId = action.payload?.get("volunteerId")
+                        val expandCheckin = action.payload?.get("expandCheckin")
+                        val expandInstructions = action.payload?.get("expandInstructions")
                         extraParams = extraParams.toMutableMap().apply {
                             if (days != null) put("selectedDays", days) else if (screenId == "jewelheart.volunteer.search") remove("selectedDays")
                             if (jobs != null) put("selectedJobs", jobs) else if (screenId == "jewelheart.volunteer.search") remove("selectedJobs")
-                            if (taskId != null) put("taskId", taskId) else if (screenId == "jewelheart.volunteer.checkin") remove("taskId")
+                            if (taskId != null) put("taskId", taskId)
+                            else if (screenId == "jewelheart.volunteer.checkin" || screenId == "jewelheart.volunteer.shift") remove("taskId")
                             if (checkinOp != null) put("checkinOp", checkinOp)
-                            else if (screenId == "jewelheart.volunteer.checkin") remove("checkinOp")
+                            else if (screenId == "jewelheart.volunteer.checkin" || screenId == "jewelheart.volunteer.shift" ||
+                                screenId == "jewelheart.volunteer.mine"
+                            ) remove("checkinOp")
+                            if (shiftOp != null) put("shiftOp", shiftOp) else if (screenId != "jewelheart.volunteer.shift") remove("shiftOp")
+                            if (jobId != null) put("jobId", jobId) else if (screenId != "jewelheart.volunteer.shift") remove("jobId")
+                            if (dayIso != null) put("dayIso", dayIso) else if (screenId != "jewelheart.volunteer.shift") remove("dayIso")
+                            if (volunteerId != null) put("volunteerId", volunteerId) else if (screenId != "jewelheart.volunteer.shift") remove("volunteerId")
+                            if (expandCheckin != null) put("expandCheckin", expandCheckin) else if (screenId == "jewelheart.volunteer.shift") remove("expandCheckin")
+                            if (expandInstructions != null) put("expandInstructions", expandInstructions)
+                            else if (screenId == "jewelheart.volunteer.shift") remove("expandInstructions")
                             if (returnTo != null) put("returnTo", returnTo)
                             else if (screenId == "jewelheart.home") remove("returnTo")
                         }
