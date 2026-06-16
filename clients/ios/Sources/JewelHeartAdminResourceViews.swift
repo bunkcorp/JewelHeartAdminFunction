@@ -2270,12 +2270,18 @@ struct VolunteerSelfServiceRootView: View {
     @State private var retreats: [Retreat] = []
     @State private var error: String?
 
+    private var preferredRetreat: Retreat? {
+        retreats.first(where: volunteerSelfServicePrefersRetreat)
+    }
+
     var body: some View {
         Group {
             if let error {
                 ContentUnavailableView("Couldn’t load retreats", systemImage: "exclamationmark.triangle", description: Text(error))
             } else if retreats.isEmpty {
                 ContentUnavailableView("No retreats", systemImage: "mountain.2", description: Text("Pull to refresh after an admin grants access."))
+            } else if let preferredRetreat {
+                RetreatVolunteerWeekSignupView(retreatId: preferredRetreat.id)
             } else {
                 List(retreats) { r in
                     Section(r.name) {
@@ -2295,7 +2301,9 @@ struct VolunteerSelfServiceRootView: View {
         .navigationTitle("Volunteer")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Reload") { Task { await load() } }
+                if preferredRetreat == nil {
+                    Button("Reload") { Task { await load() } }
+                }
             }
         }
         .task { await load() }
@@ -2311,6 +2319,19 @@ struct VolunteerSelfServiceRootView: View {
             await MainActor.run { self.error = error.localizedDescription }
         }
     }
+}
+
+private func volunteerSelfServicePrefersRetreat(_ retreat: Retreat) -> Bool {
+    if retreat.startDate == "2026-07-20", retreat.endDate == "2026-07-25" {
+        return true
+    }
+    let normalized = retreat.name
+        .lowercased()
+        .replacingOccurrences(of: "—", with: "-")
+        .replacingOccurrences(of: "–", with: "-")
+    return normalized.contains("summer retreat")
+        && normalized.contains("jul 20")
+        && normalized.contains("25")
 }
 
 private func retreatCalendar(timezoneId: String) -> Calendar {
@@ -2482,6 +2503,14 @@ private struct VolunteerWeekPersonMinuteStackSegment: Identifiable {
     let minutes: Int
 }
 
+private struct VolunteerOpenRoleDayGroup: Identifiable {
+    let id: String
+    let title: String
+    let rows: [ScheduleDayItem]
+    let openSpotCount: Int
+    let signedUpCount: Int
+}
+
 private func volunteerWeekPersonMinuteStackSegments(_ metrics: [VolunteerDayLoadMetrics]) -> [VolunteerWeekPersonMinuteStackSegment] {
     metrics.flatMap { m -> [VolunteerWeekPersonMinuteStackSegment] in
         let remaining = max(0, m.totalVolunteerMinutesDemand - m.assignedPersonMinutes)
@@ -2521,12 +2550,15 @@ struct RetreatVolunteerWeekSignupView: View {
     @State private var calendarWebcalUrl: String?
     @State private var calendarFeedBusy = false
     @State private var calendarFeedError: String?
+    @State private var confirmLeaveAllAssignedSlots = false
+    @State private var leaveAllAssignedSlotsBusy = false
 
-    @State private var includedSlotLabels: Set<String> = []
     @State private var includedWeekDates: Set<String> = []
     @State private var includedSites: Set<String> = []
     @State private var includedTimeBands: Set<TimeBand> = []
     @State private var includedDurationMinutes: Set<Int> = []
+    @State private var selectedVolunteerLoadDay: String?
+    @State private var expandedOpenRoleDays: Set<String> = []
 
     private var calendar: Calendar {
         retreatCalendar(timezoneId: JewelHeartConfig.jewelheartDefaultTimeZoneId)
@@ -2539,22 +2571,21 @@ struct RetreatVolunteerWeekSignupView: View {
         return "\(volunteerWeekDayLabel(iso: a, calendar: calendar)) – \(volunteerWeekDayLabel(iso: b, calendar: calendar))"
     }
 
-    private var uniqueSlotLabels: [String] {
-        Array(Set(rows.map(\.slot.label))).sorted()
-    }
-
     /// Site/context for filters and row copy: `slot.activityContext`, then `task.slotActivityContext` (schedule JSON often omits context on the nested slot while the task still carries the matrix site); no `Job` field matches this semantic.
     private func effectiveActivityContext(for item: ScheduleDayItem) -> String {
         if let s = item.slot.activityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty { return s }
         if let s = item.task.slotActivityContext?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty { return s }
+        if let s = Self.inferredActivityContext(fromJobTitle: item.job.title) { return s }
         return ""
     }
 
+    private func siteFilterTag(for item: ScheduleDayItem) -> String {
+        let raw = effectiveActivityContext(for: item)
+        return raw.isEmpty ? "Unspecified" : raw
+    }
+
     private var uniqueSites: [String] {
-        let tags = Set(rows.map { item in
-            let raw = effectiveActivityContext(for: item)
-            return raw.isEmpty ? "—" : raw
-        })
+        let tags = Set(rows.map { siteFilterTag(for: $0) })
         return Array(tags).sorted()
     }
 
@@ -2565,10 +2596,8 @@ struct RetreatVolunteerWeekSignupView: View {
 
     private var filteredRows: [ScheduleDayItem] {
         rows.filter { item in
-            if !includedSlotLabels.isEmpty, !includedSlotLabels.contains(item.slot.label) { return false }
             if !includedWeekDates.isEmpty, !includedWeekDates.contains(item.slot.slotDate) { return false }
-            let siteRaw = effectiveActivityContext(for: item)
-            let siteTag = siteRaw.isEmpty ? "—" : siteRaw
+            let siteTag = siteFilterTag(for: item)
             if !includedSites.isEmpty, !includedSites.contains(siteTag) { return false }
             if !includedTimeBands.isEmpty, !includedTimeBands.contains(item.slot.timeBand) { return false }
             if !includedDurationMinutes.isEmpty, !includedDurationMinutes.contains(item.job.estimatedMinutes) { return false }
@@ -2592,196 +2621,66 @@ struct RetreatVolunteerWeekSignupView: View {
         volunteerDayLoadMetrics(rows: rows, weekDates: weekIsoDays, calendar: calendar)
     }
 
+    private var selectedDayLoadMetrics: VolunteerDayLoadMetrics? {
+        if let selectedVolunteerLoadDay,
+           let selected = dayLoadMetrics.first(where: { $0.id == selectedVolunteerLoadDay }) {
+            return selected
+        }
+        return nil
+    }
+
+    private var selectedVolunteerAssignmentsThisWeek: [(task: JHTask, assignmentId: String)] {
+        guard !selfVolunteerId.isEmpty else { return [] }
+        return rows.compactMap { item in
+            guard let assignment = item.assignments?.first(where: { $0.volunteerId == selfVolunteerId }) else { return nil }
+            return (task: item.task, assignmentId: assignment.id)
+        }
+    }
+
+    private var openRolesSectionTitle: String {
+        "Open roles (\(filteredRows.count))"
+    }
+
+    private var openRoleDayGroups: [VolunteerOpenRoleDayGroup] {
+        Dictionary(grouping: filteredRows, by: \.slot.slotDate)
+            .keys
+            .sorted()
+            .compactMap { iso -> VolunteerOpenRoleDayGroup? in
+                guard let groupRows = Dictionary(grouping: filteredRows, by: \.slot.slotDate)[iso] else { return nil }
+                let openSpots = groupRows.reduce(0) { $0 + volunteerOpenSpots(for: $1) }
+                let signedUp = groupRows.filter { item in
+                    item.assignments?.contains(where: { $0.volunteerId == selfVolunteerId }) == true
+                }.count
+                return VolunteerOpenRoleDayGroup(
+                    id: iso,
+                    title: volunteerWeekDayLabel(iso: iso, calendar: calendar),
+                    rows: groupRows,
+                    openSpotCount: openSpots,
+                    signedUpCount: signedUp
+                )
+            }
+    }
+
     var body: some View {
         List {
-            Section {
-                if retreat == nil {
-                    ProgressView()
-                } else if let r = retreat {
-                    Text(r.name).font(.headline)
-                    Text("Week boundaries use Eastern Time (US).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             Section("Week") {
-                Text(weekTitle).font(.subheadline.weight(.semibold))
-                if let r = retreat, !apiDateStringsOverlapRange(weekDays: weekIsoDays, start: r.startDate, end: r.endDate) {
-                    Text("These dates are outside this retreat’s configured range (\(r.startDate ?? "—") … \(r.endDate ?? "—")). Use the back arrow or “Jump to retreat start week”.")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-                HStack {
-                    Button { shiftWeek(by: -7) } label: { Image(systemName: "chevron.left") }
-                    Spacer()
-                    Button("Today’s week") { jumpToWeekContainingToday() }
-                    Spacer()
-                    Button { shiftWeek(by: 7) } label: { Image(systemName: "chevron.right") }
-                }
-                .disabled(busy)
-                if retreat?.startDate != nil {
-                    Button("Jump to retreat start week") { jumpToRetreatStartWeek() }
-                        .disabled(busy)
-                }
+                AnyView(weekControlsContent)
             }
 
             Section("Volunteer load") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Demand matches the spreadsheet model (each task needs its own volunteers; no double duty). Bars and averages refresh when you sign up or leave a slot.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if dayLoadMetrics.allSatisfy({ $0.volunteerSlotsDemand == 0 }) {
-                        Text("No tasks in this week yet — load shifts or change the week to see metrics.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Person-minutes by day (filled vs still needed)")
-                                .font(.caption.weight(.semibold))
-                            Chart(volunteerWeekPersonMinuteStackSegments(dayLoadMetrics)) { row in
-                                BarMark(
-                                    x: .value("Day", row.chartAxisLabel),
-                                    y: .value("Minutes", row.minutes)
-                                )
-                                .foregroundStyle(by: .value("Layer", row.segment))
-                            }
-                            .chartForegroundStyleScale([
-                                "Filled": Color.teal,
-                                "Still needed": Color.indigo.opacity(0.4)
-                            ])
-                            .chartXAxis {
-                                AxisMarks(preset: .aligned) { value in
-                                    AxisGridLine()
-                                    AxisTick()
-                                    AxisValueLabel(centered: true) {
-                                        if let s = value.as(String.self) {
-                                            Text(s)
-                                                .font(.caption2)
-                                                .lineLimit(2)
-                                                .minimumScaleFactor(0.85)
-                                                .multilineTextAlignment(.center)
-                                                .frame(maxWidth: 44)
-                                        }
-                                    }
-                                }
-                            }
-                            .chartYAxis(.automatic)
-                            .chartLegend(position: .bottom, spacing: 6)
-                            .chartPlotStyle { plot in
-                                plot.padding(.bottom, 2)
-                            }
-                            .frame(height: 228)
-                        }
-
-                        volunteerLoadMetricsTable
-                    }
-                }
-                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                AnyView(volunteerLoadContent)
             }
 
             Section("Signing up as") {
-                if linkedVolunteers.isEmpty {
-                    Text("No volunteers are linked to this retreat yet. Ask an admin to link you under Retreat → Linked volunteers.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Picker("Volunteer profile", selection: $selfVolunteerId) {
-                        Text("Choose…").tag("")
-                        ForEach(linkedVolunteers, id: \.volunteerId) { rv in
-                            Text(rv.volunteer.displayName).tag(rv.volunteer.id)
-                        }
-                    }
-                    if !selfVolunteerId.isEmpty, !selfIsLinked {
-                        Text("Pick a volunteer that is linked to this retreat.")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
-                }
+                AnyView(signingUpAsContent)
             }
 
             Section("Calendar feed") {
-                Text("Subscribe in Apple Calendar. The HTTPS URL is a secret — don’t share it publicly.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if calendarFeedBusy {
-                    ProgressView()
-                }
-                if let calendarFeedError {
-                    Text(calendarFeedError).foregroundStyle(.red).font(.caption)
-                }
-                Button("Show subscribe link") {
-                    Task { await mintCalendarFeed(regenerate: false) }
-                }
-                .disabled(!selfIsLinked || selfVolunteerId.isEmpty || calendarFeedBusy)
-                Button("Rotate link (invalidate old subscriptions)", role: .destructive) {
-                    Task { await mintCalendarFeed(regenerate: true) }
-                }
-                .disabled(!selfIsLinked || selfVolunteerId.isEmpty || calendarFeedBusy)
-                if let https = calendarHttpsUrl {
-                    Text(https).font(.caption).textSelection(.enabled)
-                    Button("Copy HTTPS URL") {
-                        UIPasteboard.general.string = https
-                    }
-                    Button("Open in Safari") {
-                        if let u = URL(string: https) { openURL(u) }
-                    }
-                }
-                if let subscribe = calendarSubscribeWebcalURL() {
-                    Button("Subscribe in Calendar") {
-                        openURL(subscribe)
-                    }
-                    Button("Copy subscribe link") {
-                        UIPasteboard.general.string = subscribe.absoluteString
-                    }
-                }
+                AnyView(calendarFeedContent)
             }
 
             Section("Filters") {
-                Text("Leave a group empty to show all. Otherwise only rows matching every active filter are shown.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                DisclosureGroup("Slot label") {
-                    ForEach(uniqueSlotLabels, id: \.self) { label in
-                        Toggle(label, isOn: bindingIncluded($includedSlotLabels, label))
-                    }
-                }
-                DisclosureGroup("Day (this week)") {
-                    ForEach(weekIsoDays, id: \.self) { iso in
-                        Toggle(volunteerWeekDayLabel(iso: iso, calendar: calendar), isOn: bindingIncluded($includedWeekDates, iso))
-                    }
-                }
-                DisclosureGroup("Site / context") {
-                    ForEach(uniqueSites, id: \.self) { tag in
-                        Toggle(tag, isOn: bindingIncluded($includedSites, tag))
-                    }
-                }
-                DisclosureGroup("Time band") {
-                    ForEach(TimeBand.allCases) { band in
-                        Toggle(band.rawValue.capitalized, isOn: bindingIncludedTimeBand(band))
-                    }
-                }
-                if uniqueDurationMinutes.isEmpty {
-                    Text("Time commitment options appear here once this week has scheduled roles (each option is a real job length in minutes).")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    DisclosureGroup("Time commitment (job length)") {
-                        ForEach(uniqueDurationMinutes, id: \.self) { mins in
-                            Toggle(Self.durationMinutesFilterLabel(mins), isOn: bindingIncludedMinutes($includedDurationMinutes, mins))
-                        }
-                    }
-                }
-                if hasAnyFilterSet {
-                    Button("Clear filters") {
-                        includedSlotLabels = []
-                        includedWeekDates = []
-                        includedSites = []
-                        includedTimeBands = []
-                        includedDurationMinutes = []
-                    }
-                }
+                AnyView(filtersContent)
             }
 
             if let actionError {
@@ -2790,21 +2689,23 @@ struct RetreatVolunteerWeekSignupView: View {
                 }
             }
 
-            Section("Open roles (\(filteredRows.count))") {
-                if filteredRows.isEmpty {
-                    Text(rows.isEmpty ? "Nothing scheduled for this week, or filters hide every row." : "No rows match these filters.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(filteredRows, id: \.task.id) { item in
-                        volunteerRow(item)
-                    }
-                }
+            Section {
+                AnyView(openRolesContent)
+            } header: {
+                Text(openRolesSectionTitle)
             }
         }
         .navigationTitle("Week signup")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    RetreatMessagingListView(retreatId: retreatId)
+                } label: {
+                    Image(systemName: "message")
+                }
+                .accessibilityLabel("Messages")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Reload") { Task { await reloadAll() } }
                     .disabled(busy)
@@ -2817,12 +2718,313 @@ struct RetreatVolunteerWeekSignupView: View {
             calendarWebcalUrl = nil
             calendarFeedError = nil
         }
+        .onChange(of: includedWeekDates) { _, _ in resetOpenRoleDayExpansionToFirstVisibleDay() }
+        .onChange(of: includedSites) { _, _ in resetOpenRoleDayExpansionToFirstVisibleDay() }
+        .onChange(of: includedTimeBands) { _, _ in resetOpenRoleDayExpansionToFirstVisibleDay() }
+        .onChange(of: includedDurationMinutes) { _, _ in resetOpenRoleDayExpansionToFirstVisibleDay() }
+        .confirmationDialog(
+            "Leave all assigned slots?",
+            isPresented: $confirmLeaveAllAssignedSlots,
+            titleVisibility: .visible
+        ) {
+            Button("Leave \(selectedVolunteerAssignmentsThisWeek.count) slots this week", role: .destructive) {
+                Task { await leaveAllAssignedSlotsForSelectedVolunteer() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes every assignment in the loaded week for the selected volunteer profile.")
+        }
         if let error { Text(error).foregroundStyle(.red).padding(.horizontal) }
     }
 
     private var hasAnyFilterSet: Bool {
-        !includedSlotLabels.isEmpty || !includedWeekDates.isEmpty || !includedSites.isEmpty || !includedTimeBands.isEmpty
+        !includedWeekDates.isEmpty || !includedSites.isEmpty || !includedTimeBands.isEmpty
             || !includedDurationMinutes.isEmpty
+    }
+
+    @ViewBuilder
+    private var weekControlsContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if retreat == nil {
+                ProgressView()
+            } else if let r = retreat {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(r.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Text(weekTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let r = retreat, !apiDateStringsOverlapRange(weekDays: weekIsoDays, start: r.startDate, end: r.endDate) {
+                Text("Outside retreat range: \(r.startDate ?? "—") ... \(r.endDate ?? "—")")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
+            HStack(spacing: 16) {
+                Button { shiftWeek(by: -7) } label: { Image(systemName: "chevron.left") }
+                Spacer()
+                Button("Today's week") { jumpToWeekContainingToday() }
+                    .font(.caption)
+                Spacer()
+                Button { shiftWeek(by: 7) } label: { Image(systemName: "chevron.right") }
+            }
+            .disabled(busy)
+            if retreat?.startDate != nil {
+                Button("Jump to retreat start week") { jumpToRetreatStartWeek() }
+                    .font(.caption)
+                    .disabled(busy)
+            }
+        }
+        .buttonStyle(.borderless)
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var signingUpAsContent: some View {
+        if linkedVolunteers.isEmpty {
+            Text("No volunteers are linked to this retreat yet. Ask an admin to link you under Retreat -> Linked volunteers.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            Picker("Volunteer profile", selection: $selfVolunteerId) {
+                Text("Choose...").tag("")
+                ForEach(linkedVolunteers, id: \.volunteerId) { rv in
+                    Text(rv.volunteer.displayName).tag(rv.volunteer.id)
+                }
+            }
+            if !selfVolunteerId.isEmpty, !selfIsLinked {
+                Text("Pick a volunteer that is linked to this retreat.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            Button("Leave all my slots this week (\(selectedVolunteerAssignmentsThisWeek.count))", role: .destructive) {
+                confirmLeaveAllAssignedSlots = true
+            }
+            .disabled(!selfIsLinked || selectedVolunteerAssignmentsThisWeek.isEmpty || leaveAllAssignedSlotsBusy)
+            if leaveAllAssignedSlotsBusy {
+                ProgressView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var calendarFeedContent: some View {
+        Text("Add your selected volunteer schedule to Apple Calendar.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        if calendarFeedBusy {
+            ProgressView()
+        }
+        if let calendarFeedError {
+            Text(calendarFeedError).foregroundStyle(.red).font(.caption)
+        }
+        if let subscribe = calendarSubscribeWebcalURL() {
+            Button("Subscribe in Calendar") {
+                openURL(subscribe)
+            }
+            if let https = calendarHttpsUrl, let url = URL(string: https) {
+                Button("Open in Safari") {
+                    openURL(url)
+                }
+            }
+        } else {
+            Button("Subscribe in Calendar") {
+                Task { await mintCalendarFeed(regenerate: false) }
+            }
+            .disabled(!selfIsLinked || selfVolunteerId.isEmpty || calendarFeedBusy)
+        }
+    }
+
+    @ViewBuilder
+    private var filtersContent: some View {
+        Text("Leave a group empty to show all. Otherwise only rows matching every active filter are shown.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        DisclosureGroup("Day (this week)") {
+            ForEach(weekIsoDays, id: \.self) { iso in
+                Toggle(volunteerWeekDayLabel(iso: iso, calendar: calendar), isOn: bindingIncluded($includedWeekDates, iso))
+            }
+        }
+        DisclosureGroup("Site / context") {
+            ForEach(uniqueSites, id: \.self) { tag in
+                Toggle(tag, isOn: bindingIncluded($includedSites, tag))
+            }
+        }
+        DisclosureGroup("Time band") {
+            ForEach(TimeBand.allCases) { band in
+                Toggle(band.rawValue.capitalized, isOn: bindingIncludedTimeBand(band))
+            }
+        }
+        durationFilterContent
+        if hasAnyFilterSet {
+            Button("Clear filters") {
+                includedWeekDates = []
+                includedSites = []
+                includedTimeBands = []
+                includedDurationMinutes = []
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var durationFilterContent: some View {
+        if uniqueDurationMinutes.isEmpty {
+            Text("Time commitment options appear here once this week has scheduled roles (each option is a real job length in minutes).")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            DisclosureGroup("Time commitment (job length)") {
+                ForEach(uniqueDurationMinutes, id: \.self) { mins in
+                    Toggle(Self.durationMinutesFilterLabel(mins), isOn: bindingIncludedMinutes($includedDurationMinutes, mins))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var volunteerLoadContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Demand matches the spreadsheet model (each task needs its own volunteers; no double duty). Bars and averages refresh when you sign up or leave a slot.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if dayLoadMetrics.allSatisfy({ $0.volunteerSlotsDemand == 0 }) {
+                Text("No tasks in this week yet — load shifts or change the week to see metrics.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                volunteerWeekLoadChart
+                volunteerLoadMetricsTable
+            }
+        }
+        .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+    }
+
+    private var volunteerWeekLoadChart: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Person-minutes by day (filled vs still needed)")
+                .font(.caption.weight(.semibold))
+            Chart(volunteerWeekPersonMinuteStackSegments(dayLoadMetrics)) { row in
+                BarMark(
+                    x: .value("Day", row.chartAxisLabel),
+                    y: .value("Minutes", row.minutes)
+                )
+                .foregroundStyle(by: .value("Layer", row.segment))
+            }
+            .chartForegroundStyleScale([
+                "Filled": Color.teal,
+                "Still needed": Color.indigo.opacity(0.4)
+            ])
+            .chartXAxis {
+                AxisMarks(preset: .aligned) { value in
+                    AxisGridLine()
+                    AxisTick()
+                    AxisValueLabel(centered: true) {
+                        if let s = value.as(String.self) {
+                            Text(s)
+                                .font(.caption2)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 44)
+                        }
+                    }
+                }
+            }
+            .chartYAxis(.automatic)
+            .chartLegend(position: .bottom, spacing: 6)
+            .frame(height: 228)
+        }
+    }
+
+    @ViewBuilder
+    private var openRolesContent: some View {
+        if filteredRows.isEmpty {
+            Text(rows.isEmpty ? "Nothing scheduled for this week, or filters hide every row." : "No rows match these filters.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            openRolesSummaryControls
+            ForEach(openRoleDayGroups) { group in
+                openRoleDayDisclosureGroup(group)
+            }
+        }
+    }
+
+    private var openRolesSummaryControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(filteredRows.count) roles across \(openRoleDayGroups.count) days. Open a day to sign up or leave slots.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button("Expand all") {
+                    expandedOpenRoleDays = Set(openRoleDayGroups.map(\.id))
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Button("Collapse all") {
+                    expandedOpenRoleDays = []
+                }
+                .buttonStyle(.borderless)
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func openRoleDayDisclosureGroup(_ group: VolunteerOpenRoleDayGroup) -> some View {
+        DisclosureGroup(isExpanded: openRoleDayBinding(for: group.id)) {
+            ForEach(group.rows, id: \.task.id) { item in
+                volunteerRow(item)
+            }
+        } label: {
+            openRoleDayGroupLabel(group)
+        }
+    }
+
+    private func openRoleDayGroupLabel(_ group: VolunteerOpenRoleDayGroup) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(group.title)
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                Text("\(group.rows.count) roles")
+                Text("\(group.openSpotCount) open spots")
+                if group.signedUpCount > 0 {
+                    Text("\(group.signedUpCount) yours")
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func volunteerOpenSpots(for item: ScheduleDayItem) -> Int {
+        let need = item.task.volunteersNeeded ?? item.job.volunteersNeeded
+        let filled = item.task.assignmentCount ?? 0
+        return max(0, need - filled)
+    }
+
+    private func openRoleDayBinding(for iso: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedOpenRoleDays.contains(iso) },
+            set: { isExpanded in
+                if isExpanded {
+                    expandedOpenRoleDays.insert(iso)
+                } else {
+                    expandedOpenRoleDays.remove(iso)
+                }
+            }
+        )
+    }
+
+    private func resetOpenRoleDayExpansionToFirstVisibleDay() {
+        if let first = openRoleDayGroups.first?.id {
+            expandedOpenRoleDays = [first]
+        } else {
+            expandedOpenRoleDays = []
+        }
     }
 
     private static func durationMinutesFilterLabel(_ minutes: Int) -> String {
@@ -2831,6 +3033,54 @@ struct RetreatVolunteerWeekSignupView: View {
             return "\(minutes) min (\(h) hr)"
         }
         return "\(minutes) min"
+    }
+
+    private static func inferredActivityContext(fromJobTitle title: String) -> String? {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let separators = [",", " / ", " — ", " – ", " - "]
+        let firstSeparator = separators.compactMap { separator -> String.Index? in
+            trimmed.range(of: separator)?.lowerBound
+        }.min()
+        guard let idx = firstSeparator else { return nil }
+        let context = String(trimmed[..<idx]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return context.isEmpty ? nil : context
+    }
+
+    private func volunteerRowSubtitle(for item: ScheduleDayItem) -> String {
+        let dayLabel = volunteerWeekDayLabel(iso: item.slot.slotDate, calendar: calendar)
+        let slotLabel = item.slot.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !slotLabel.isEmpty else { return dayLabel }
+        if Self.slotLabelIsJustDate(slotLabel, iso: item.slot.slotDate, calendar: calendar) {
+            return dayLabel
+        }
+        return "\(slotLabel) · \(dayLabel)"
+    }
+
+    private static func slotLabelIsJustDate(_ label: String, iso: String, calendar: Calendar) -> Bool {
+        guard let d = volunteerDateAtNoonFromAPIDay(iso, calendar: calendar) else {
+            return compactDateCompareToken(label) == compactDateCompareToken(iso)
+        }
+        let formats = ["EEE MMM d", "EEE, MMM d", "EEE, M/d", "M/d", "yyyy-MM-dd"]
+        let labels = formats.map { format -> String in
+            let f = DateFormatter()
+            f.calendar = calendar
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = format
+            return f.string(from: d)
+        }
+        let target = compactDateCompareToken(label)
+        return labels.contains { compactDateCompareToken($0) == target }
+    }
+
+    private static func compactDateCompareToken(_ value: String) -> String {
+        let allowed = CharacterSet.alphanumerics
+        return value
+            .lowercased()
+            .unicodeScalars
+            .filter { allowed.contains($0) }
+            .map(String.init)
+            .joined()
     }
 
     private func bindingIncluded(_ set: Binding<Set<String>>, _ value: String) -> Binding<Bool> {
@@ -2883,7 +3133,7 @@ struct RetreatVolunteerWeekSignupView: View {
             Text(m.displayLabel)
                 .font(.subheadline.weight(.semibold))
 
-            Text("Person·min (bar = demand; teal = filled)")
+            Text("Person-min")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Chart {
@@ -2947,7 +3197,7 @@ struct RetreatVolunteerWeekSignupView: View {
                     .accessibilityValue(String(format: "%.0f percent", personMinFillRatio * 100))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Fill (person·min)")
+                    Text("Fill")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(String(format: "%.0f%%", personMinFillRatio * 100))
@@ -2956,7 +3206,7 @@ struct RetreatVolunteerWeekSignupView: View {
                 Spacer(minLength: 0)
             }
 
-            Text("Slots (bar = slots needed; orange = filled)")
+            Text("Slots")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             Chart {
@@ -2990,12 +3240,12 @@ struct RetreatVolunteerWeekSignupView: View {
             .frame(height: 28)
             .padding(.vertical, 2)
 
-            Text("Slots filled \(m.filledSlotCount) / \(m.volunteerSlotsDemand)")
+            Text("\(m.filledSlotCount)/\(m.volunteerSlotsDemand) slots filled")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
             if m.volunteerSlotsDemand > 0 {
-                Text("Distinct people vs slots (bar = slots needed; purple = distinct)")
+                Text("People")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Chart {
@@ -3028,20 +3278,20 @@ struct RetreatVolunteerWeekSignupView: View {
                 .padding(.vertical, 2)
 
                 Text(
-                    (m.distinctVolunteersAssigned.map { "\($0) distinct" } ?? "— distinct")
+                    (m.distinctVolunteersAssigned.map { "\($0) people" } ?? "— people")
                         + " · \(m.volunteerSlotsDemand) slots",
                 )
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             } else {
-                Text("Distinct people: \(m.distinctVolunteersAssigned.map(String.init) ?? "—")")
+                Text("People: \(m.distinctVolunteersAssigned.map(String.init) ?? "—")")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
 
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Avg demand (min / slot)")
+                    Text("Avg need")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(String(format: "%.1f", m.avgMinutesPerSlotDemand))
@@ -3049,7 +3299,7 @@ struct RetreatVolunteerWeekSignupView: View {
                 }
                 Spacer(minLength: 12)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("Slots needed")
+                    Text("Needed")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text("\(m.volunteerSlotsDemand)")
@@ -3060,7 +3310,7 @@ struct RetreatVolunteerWeekSignupView: View {
             HStack(alignment: .firstTextBaseline) {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("Avg actual (min / person)")
+                    Text("Avg actual")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Text(volunteerLoadActualAvgLabel(m))
@@ -3089,26 +3339,66 @@ struct RetreatVolunteerWeekSignupView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("By day")
                 .font(.caption.weight(.semibold))
-            ForEach(dayLoadMetrics) { m in
-                volunteerDayByDayMetricsCard(m)
+            Text("Tap a day for details.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
+                spacing: 8
+            ) {
+                ForEach(dayLoadMetrics) { m in
+                    let isSelected = selectedDayLoadMetrics?.id == m.id
+                    Button {
+                        selectedVolunteerLoadDay = isSelected ? nil : m.id
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text(m.chartAxisLabel)
+                                .font(.caption.weight(.semibold))
+                            Text("\(m.assignedPersonMinutes)/\(m.totalVolunteerMinutesDemand) min")
+                                .font(.caption2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .foregroundStyle(isSelected ? Color.white.opacity(0.86) : Color.secondary)
+                        }
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 8)
+                        .background(isSelected ? Color.accentColor : Color(uiColor: .tertiarySystemGroupedBackground))
+                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Show volunteer load for \(m.displayLabel)")
+                }
+            }
+            .padding(.vertical, 2)
+
+            if let selected = selectedDayLoadMetrics {
+                volunteerDayByDayMetricsCard(selected)
+            } else {
+                Text("No day selected.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Week total")
                     .font(.subheadline.weight(.semibold))
-                LabeledContent("Demand (person·min)") {
+                LabeledContent("Need") {
                     Text("\(totals.demand)")
                 }
-                LabeledContent("Slots needed") {
+                LabeledContent("Slots") {
                     Text("\(totals.slots)")
                 }
-                LabeledContent("Avg demand (min per slot)") {
+                LabeledContent("Avg need") {
                     Text(String(format: "%.1f", avgDemand))
                 }
-                LabeledContent("Filled (person·min)") {
+                LabeledContent("Filled") {
                     Text("\(totals.filled)")
                 }
-                LabeledContent("Avg filled (min per filled slot)") {
+                LabeledContent("Avg filled") {
                     Text(avgFilledPerSlot.map { String(format: "%.1f", $0) } ?? "—")
                 }
             }
@@ -3118,7 +3408,7 @@ struct RetreatVolunteerWeekSignupView: View {
             .background(Color(uiColor: .tertiarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            Text("Demand avg assumes no double duty. Actual avg uses distinct volunteers when the API lists them; a leading ~ means per filled slot.")
+            Text("~ means estimated from filled slots.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -3135,7 +3425,7 @@ struct RetreatVolunteerWeekSignupView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(item.job.title)
                 .font(.headline)
-            Text("\(item.slot.label) · \(volunteerWeekDayLabel(iso: item.slot.slotDate, calendar: calendar))")
+            Text(volunteerRowSubtitle(for: item))
                 .font(.subheadline)
             HStack(spacing: 6) {
                 Text(item.slot.timeBand.rawValue.capitalized)
@@ -3290,6 +3580,7 @@ struct RetreatVolunteerWeekSignupView: View {
             weekMonday = monday
             rows = deduped
             includedDurationMinutes = includedDurationMinutes.intersection(allowedMinutes)
+            resetOpenRoleDayExpansionToFirstVisibleDay()
             error = nil
         }
     }
@@ -3335,6 +3626,37 @@ struct RetreatVolunteerWeekSignupView: View {
             try await fetchWeekScheduleMerged()
         } catch {
             await MainActor.run { actionError = error.localizedDescription }
+        }
+    }
+
+    private func leaveAllAssignedSlotsForSelectedVolunteer() async {
+        let targets = selectedVolunteerAssignmentsThisWeek
+        guard canAct else {
+            await MainActor.run { actionError = "Choose a linked volunteer profile first." }
+            return
+        }
+        guard !targets.isEmpty else { return }
+        await MainActor.run {
+            actionError = nil
+            leaveAllAssignedSlotsBusy = true
+            actingTaskIds.formUnion(targets.map { $0.task.id })
+        }
+        defer {
+            Task { @MainActor in
+                leaveAllAssignedSlotsBusy = false
+                for target in targets {
+                    actingTaskIds.remove(target.task.id)
+                }
+            }
+        }
+        do {
+            for target in targets {
+                try await api.deleteAssignment(retreatId: retreatId, assignmentId: target.assignmentId)
+            }
+            try await fetchWeekScheduleMerged()
+        } catch {
+            await MainActor.run { actionError = error.localizedDescription }
+            try? await fetchWeekScheduleMerged()
         }
     }
 

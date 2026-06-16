@@ -4,22 +4,15 @@ import FirebaseAuth
 
 /// Signed-in shell: SDUI tab plus REST admin tabs covering OpenAPI v0.1.0.
 struct AdminRootTabView: View {
-    @State private var selectedTab = 0
-    @State private var volunteerTabReselect = 0
+    @State private var selectedTab = 4
 
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                RootView()
+                VolunteerSelfServiceRootView()
             }
-            .tag(0)
-            .tabItem { Label("Home", systemImage: "rectangle.3.group") }
-
-            NavigationStack {
-                RetreatAdminListView()
-            }
-            .tag(1)
-            .tabItem { Label("Retreats", systemImage: "mountain.2.fill") }
+            .tag(4)
+            .tabItem { Label("Secondary Vol", systemImage: "person.2.fill") }
 
             NavigationStack {
                 GlobalVolunteersAdminView()
@@ -28,22 +21,10 @@ struct AdminRootTabView: View {
             .tabItem { Label("Directory", systemImage: "person.3.fill") }
 
             NavigationStack {
-                VolunteerSduiRootView()
-                    .id(volunteerTabReselect)
-            }
-            .tag(3)
-            .tabItem { Label("Volunteer", systemImage: "calendar.badge.plus") }
-
-            NavigationStack {
                 MetaAdminView()
             }
-            .tag(4)
+            .tag(5)
             .tabItem { Label("Settings", systemImage: "wrench.and.screwdriver") }
-        }
-        .onChange(of: selectedTab) { old, new in
-            if new == 3, old == 3 {
-                volunteerTabReselect += 1
-            }
         }
     }
 }

@@ -23,19 +23,18 @@ struct RetreatMessagingListView: View {
                 ContentUnavailableView("No conversations", systemImage: "bubble.left.and.bubble.right")
             } else {
                 List(items) { c in
-                    NavigationLink(value: c) {
+                    NavigationLink {
+                        RetreatConversationThreadView(conversation: c)
+                    } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(title(for: c)).font(.headline)
-                            Text(c.kind.rawValue).font(.caption).foregroundStyle(.secondary)
+                            Text(subtitle(for: c)).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
             }
         }
         .navigationTitle("Messages")
-        .navigationDestination(for: ConversationSummary.self) { c in
-            RetreatConversationThreadView(conversation: c)
-        }
         .sheet(item: $threadToShow) { c in
             NavigationStack {
                 RetreatConversationThreadView(conversation: c)
@@ -48,7 +47,7 @@ struct RetreatMessagingListView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Message volunteer…") { showPeerSheet = true }
+                Button("New message") { showPeerSheet = true }
             }
         }
         .sheet(isPresented: $showPeerSheet) {
@@ -64,6 +63,13 @@ struct RetreatMessagingListView: View {
         switch c.kind {
         case .retreat_room: "Everyone (retreat)"
         case .direct: c.peerDisplayName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? "Direct"
+        }
+    }
+
+    private func subtitle(for c: ConversationSummary) -> String {
+        switch c.kind {
+        case .retreat_room: "Everyone"
+        case .direct: "Direct message"
         }
     }
 
