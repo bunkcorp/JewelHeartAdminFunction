@@ -32,6 +32,20 @@ Verify (requires .jewelheart-token in repo root):
 
   bash scripts/check-sdui-jewelheart-home.sh
 
+Web volunteer home (karmadots.org/login)
+----------------------------------------
+Static admin site: bunkcorp/buddhist-stone-ios-app → docs/login/ on GitHub Pages
+branch working-branch (https://karmadots.org/login/).
+
+After sign-in, **Volunteer home** tab loads the same SDUI as iOS (POST /jewelheart/sdui/screen,
+jewelheart.home + jewelheart.volunteer.*). Renderer: docs/login/jewelheart-sdui.js.
+
+Sign-in: Firebase (Google, email, anonymous) or Keycloak (client karmadots-web, realm karmadots).
+Keycloak redirect URI must include https://karmadots.org/login/ — see buddhist-stone-ios-app/docs/KEYCLOAK_SETUP.md
+and private-server/scripts/keycloak-admin-cli.sh.
+
+Deploy: commit docs/login/* and push to working-branch (not main).
+
 Automated apply (task list)
 -------------------------------
 From the JewelHeartAdminFunction repo root:
