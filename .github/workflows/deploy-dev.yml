@@ -1,0 +1,33 @@
+name: deploy-dev
+
+# Auto-deploy the dev environment (api-dev.karmadots.org) on every push to main
+# that touches deploy-relevant files. Runs on the self-hosted runner installed on
+# the laptop, which copies the code into ~/private-server-dev and restarts it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'integrations/private-server/jewelheart-sdui-home.js'
+      - 'scripts/_prod-sdui.js'
+      - 'scripts/_prod-admin.css'
+      - 'scripts/_prod-index.html'
+      - 'migrations/**'
+      - 'scripts/deploy/jh-deploy.sh'
+      - '.github/workflows/deploy-dev.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Deploy to dev
+        run: |
+          chmod +x scripts/deploy/jh-deploy.sh
+          bash scripts/deploy/jh-deploy.sh deploy-local "$GITHUB_WORKSPACE" dev
