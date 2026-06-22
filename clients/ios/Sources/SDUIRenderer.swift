@@ -8,19 +8,48 @@ struct SDUIRoot: View {
     let onAction: (SDUIAction) async -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // `screen.title` is shown in the parent `NavigationStack` only (avoids triple headings).
-                if let roots = screen.components {
-                    ForEach(Array(roots.enumerated()), id: \.offset) { _, c in
+        let meta = screen.metadata
+        let stickyHeader = meta?.stickyHeader == true
+        let stickyFooter = meta?.stickyFooter == true
+        let homeSplit = meta?.homeSplitLayout == true
+        let middleScroll = !homeSplit || !(screen.components?.isEmpty ?? true)
+
+        VStack(spacing: 0) {
+            if stickyHeader, let header = meta?.stickyHeaderComponents {
+                VStack(spacing: 0) {
+                    ForEach(Array(header.enumerated()), id: \.offset) { _, c in
                         SDUIComponentView(component: c, onAction: onAction)
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, screen.id == "jewelheart.home" ? 0 : 16)
-            .padding(.vertical, screen.id == "jewelheart.home" ? 6 : 12)
+
+            Group {
+                if middleScroll {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            if let roots = screen.components {
+                                ForEach(Array(roots.enumerated()), id: \.offset) { _, c in
+                                    SDUIComponentView(component: c, onAction: onAction)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, screen.id == "jewelheart.home" ? 0 : 16)
+                        .padding(.vertical, screen.id == "jewelheart.home" ? 6 : 12)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: (stickyHeader || stickyFooter || homeSplit) ? .infinity : nil)
+
+            if stickyFooter, let footer = meta?.stickyFooterComponents {
+                VStack(spacing: 0) {
+                    ForEach(Array(footer.enumerated()), id: \.offset) { _, c in
+                        SDUIComponentView(component: c, onAction: onAction)
+                    }
+                }
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -41,6 +70,8 @@ struct SDUIComponentView: View {
                 spacerBody
             case "card":
                 cardBody
+            case "instructionScroll", "todayShiftScroll", "jobListScroll":
+                scrollFrameBody
             default:
                 Text("[\(component.type)]").font(.caption).foregroundStyle(.secondary)
             }
@@ -51,8 +82,9 @@ struct SDUIComponentView: View {
     private var containerBody: some View {
         let layout = component.layout ?? "column"
         let spacing = CGFloat(component.spacing ?? 16)
+        let useFlow = layout == "flowRow" || component.style?.wrapChildren == true
         let inner: some View = Group {
-            if layout == "row" {
+            if layout == "row" && !useFlow {
                 let equalWidth = component.style?.equalWidthChildren == true
                 let rowAlign: HorizontalAlignment = (component.textStyle?.textAlign?.lowercased() == "left") ? .leading : .center
                 HStack(alignment: .center, spacing: spacing) {
@@ -66,6 +98,20 @@ struct SDUIComponentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: rowAlign == .leading ? .leading : .center)
+            } else if useFlow {
+                let gridMin: CGFloat = component.style?.compactWrap == true ? 40 : 72
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: gridMin, maximum: 220), spacing: spacing)],
+                    alignment: .center,
+                    spacing: spacing
+                ) {
+                    if let ch = component.children {
+                        ForEach(Array(ch.enumerated()), id: \.offset) { _, child in
+                            SDUIComponentView(component: child, onAction: onAction)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
             } else {
                 VStack(alignment: barAlignment(from: component), spacing: spacing) {
                     childrenViews
@@ -77,6 +123,10 @@ struct SDUIComponentView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(barPadding(from: component.style))
                 .background(bg)
+        } else if component.style?.jobListFrame == true {
+            inner
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(barPadding(from: component.style))
         } else {
             inner
                 .frame(maxWidth: .infinity, alignment: frameAlignment(from: component.textStyle?.textAlign))
@@ -93,42 +143,54 @@ struct SDUIComponentView: View {
     }
 
     @ViewBuilder
+    private var scrollFrameBody: some View {
+        let borderColor = Color(hex: component.style?.borderColor) ?? .secondary
+        let maxH = component.style?.maxHeight?.value
+        let minH = component.style?.minHeight?.value
+        ScrollView {
+            VStack(spacing: 0) {
+                childrenViews
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(
+            maxWidth: .infinity,
+            minHeight: minH.map { CGFloat($0) },
+            maxHeight: maxH.map { CGFloat($0) }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(borderColor, lineWidth: component.type == "todayShiftScroll" ? 2 : 1)
+        )
+        .padding(.horizontal, component.type == "todayShiftScroll" ? 0 : 4)
+    }
+
+    @ViewBuilder
     private var textBody: some View {
         let textAlign = component.textStyle?.textAlign
+        let homePill = component.style?.homeActionPill == true
         let label = Text(component.content ?? "")
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .multilineTextAlignment(align(from: textAlign))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
-            .lineLimit(1)
+            .lineLimit(homePill ? 2 : 1)
             .truncationMode(.tail)
             .frame(
-                maxWidth: (barBackground(from: component.style) != nil
-                    || component.style?.flexGrow == true
-                    || component.style?.parentCentered == true) ? .infinity : nil,
+                maxWidth: .infinity,
                 alignment: frameAlignment(from: textAlign)
             )
         let fixedBarH = CGFloat(component.style?.height?.value ?? 0)
         let bar: some View = Group {
             if let bg = barBackground(from: component.style) {
-                if fixedBarH > 0 {
-                    let hPad = barPadding(from: component.style)
-                    let fixedW = component.style?.width?.value
-                    label
-                        .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
-                        .frame(
-                            minWidth: fixedW != nil ? CGFloat(fixedW!) : nil,
-                            maxWidth: fixedW != nil ? CGFloat(fixedW!) : .infinity,
-                            minHeight: fixedBarH,
-                            maxHeight: fixedBarH
-                        )
-                        .background(bg)
-                } else {
-                    label
-                        .padding(barPadding(from: component.style))
-                        .frame(maxWidth: .infinity)
-                        .background(bg)
-                }
+                let hPad = barPadding(from: component.style)
+                label
+                    .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
+                    .frame(minHeight: fixedBarH > 0 ? fixedBarH : nil, maxHeight: fixedBarH > 0 ? fixedBarH : nil)
+                    .background {
+                        raisedButtonBackground(bg, style: component.style)
+                    }
+                    .padding(.horizontal, homePill ? 6 : 0)
             } else {
                 label
             }
@@ -149,30 +211,21 @@ struct SDUIComponentView: View {
         let title = component.label ?? component.content ?? "Button"
         let textAlign = component.textStyle?.textAlign
         let centered = textAlign?.lowercased() == "center"
+        let homePill = component.style?.homeActionPill == true || component.style?.parentCentered == true
         let label = Text(title)
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .white)
             .multilineTextAlignment(align(from: textAlign))
-            .lineLimit(1)
+            .lineLimit(component.style?.multiline == true || title.contains("\n") ? 2 : 1)
             .truncationMode(.tail)
         let bg = barBackground(from: component.style)
-        let buttonLabel = Group {
-            if let icon = component.icon {
-                HStack(spacing: 8) {
-                    Image(systemName: icon)
-                    label
-                }
-            } else {
-                label
-            }
-        }
         let fixedBtnH = CGFloat(component.style?.height?.value ?? 0)
         let hPad = barPadding(from: component.style)
-        let pillCore = buttonLabel
+        let pillCore = label
             .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
             .frame(
-                minWidth: 0,
+                maxWidth: homePill ? .infinity : nil,
                 minHeight: fixedBtnH > 0 ? fixedBtnH : nil,
                 maxHeight: fixedBtnH > 0 ? fixedBtnH : nil
             )
@@ -181,25 +234,22 @@ struct SDUIComponentView: View {
                     raisedButtonBackground(bg, style: component.style)
                 }
             }
-
-        let pill = pillCore.fixedSize(horizontal: true, vertical: false)
-        let parentCentered = component.style?.parentCentered == true
+            .padding(.horizontal, homePill ? 6 : 0)
 
         let tapButton = Button {
             if let a = component.action {
                 Task { await onAction(a) }
             }
         } label: {
-            if centered {
-                pill
-            } else {
-                pill
-            }
+            pillCore
         }
         .buttonStyle(.plain)
+        .disabled(component.action == nil)
 
         return Group {
-            if parentCentered {
+            if homePill {
+                tapButton.frame(maxWidth: .infinity)
+            } else if centered {
                 HStack {
                     Spacer(minLength: 0)
                     tapButton
@@ -282,7 +332,7 @@ struct SDUIComponentView: View {
     @ViewBuilder
     private func raisedButtonBackground(_ bg: Color, style: ComponentStyle?) -> some View {
         let radius = barCornerRadius(from: style)
-        let raised = style?.buttonVariant == "raised"
+        let raised = style?.buttonVariant == "raised" || style?.homeActionPill == true
         let shape = RoundedRectangle(cornerRadius: radius)
         if raised {
             shape

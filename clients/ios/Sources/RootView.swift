@@ -104,6 +104,50 @@ struct SduiNavigationRootView: View {
 
 
 
+    private func applyFindFilterPayload(_ payload: [String: String]?) {
+        guard let payload else { return }
+        if payload["filterReset"] == "1" {
+            extraParams.removeValue(forKey: "daysAll")
+            extraParams.removeValue(forKey: "selectedDays")
+            extraParams.removeValue(forKey: "daysPrev")
+            extraParams.removeValue(forKey: "jobsAll")
+            extraParams.removeValue(forKey: "selectedJobs")
+            extraParams.removeValue(forKey: "jobsPrev")
+            extraParams["daysAll"] = "1"
+            extraParams["selectedDays"] = ""
+            extraParams["daysPrev"] = ""
+            extraParams["jobsAll"] = "1"
+            extraParams["selectedJobs"] = ""
+            extraParams["jobsPrev"] = ""
+            return
+        }
+        for key in ["daysAll", "jobsAll"] {
+            if let v = payload[key], !v.isEmpty {
+                extraParams[key] = v
+            }
+        }
+        for key in ["selectedDays", "daysPrev", "selectedJobs", "jobsPrev"] {
+            if let v = payload[key] {
+                if v.isEmpty {
+                    extraParams.removeValue(forKey: key)
+                } else {
+                    extraParams[key] = v
+                }
+            }
+        }
+    }
+
+    private func syncFilterStateFromMetadata(_ env: SDUIEnvelope) {
+        guard screenId == "jewelheart.volunteer.search",
+              let fs = env.screen.metadata?.filterState else { return }
+        if let v = fs.daysAll { extraParams["daysAll"] = v }
+        if let v = fs.jobsAll { extraParams["jobsAll"] = v }
+        if let v = fs.selectedDays, !v.isEmpty { extraParams["selectedDays"] = v } else { extraParams.removeValue(forKey: "selectedDays") }
+        if let v = fs.daysPrev, !v.isEmpty { extraParams["daysPrev"] = v } else { extraParams.removeValue(forKey: "daysPrev") }
+        if let v = fs.selectedJobs, !v.isEmpty { extraParams["selectedJobs"] = v } else { extraParams.removeValue(forKey: "selectedJobs") }
+        if let v = fs.jobsPrev, !v.isEmpty { extraParams["jobsPrev"] = v } else { extraParams.removeValue(forKey: "jobsPrev") }
+    }
+
     private func load() async {
 
         await MainActor.run {
@@ -136,6 +180,7 @@ struct SduiNavigationRootView: View {
 
             await MainActor.run {
                 envelope = env
+                syncFilterStateFromMetadata(env)
                 if screenId == "jewelheart.volunteer.checkin" {
                     extraParams.removeValue(forKey: "checkinOp")
                 }
@@ -165,6 +210,41 @@ struct SduiNavigationRootView: View {
 
             await MainActor.run {
 
+                let priorScreenId = screenId
+
+                if target == "jewelheart.home" {
+                    screenId = target
+                    if let r = action.payload?["retreatId"], !r.isEmpty {
+                        retreatId = r
+                    } else {
+                        retreatId = nil
+                    }
+                    extraParams.removeValue(forKey: "daysAll")
+                    extraParams.removeValue(forKey: "selectedDays")
+                    extraParams.removeValue(forKey: "daysPrev")
+                    extraParams.removeValue(forKey: "jobsAll")
+                    extraParams.removeValue(forKey: "selectedJobs")
+                    extraParams.removeValue(forKey: "jobsPrev")
+                    extraParams.removeValue(forKey: "returnTo")
+                    return
+                }
+
+                if target == "jewelheart.volunteer.search" && priorScreenId == "jewelheart.home" {
+                    var resetPayload = action.payload ?? [:]
+                    resetPayload["filterReset"] = "1"
+                    applyFindFilterPayload(resetPayload)
+                    screenId = target
+                    if let r = action.payload?["retreatId"], !r.isEmpty { retreatId = r }
+                    return
+                }
+
+                if target == "jewelheart.volunteer.search" || target == "jewelheart.volunteer.assign" {
+                    if let r = action.payload?["retreatId"], !r.isEmpty { retreatId = r }
+                    applyFindFilterPayload(action.payload)
+                    screenId = target
+                    return
+                }
+
                 screenId = target
 
                 if let r = action.payload?["retreatId"] {
@@ -179,34 +259,13 @@ struct SduiNavigationRootView: View {
 
                 switch target {
 
-                case "jewelheart.volunteer.search", "jewelheart.volunteer.assign",
-                     "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
+                case "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
                      "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
                      "jewelheart.volunteer.preferences":
 
                     if let r = action.payload?["retreatId"], !r.isEmpty {
 
                         retreatId = r
-
-                    }
-
-                    if let d = action.payload?["selectedDays"] {
-
-                        extraParams["selectedDays"] = d
-
-                    } else if target == "jewelheart.volunteer.search" {
-
-                        extraParams.removeValue(forKey: "selectedDays")
-
-                    }
-
-                    if let j = action.payload?["selectedJobs"] {
-
-                        extraParams["selectedJobs"] = j
-
-                    } else if target == "jewelheart.volunteer.search" {
-
-                        extraParams.removeValue(forKey: "selectedJobs")
 
                     }
 

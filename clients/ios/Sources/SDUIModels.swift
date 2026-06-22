@@ -48,6 +48,7 @@ struct SDUIScreen: Codable {
     let id: String
     let title: String?
     let components: [UIComponent]?
+    let metadata: SDUIScreenMetadata?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -55,12 +56,14 @@ struct SDUIScreen: Codable {
         case title
         case components
         case sections
+        case metadata
     }
 
-    init(id: String, title: String?, components: [UIComponent]?) {
+    init(id: String, title: String?, components: [UIComponent]?, metadata: SDUIScreenMetadata? = nil) {
         self.id = id
         self.title = title
         self.components = components
+        self.metadata = metadata
     }
 
     init(from decoder: Decoder) throws {
@@ -76,6 +79,7 @@ struct SDUIScreen: Codable {
             )
         }
         title = try c.decodeIfPresent(String.self, forKey: .title)
+        metadata = try c.decodeIfPresent(SDUIScreenMetadata.self, forKey: .metadata)
         if let comps = try c.decodeIfPresent([UIComponent].self, forKey: .components) {
             components = comps
         } else if let secs = try c.decodeIfPresent([SDUIStubSection].self, forKey: .sections) {
@@ -90,7 +94,28 @@ struct SDUIScreen: Codable {
         try c.encode(id, forKey: .id)
         try c.encodeIfPresent(title, forKey: .title)
         try c.encodeIfPresent(components, forKey: .components)
+        try c.encodeIfPresent(metadata, forKey: .metadata)
     }
+}
+
+struct SDUIScreenMetadata: Codable {
+    let stickyHeader: Bool?
+    let stickyHeaderComponents: [UIComponent]?
+    let stickyFooter: Bool?
+    let stickyFooterComponents: [UIComponent]?
+    let homeSplitLayout: Bool?
+    let layoutFlat: Bool?
+    let buildStamp: String?
+    let filterState: SDUIFilterState?
+}
+
+struct SDUIFilterState: Codable {
+    let daysAll: String?
+    let selectedDays: String?
+    let daysPrev: String?
+    let jobsAll: String?
+    let selectedJobs: String?
+    let jobsPrev: String?
 }
 
 /// Wire shape used by some deployed stubs: `{ "type": "text", "text": "..." }`.
@@ -151,6 +176,16 @@ struct ComponentStyle: Codable {
     let equalWidthChildren: Bool?
     let parentCentered: Bool?
     let flexGrow: Bool?
+    let wrapChildren: Bool?
+    let multiline: Bool?
+    let navIcon: Bool?
+    let homeActionPill: Bool?
+    let borderColor: String?
+    let maxHeight: DimensionSpec?
+    let minHeight: DimensionSpec?
+    let jobListFrame: Bool?
+    /// Pack narrow pills tightly (e.g. weekday filter) so a full week fits one line.
+    let compactWrap: Bool?
 }
 
 struct PaddingSpec: Codable {

@@ -161,22 +161,27 @@ class JewelHeartRepository(
     }
 
     suspend fun fetchScreen(screenId: String, retreatId: String?, params: Map<String, String>): SduiEnvelope {
+        val requestParams = params.filterKeys { it != "filterReset" && it != "allJobsTap" }
         val jo = JsonObject().apply {
             addProperty("screenId", screenId)
             if (retreatId != null) addProperty("retreatId", retreatId)
-            if (params.isNotEmpty()) {
+            if (requestParams.isNotEmpty()) {
                 val p = JsonObject()
-                params.forEach { (k, v) -> p.addProperty(k, v) }
+                requestParams.forEach { (k, v) -> p.addProperty(k, v) }
                 add("params", p)
             }
         }
-        val bypassCache = params.containsKey("checkinOp")
+        val bypassCache = params.containsKey("checkinOp") ||
+            (
+                screenId == "jewelheart.volunteer.search" &&
+                    requestParams.keys.any { it !in setOf("retreatId", "returnTo", "uiChannel") }
+                )
         val bytes = if (bypassCache) {
             jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)
         } else {
             cachedJsonRead(
                 namespace = CACHE_SDUI_SCREENS,
-                key = sduiCacheKey(screenId, retreatId, params),
+                key = sduiCacheKey(screenId, retreatId, requestParams),
                 ttlMillis = CACHE_TTL_STANDARD_MS,
             ) {
                 jsonRequest("POST", "jewelheart/sdui/screen", jsonBody = jo)

@@ -25,6 +25,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
@@ -58,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -317,26 +323,73 @@ fun SduiTabContent(vm: JewelHeartViewModel) {
     }
     Column(Modifier.fillMaxSize()) {
         when {
-            vm.loading -> CircularProgressIndicator(
+            vm.envelope == null && vm.loading -> CircularProgressIndicator(
                 Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(horizontal = 16.dp),
             )
-            vm.error != null -> Text(
+            vm.envelope == null && vm.error != null -> Text(
                 vm.error!!,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             vm.envelope != null -> {
                 val s = vm.envelope!!.screen
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    s.components?.forEach { SduiComponentView(it, vm, ctx) }
+                val meta = s.metadata
+                val stickyHeader = meta?.stickyHeader == true
+                val stickyFooter = meta?.stickyFooter == true
+                val homeSplit = meta?.homeSplitLayout == true
+                val layoutFlat = meta?.layoutFlat == true
+                val middleHasScroll = !s.components.isNullOrEmpty()
+                val hasJobListScroll = s.components?.any { it.type == "jobListScroll" } == true
+                Box(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxSize()) {
+                        if (stickyHeader && !layoutFlat) {
+                            Column(Modifier.fillMaxWidth()) {
+                                meta?.stickyHeaderComponents?.forEach { SduiComponentView(it, vm, ctx) }
+                            }
+                        }
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    when {
+                                        homeSplit && middleHasScroll && !layoutFlat -> Modifier.weight(1f)
+                                        homeSplit && layoutFlat -> Modifier.weight(1f)
+                                        hasJobListScroll -> Modifier.weight(1f).fillMaxHeight()
+                                        else -> Modifier.weight(1f)
+                                    },
+                                )
+                                .then(
+                                    if (layoutFlat || (!homeSplit && !hasJobListScroll)) {
+                                        Modifier.verticalScroll(rememberScrollState())
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                        ) {
+                            s.components?.forEach { SduiComponentView(it, vm, ctx) }
+                        }
+                        if (stickyFooter && !layoutFlat) {
+                            Column(Modifier.fillMaxWidth()) {
+                                meta?.stickyFooterComponents?.forEach { SduiComponentView(it, vm, ctx) }
+                            }
+                        }
+                    }
+                    if (vm.loading) {
+                        CircularProgressIndicator(
+                            Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 8.dp),
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SduiComponentView(
     c: UiComponent,
@@ -346,8 +399,9 @@ private fun SduiComponentView(
     when (c.type) {
         "container" -> {
             val spacing = (c.spacing ?: 16.0).dp
+            val useFlow = c.layout == "flowRow" || c.style?.wrapChildren == true
             val inner: @Composable () -> Unit = {
-                if (c.layout == "row") {
+                if (c.layout == "row" && !useFlow) {
                     val equalWidth = c.style?.equalWidthChildren == true
                     val rowAlign = when (c.textStyle?.textAlign?.lowercase()) {
                         "left", "start" -> Arrangement.spacedBy(spacing, Alignment.Start)
@@ -380,6 +434,18 @@ private fun SduiComponentView(
                             }
                         }
                     }
+                } else if (useFlow) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(spacing, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(spacing),
+                    ) {
+                        c.children?.forEach { child ->
+                            Box(modifier = Modifier.wrapContentWidth()) {
+                                SduiComponentView(child, vm, ctx)
+                            }
+                        }
+                    }
                 } else {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -390,10 +456,13 @@ private fun SduiComponentView(
                 }
             }
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
+            val flexGrow = c.style?.flexGrow == true
+            val columnMod = Modifier
+                .fillMaxWidth()
+                .then(if (flexGrow) Modifier.fillMaxHeight() else Modifier)
             if (bg != null) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
+                    modifier = columnMod
                         .background(bg)
                         .padding(sduiBarPadding(c.style)),
                 ) {
@@ -406,7 +475,7 @@ private fun SduiComponentView(
                     else -> Alignment.Start
                 }
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = columnMod,
                     horizontalAlignment = alignH,
                 ) {
                     inner()
@@ -428,6 +497,7 @@ private fun SduiComponentView(
             val fg = sduiTextForegroundColor(c, MaterialTheme.colorScheme.onSurface)
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
             val fullBleed = c.style?.fullBleed == true
+            val homeActionPill = c.style?.homeActionPill == true
             val fixedH = c.style?.height?.value?.dp
             val onTextClick: (() -> Unit)? = c.action?.let { action ->
                 {
@@ -444,25 +514,50 @@ private fun SduiComponentView(
                 val barMod = Modifier
                     .then(
                         when {
+                            homeActionPill -> Modifier.wrapContentWidth()
                             fullBleed || flexGrow -> Modifier.fillMaxWidth()
                             fixedW != null -> Modifier.width(fixedW)
                             else -> Modifier.fillMaxWidth()
                         },
                     )
                     .height(fixedH)
-                    .background(bg)
-                    .then(if (onTextClick != null) Modifier.clickable { onTextClick() } else Modifier)
-                    .padding(sduiHorizontalBarPadding(c.style))
-                Box(modifier = barMod, contentAlignment = Alignment.Center) {
-                    Text(
-                        text = c.content ?: "",
-                        fontSize = size,
-                        fontWeight = weight,
-                        color = fg,
-                        textAlign = align,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    .then(
+                        if (homeActionPill && bg != null) {
+                            val shape = RoundedCornerShape((c.style?.borderRadius ?: 16.0).dp)
+                            sduiRaisedSurfaceModifier(bg, shape, 9.dp, true)
+                        } else {
+                            Modifier.background(bg ?: Color.Transparent)
+                        },
                     )
+                    .then(if (onTextClick != null) Modifier.clickable { onTextClick() } else Modifier)
+                    .padding(if (homeActionPill) PaddingValues(horizontal = 12.dp) else sduiHorizontalBarPadding(c.style))
+                Box(
+                    modifier = if (homeActionPill) Modifier.fillMaxWidth() else barMod,
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (homeActionPill) {
+                        Box(modifier = barMod, contentAlignment = Alignment.Center) {
+                            Text(
+                                text = c.content ?: "",
+                                fontSize = size,
+                                fontWeight = weight,
+                                color = fg,
+                                textAlign = align,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = c.content ?: "",
+                            fontSize = size,
+                            fontWeight = weight,
+                            color = fg,
+                            textAlign = align,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             } else {
                 val pad = sduiBarPadding(c.style)
@@ -490,8 +585,8 @@ private fun SduiComponentView(
                     fontWeight = weight,
                     color = fg,
                     textAlign = align,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = if (fixedH != null) 1 else Int.MAX_VALUE,
+                    overflow = if (fixedH != null) TextOverflow.Ellipsis else TextOverflow.Visible,
                 )
             }
         }
@@ -509,7 +604,11 @@ private fun SduiComponentView(
                     }
                 }
             }
+            val enabled = c.action != null
             val label = c.label ?: c.content ?: "Button"
+            val multiline = c.style?.multiline == true || label.contains('\n')
+            val maxLines = if (multiline) 2 else 1
+            val navIcon = c.style?.navIcon == true || c.icon == "nav_back" || c.icon == "nav_home"
             val textWeight = when (c.textStyle?.fontWeight?.lowercase()) {
                 "bold" -> FontWeight.Bold
                 "semibold" -> FontWeight.SemiBold
@@ -524,27 +623,51 @@ private fun SduiComponentView(
                 val radius = (c.style?.borderRadius ?: 8.0).dp
                 val shape = RoundedCornerShape(radius)
                 val fixedH = c.style?.height?.value?.dp
+                val minH = c.style?.minHeight?.value?.dp
+                val fixedW = c.style?.width?.value?.dp
                 val raised = c.style?.buttonVariant == "raised"
+                val homeActionPill = c.style?.homeActionPill == true
                 val elevation = (c.style?.elevation ?: if (raised) 9.0 else 0.0).dp
                 val parentCentered = c.style?.parentCentered == true
                 val pillMod = Modifier
-                    .wrapContentWidth()
-                    .then(if (fixedH != null) Modifier.height(fixedH) else Modifier)
-                    .then(sduiRaisedSurfaceModifier(bg, shape, elevation, raised))
-                    .clickable { onClick() }
+                    .then(if (fixedW != null) Modifier.width(fixedW) else Modifier.wrapContentWidth())
+                    .then(
+                        when {
+                            fixedH != null -> Modifier.height(fixedH)
+                            minH != null -> Modifier.defaultMinSize(minHeight = minH)
+                            else -> Modifier
+                        },
+                    )
+                    .then(sduiRaisedSurfaceModifier(bg, shape, elevation, raised || homeActionPill))
+                    .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
                     .padding(sduiHorizontalBarPadding(c.style))
                 val outerMod = if (parentCentered) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()
                 Box(modifier = outerMod, contentAlignment = Alignment.Center) {
                     Box(modifier = pillMod, contentAlignment = Alignment.Center) {
-                        Text(
-                            label,
-                            color = fg,
-                            fontSize = (c.textStyle?.fontSize ?: 16.0).sp,
-                            fontWeight = textWeight,
-                            textAlign = textAlign,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        when (c.icon) {
+                            "nav_back" -> Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = fg,
+                                modifier = Modifier.size(22.dp),
+                            )
+                            "nav_home" -> Icon(
+                                Icons.Filled.Home,
+                                contentDescription = "Home",
+                                tint = fg,
+                                modifier = Modifier.size(22.dp),
+                            )
+                            else -> Text(
+                                label,
+                                color = fg,
+                                fontSize = (c.textStyle?.fontSize ?: 16.0).sp,
+                                fontWeight = textWeight,
+                                textAlign = textAlign,
+                                maxLines = maxLines,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = if (multiline) 16.sp else TextUnit.Unspecified,
+                            )
+                        }
                     }
                 }
             } else {
@@ -554,6 +677,46 @@ private fun SduiComponentView(
                 ) {
                     Text(label)
                 }
+            }
+        }
+        "instructionScroll" -> {
+            val borderColor = sduiParseHexColor(c.style?.borderColor) ?: JewelHeartColors.SummaryBlue
+            val maxH = (c.style?.maxHeight?.value ?: 168.0).dp
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxH)
+                    .border(2.dp, borderColor)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 4.dp),
+            ) {
+                c.children?.forEach { SduiComponentView(it, vm, ctx) }
+            }
+        }
+        "jobListScroll" -> {
+            val borderColor = sduiParseHexColor(c.style?.borderColor) ?: JewelHeartColors.ActionMaroon
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .border(1.dp, borderColor)
+                    .verticalScroll(rememberScrollState())
+                    .padding(4.dp),
+            ) {
+                c.children?.forEach { SduiComponentView(it, vm, ctx) }
+            }
+        }
+        "todayShiftScroll" -> {
+            val borderColor = sduiParseHexColor(c.style?.borderColor) ?: JewelHeartColors.Gold
+            val minH = (c.style?.minHeight?.value ?: 94.0).dp
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = minH)
+                    .border(2.dp, borderColor)
+                    .padding(vertical = 2.dp, horizontal = 4.dp),
+            ) {
+                c.children?.forEach { SduiComponentView(it, vm, ctx) }
             }
         }
         "spacer" -> {
