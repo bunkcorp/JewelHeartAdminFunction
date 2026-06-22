@@ -145,6 +145,11 @@ deploy_local(){
   [ -d "$dir" ] || die "env dir not found: $dir"
   copy_if "$repo/integrations/private-server/jewelheart-sdui-home.js" \
     "$dir/src/jewelheart/jewelheart-sdui-home.js" "jewelheart-sdui-home.js"
+  if [ -f "$repo/scripts/apply-jewelheart-sdui-fragment.mjs" ]; then
+    JEWELHEART_PRIVATE_SERVER_SRC="$dir/src/jewelheart" \
+      "$(command -v node || echo /Users/kevinwoods/.nvm/versions/node/v20.20.0/bin/node)" \
+      "$repo/scripts/apply-jewelheart-sdui-fragment.mjs" || true
+  fi
   copy_if "$repo/scripts/_prod-sdui.js" "$dir/public/login/jewelheart-sdui.js" "web jewelheart-sdui.js"
   copy_if "$repo/scripts/_prod-admin.css" "$dir/public/login/jewelheart-admin.css" "web jewelheart-admin.css"
   copy_if "$repo/scripts/_prod-index.html" "$dir/public/login/index.html" "web index.html"
