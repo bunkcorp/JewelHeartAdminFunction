@@ -126,6 +126,16 @@ backup_env(){
   echo "$out"
 }
 
+copy_if(){
+  local src="$1" dest="$2" label="${3:-$1}"
+  if [ -f "$src" ]; then
+    cp "$src" "$dest"
+    echo "[deploy-local] copied $label"
+  else
+    echo "[deploy-local] skip (not in repo): $label"
+  fi
+}
+
 deploy_local(){
   # Deploy from a local repo checkout into <env> (used by the self-hosted CI runner).
   local repo="$1" env="${2:-dev}" do_mig="${3:-}" dir
@@ -133,10 +143,11 @@ deploy_local(){
   dir="$(env_dir "$env")"
   [ -d "$repo" ] || die "repo root not found: $repo"
   [ -d "$dir" ] || die "env dir not found: $dir"
-  cp "$repo/integrations/private-server/jewelheart-sdui-home.js" "$dir/src/jewelheart/jewelheart-sdui-home.js"
-  cp "$repo/scripts/_prod-sdui.js"  "$dir/public/login/jewelheart-sdui.js"
-  cp "$repo/scripts/_prod-admin.css" "$dir/public/login/jewelheart-admin.css"
-  cp "$repo/scripts/_prod-index.html" "$dir/public/login/index.html"
+  copy_if "$repo/integrations/private-server/jewelheart-sdui-home.js" \
+    "$dir/src/jewelheart/jewelheart-sdui-home.js" "jewelheart-sdui-home.js"
+  copy_if "$repo/scripts/_prod-sdui.js" "$dir/public/login/jewelheart-sdui.js" "web jewelheart-sdui.js"
+  copy_if "$repo/scripts/_prod-admin.css" "$dir/public/login/jewelheart-admin.css" "web jewelheart-admin.css"
+  copy_if "$repo/scripts/_prod-index.html" "$dir/public/login/index.html" "web index.html"
   mkdir -p "$dir/migrations"
   cp "$repo"/migrations/*.sql "$dir/migrations/" 2>/dev/null || true
   patch_web "$env"
