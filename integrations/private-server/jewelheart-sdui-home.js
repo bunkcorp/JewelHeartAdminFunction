@@ -8,7 +8,7 @@ import { listRetreats, getScheduleByDay, listJobs } from './service.js';
 
 /** Bump on each deploy so testers can confirm API + UI version. */
 // Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-const VOLUNTEER_SDUI_BUILD_STAMP = '202606212305';
+const VOLUNTEER_SDUI_BUILD_STAMP = '202606222030';
 
 /** karmadots.org/testerslogin sends uiChannel=testers — frozen before job-type search. */
 function volunteerHomeUiChannel(params = {}) {
@@ -1567,6 +1567,7 @@ function volunteerHomePillButton(
       padding: { top: 0, bottom: 0, left: hPad, right: hPad },
       parentCentered: options.parentCentered === true,
       homeActionPill: options.homeActionPill === true,
+      homeActionPillFullWidth: options.homeActionPillFullWidth === true,
     },
   };
   if (!disabled && !noAction) {
@@ -1623,6 +1624,7 @@ function volunteerHomeCenteredGoldAction(label, target, payload = {}, options = 
   return volunteerHomeCenteredPill(label, target, payload, volunteerHomeGold, '#000000', {
     hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
     homeActionPill: true,
+    homeActionPillFullWidth: true,
     ...options,
   });
 }
@@ -1786,7 +1788,12 @@ function volunteerHomeCheckinPill(row, index, ctx, checkInPayload) {
     volunteerHomeWithReturnTo(payload, 'jewelheart.home'),
     volunteerHomeGold,
     '#000000',
-    { hPad: VOLUNTEER_HOME_BUTTON_H_PAD, homeActionPill: true, parentCentered: true },
+    {
+      hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+      homeActionPill: true,
+      homeActionPillFullWidth: true,
+      parentCentered: true,
+    },
   );
 }
 

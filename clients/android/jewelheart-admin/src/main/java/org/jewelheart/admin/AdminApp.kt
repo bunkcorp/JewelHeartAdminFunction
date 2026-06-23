@@ -498,6 +498,7 @@ private fun SduiComponentView(
             val bg = sduiBackgroundColor(c.style?.backgroundColor)
             val fullBleed = c.style?.fullBleed == true
             val homeActionPill = c.style?.homeActionPill == true
+            val goldFullWidth = c.style?.homeActionPillFullWidth == true
             val fixedH = c.style?.height?.value?.dp
             val onTextClick: (() -> Unit)? = c.action?.let { action ->
                 {
@@ -514,6 +515,7 @@ private fun SduiComponentView(
                 val barMod = Modifier
                     .then(
                         when {
+                            goldFullWidth -> Modifier.fillMaxWidth()
                             homeActionPill -> Modifier.wrapContentWidth()
                             fullBleed || flexGrow -> Modifier.fillMaxWidth()
                             fixedW != null -> Modifier.width(fixedW)
@@ -543,8 +545,9 @@ private fun SduiComponentView(
                                 fontWeight = weight,
                                 color = fg,
                                 textAlign = align,
-                                maxLines = 2,
+                                maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = if (goldFullWidth) Modifier.fillMaxWidth() else Modifier,
                             )
                         }
                     } else {
@@ -607,7 +610,11 @@ private fun SduiComponentView(
             val enabled = c.action != null
             val label = c.label ?: c.content ?: "Button"
             val multiline = c.style?.multiline == true || label.contains('\n')
-            val maxLines = if (multiline) 2 else 1
+            val maxLines = when {
+                goldFullWidth -> 1
+                multiline -> 2
+                else -> 1
+            }
             val navIcon = c.style?.navIcon == true || c.icon == "nav_back" || c.icon == "nav_home"
             val textWeight = when (c.textStyle?.fontWeight?.lowercase()) {
                 "bold" -> FontWeight.Bold
@@ -627,10 +634,17 @@ private fun SduiComponentView(
                 val fixedW = c.style?.width?.value?.dp
                 val raised = c.style?.buttonVariant == "raised"
                 val homeActionPill = c.style?.homeActionPill == true
+            val goldFullWidth = c.style?.homeActionPillFullWidth == true
                 val elevation = (c.style?.elevation ?: if (raised) 9.0 else 0.0).dp
                 val parentCentered = c.style?.parentCentered == true
                 val pillMod = Modifier
-                    .then(if (fixedW != null) Modifier.width(fixedW) else Modifier.wrapContentWidth())
+                    .then(
+                        when {
+                            goldFullWidth -> Modifier.fillMaxWidth()
+                            fixedW != null -> Modifier.width(fixedW)
+                            else -> Modifier.wrapContentWidth()
+                        },
+                    )
                     .then(
                         when {
                             fixedH != null -> Modifier.height(fixedH)
@@ -666,6 +680,7 @@ private fun SduiComponentView(
                                 maxLines = maxLines,
                                 overflow = TextOverflow.Ellipsis,
                                 lineHeight = if (multiline) 16.sp else TextUnit.Unspecified,
+                                modifier = if (goldFullWidth) Modifier.fillMaxWidth() else Modifier,
                             )
                         }
                     }

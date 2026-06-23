@@ -180,6 +180,7 @@ struct ComponentStyle: Codable {
     let multiline: Bool?
     let navIcon: Bool?
     let homeActionPill: Bool?
+    let homeActionPillFullWidth: Bool?
     let borderColor: String?
     let maxHeight: DimensionSpec?
     let minHeight: DimensionSpec?

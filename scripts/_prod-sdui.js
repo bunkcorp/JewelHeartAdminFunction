@@ -3,7 +3,7 @@
  * Bump on each web deploy — shown beside API buildStamp in the toolbar.
  */
 // Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-export const JH_LOGIN_WEB_BUILD = '202606212305';
+export const JH_LOGIN_WEB_BUILD = '202606222030';
 
 const SEARCH_FILTER_KEYS = [
   'daysAll',
@@ -725,10 +725,20 @@ export function createVolunteerSduiController(options) {
       }
       if (style.homeActionPill) {
         el.classList.add('jh-sdui-home-action-pill');
-        el.style.display = 'inline-flex';
-        el.style.width = 'auto';
-        el.style.maxWidth = 'calc(100% - 12px)';
-        el.style.alignSelf = 'center';
+        if (style.homeActionPillFullWidth) {
+          el.classList.add('jh-sdui-gold-full-width');
+          el.style.display = 'inline-flex';
+          el.style.width = '100%';
+          el.style.maxWidth = '100%';
+          el.style.whiteSpace = 'nowrap';
+          el.style.overflow = 'hidden';
+          el.style.textOverflow = 'ellipsis';
+        } else {
+          el.style.display = 'inline-flex';
+          el.style.width = 'auto';
+          el.style.maxWidth = 'calc(100% - 12px)';
+          el.style.alignSelf = 'center';
+        }
       }
       if (multiline) {
         el.classList.add('jh-sdui-multiline-pill');
@@ -739,9 +749,18 @@ export function createVolunteerSduiController(options) {
       if (style.homeActionPill) {
         el.classList.add('jh-sdui-home-action-pill');
         el.classList.add('jh-sdui-raised');
-        el.style.width = 'auto';
-        el.style.maxWidth = 'calc(100% - 12px)';
-        el.style.alignSelf = 'center';
+        if (style.homeActionPillFullWidth) {
+          el.classList.add('jh-sdui-gold-full-width');
+          el.style.width = '100%';
+          el.style.maxWidth = '100%';
+          el.style.whiteSpace = 'nowrap';
+          el.style.overflow = 'hidden';
+          el.style.textOverflow = 'ellipsis';
+        } else {
+          el.style.width = 'auto';
+          el.style.maxWidth = 'calc(100% - 12px)';
+          el.style.alignSelf = 'center';
+        }
       }
       if (style.instructionBarBleed) el.classList.add('jh-sdui-instruction-bar-bleed');
     } else if (style.parentCentered || textStyle.textAlign === 'center') {
@@ -763,6 +782,7 @@ export function createVolunteerSduiController(options) {
     if (isButton && style.parentCentered) {
       const wrap = document.createElement('div');
       wrap.className = 'jh-sdui-center-wrap';
+      if (style.homeActionPillFullWidth) wrap.classList.add('jh-sdui-center-wrap-full');
       wrap.appendChild(el);
       if (component.action) attachAction(el, component.action);
       return wrap;

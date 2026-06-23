@@ -169,12 +169,13 @@ struct SDUIComponentView: View {
     private var textBody: some View {
         let textAlign = component.textStyle?.textAlign
         let homePill = component.style?.homeActionPill == true
+        let goldFullWidth = component.style?.homeActionPillFullWidth == true
         let label = Text(component.content ?? "")
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .multilineTextAlignment(align(from: textAlign))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
-            .lineLimit(homePill ? 2 : 1)
+            .lineLimit(goldFullWidth ? 1 : (homePill ? 2 : 1))
             .truncationMode(.tail)
             .frame(
                 maxWidth: .infinity,
@@ -212,20 +213,22 @@ struct SDUIComponentView: View {
         let textAlign = component.textStyle?.textAlign
         let centered = textAlign?.lowercased() == "center"
         let homePill = component.style?.homeActionPill == true || component.style?.parentCentered == true
+        let goldFullWidth = component.style?.homeActionPillFullWidth == true
         let label = Text(title)
             .font(.system(size: component.textStyle?.fontSize ?? 16))
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .white)
             .multilineTextAlignment(align(from: textAlign))
-            .lineLimit(component.style?.multiline == true || title.contains("\n") ? 2 : 1)
+            .lineLimit(goldFullWidth ? 1 : (component.style?.multiline == true || title.contains("\n") ? 2 : 1))
             .truncationMode(.tail)
+            .frame(maxWidth: goldFullWidth ? .infinity : nil)
         let bg = barBackground(from: component.style)
         let fixedBtnH = CGFloat(component.style?.height?.value ?? 0)
         let hPad = barPadding(from: component.style)
         let pillCore = label
             .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
             .frame(
-                maxWidth: homePill ? .infinity : nil,
+                maxWidth: goldFullWidth ? .infinity : (homePill ? .infinity : nil),
                 minHeight: fixedBtnH > 0 ? fixedBtnH : nil,
                 maxHeight: fixedBtnH > 0 ? fixedBtnH : nil
             )
@@ -247,7 +250,7 @@ struct SDUIComponentView: View {
         .disabled(component.action == nil)
 
         return Group {
-            if homePill {
+            if goldFullWidth || homePill {
                 tapButton.frame(maxWidth: .infinity)
             } else if centered {
                 HStack {

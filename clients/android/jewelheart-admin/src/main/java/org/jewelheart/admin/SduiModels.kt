@@ -76,6 +76,7 @@ data class ComponentStyle(
     @SerializedName("instructionBarBleed") val instructionBarBleed: Boolean?,
     @SerializedName("maxHeight") val maxHeight: DimensionSpec?,
     @SerializedName("homeActionPill") val homeActionPill: Boolean?,
+    @SerializedName("homeActionPillFullWidth") val homeActionPillFullWidth: Boolean?,
     @SerializedName("jobListFrame") val jobListFrame: Boolean?,
     @SerializedName("noWrap") val noWrap: Boolean?,
 )

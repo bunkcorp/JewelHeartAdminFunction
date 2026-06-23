@@ -1296,6 +1296,34 @@ body.jh-signed-in .jh-admin-corner {
   margin-right: auto;
 }
 
+.jh-sdui-center-wrap {
+  width: fit-content;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.jh-sdui-center-wrap.jh-sdui-center-wrap-full {
+  width: 100%;
+  max-width: 100%;
+}
+
+.jh-sdui-gold-full-width.jh-sdui-btn,
+.jh-sdui-gold-full-width.jh-sdui-bar,
+.jh-sdui-gold-full-width.jh-sdui-home-action-pill {
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.jh-sdui-today-shift-scroll .jh-sdui-center-wrap.jh-sdui-center-wrap-full,
+.jh-sdui-home-middle .jh-sdui-center-wrap.jh-sdui-center-wrap-full {
+  width: 100%;
+}
+
 .jh-sdui-today-shift-scroll > .jh-sdui-container.jh-sdui-column-centered,
 .jh-sdui-today-shift-scroll > .jh-sdui-container {
   align-items: center;
@@ -1308,6 +1336,13 @@ body.jh-signed-in .jh-admin-corner {
   flex: 0 0 auto;
 }
 
+.jh-sdui-today-shift-scroll .jh-sdui-center-wrap > .jh-sdui-btn.jh-sdui-home-action-pill.jh-sdui-gold-full-width,
+.jh-sdui-home-middle .jh-sdui-center-wrap > .jh-sdui-btn.jh-sdui-home-action-pill.jh-sdui-gold-full-width {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+}
+
 .jh-sdui-footer .jh-sdui-center-wrap .jh-sdui-btn.jh-sdui-pill,
 .jh-sdui-today-shift-scroll .jh-sdui-center-wrap .jh-sdui-btn.jh-sdui-pill,
 .jh-sdui-home-middle .jh-sdui-center-wrap .jh-sdui-btn.jh-sdui-pill,
@@ -1316,6 +1351,12 @@ body.jh-signed-in .jh-admin-corner {
   width: auto;
   max-width: 100%;
   min-height: 40px;
+}
+
+.jh-sdui-home-middle .jh-sdui-center-wrap .jh-sdui-btn.jh-sdui-gold-full-width,
+.jh-sdui-today-shift-scroll .jh-sdui-center-wrap .jh-sdui-btn.jh-sdui-gold-full-width {
+  width: 100%;
+  max-width: 100%;
 }
 
 .jh-sdui-home-action-pill.jh-sdui-btn,
