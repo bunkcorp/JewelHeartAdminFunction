@@ -3,7 +3,7 @@
  * Bump on each web deploy — shown beside API buildStamp in the toolbar.
  */
 // Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-export const JH_LOGIN_WEB_BUILD = '202606222030';
+export const JH_LOGIN_WEB_BUILD = '202606222100';
 
 const SEARCH_FILTER_KEYS = [
   'daysAll',

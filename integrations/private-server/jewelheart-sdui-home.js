@@ -8,7 +8,7 @@ import { listRetreats, getScheduleByDay, listJobs } from './service.js';
 
 /** Bump on each deploy so testers can confirm API + UI version. */
 // Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-const VOLUNTEER_SDUI_BUILD_STAMP = '202606222030';
+const VOLUNTEER_SDUI_BUILD_STAMP = '202606222100';
 
 /** karmadots.org/testerslogin sends uiChannel=testers — frozen before job-type search. */
 function volunteerHomeUiChannel(params = {}) {
@@ -110,6 +110,35 @@ function volunteerHomeDayJobLabel(jobName, dayIso, maxChars, warnings, code) {
   const weekday = volunteerHomeWeekdayShort(dayIso);
   const prefix = `${weekday}${VOLUNTEER_HOME_EN_DASH}`;
   const fitted = volunteerHomeFitLine(jobName, maxChars - prefix.length, warnings, code);
+  return `${prefix}${fitted}`;
+}
+
+/** “Wd • Job” for home gold pills: full job name, then abbrev, then ellipsis + warning. */
+function volunteerHomeJobAbbrevForTitle(jobTitle) {
+  const meta = volunteerHomePosterJobMetaByTitle(jobTitle);
+  return volunteerHomePosterJobAbbrev(meta || { title: jobTitle });
+}
+
+function volunteerHomeJobPillLabel(jobName, maxChars, warnings, code, jobTitleForAbbrev) {
+  const fullJob = volunteerHomeCompactJobPhrase(volunteerHomeDisplayJobName(jobName));
+  if (fullJob.length <= maxChars) return fullJob;
+  const abbrev = volunteerHomeJobAbbrevForTitle(jobTitleForAbbrev || jobName);
+  if (abbrev.length <= maxChars) return abbrev;
+  if (warnings) volunteerHomeLayoutWarn(warnings, code, `${abbrev} (${abbrev.length} chars)`);
+  return `${abbrev.slice(0, maxChars - 1)}…`;
+}
+
+function volunteerHomeDayJobPillLabel(jobName, dayIso, maxChars, warnings, code, jobTitleForAbbrev) {
+  const weekday = volunteerHomeWeekdayShort(dayIso);
+  const prefix = `${weekday}${VOLUNTEER_HOME_EN_DASH}`;
+  const jobRoom = maxChars - prefix.length;
+  const fullJob = volunteerHomeCompactJobPhrase(volunteerHomeDisplayJobName(jobName));
+  if (prefix.length + fullJob.length <= maxChars) return `${prefix}${fullJob}`;
+  const abbrev = volunteerHomeJobAbbrevForTitle(jobTitleForAbbrev || jobName);
+  if (prefix.length + abbrev.length <= maxChars) return `${prefix}${abbrev}`;
+  if (warnings) volunteerHomeLayoutWarn(warnings, code, `${prefix}${abbrev}`);
+  const fitted =
+    abbrev.length <= jobRoom ? abbrev : `${abbrev.slice(0, Math.max(0, jobRoom - 1))}…`;
   return `${prefix}${fitted}`;
 }
 
@@ -1624,7 +1653,6 @@ function volunteerHomeCenteredGoldAction(label, target, payload = {}, options = 
   return volunteerHomeCenteredPill(label, target, payload, volunteerHomeGold, '#000000', {
     hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
     homeActionPill: true,
-    homeActionPillFullWidth: true,
     ...options,
   });
 }
@@ -1791,7 +1819,6 @@ function volunteerHomeCheckinPill(row, index, ctx, checkInPayload) {
     {
       hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
       homeActionPill: true,
-      homeActionPillFullWidth: true,
       parentCentered: true,
     },
   );
@@ -2283,10 +2310,24 @@ async function volunteerHomeIsManager(firebaseUid) {
 
 function volunteerHomeMapTodayShifts(rawTodayShifts, layoutWarnings) {
   return rawTodayShifts.map((row, index) => {
-    const name = volunteerHomeDisplayJobName(row.jobTitle || row.label);
+    const jobTitle = row.jobTitle || row.label || '';
+    const name = volunteerHomeDisplayJobName(jobTitle);
     const label = row.dayIso
-      ? volunteerHomeDayJobLabel(name, row.dayIso, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`)
-      : volunteerHomeFitLine(name, VOLUNTEER_HOME_MAX_BAR_CHARS, layoutWarnings, `today_shift_${index}`);
+      ? volunteerHomeDayJobPillLabel(
+          name,
+          row.dayIso,
+          VOLUNTEER_HOME_MAX_BAR_CHARS,
+          layoutWarnings,
+          `today_shift_${index}`,
+          jobTitle,
+        )
+      : volunteerHomeJobPillLabel(
+          name,
+          VOLUNTEER_HOME_MAX_BAR_CHARS,
+          layoutWarnings,
+          `today_shift_${index}`,
+          jobTitle,
+        );
     return { taskId: row.taskId, label };
   });
 }
