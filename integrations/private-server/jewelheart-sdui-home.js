@@ -8,7 +8,7 @@ import { listRetreats, getScheduleByDay, listJobs } from './service.js';
 
 /** Bump on each deploy so testers can confirm API + UI version. */
 // Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-const VOLUNTEER_SDUI_BUILD_STAMP = '202606222100';
+const VOLUNTEER_SDUI_BUILD_STAMP = '202606222130';
 
 /** karmadots.org/testerslogin sends uiChannel=testers — frozen before job-type search. */
 function volunteerHomeUiChannel(params = {}) {

@@ -175,7 +175,7 @@ struct SDUIComponentView: View {
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .multilineTextAlignment(align(from: textAlign))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .primary)
-            .lineLimit(goldFullWidth ? 1 : (homePill ? 2 : 1))
+            .lineLimit(1)
             .truncationMode(.tail)
             .frame(
                 maxWidth: .infinity,
@@ -219,7 +219,7 @@ struct SDUIComponentView: View {
             .fontWeight(weight(from: component.textStyle?.fontWeight))
             .foregroundStyle(Color(hex: component.textStyle?.color) ?? .white)
             .multilineTextAlignment(align(from: textAlign))
-            .lineLimit(goldFullWidth ? 1 : (component.style?.multiline == true || title.contains("\n") ? 2 : 1))
+            .lineLimit(component.style?.multiline == true || title.contains("\n") ? 2 : 1)
             .truncationMode(.tail)
             .frame(maxWidth: goldFullWidth ? .infinity : nil)
         let bg = barBackground(from: component.style)
@@ -228,7 +228,7 @@ struct SDUIComponentView: View {
         let pillCore = label
             .padding(EdgeInsets(top: 0, leading: hPad.leading, bottom: 0, trailing: hPad.trailing))
             .frame(
-                maxWidth: goldFullWidth ? .infinity : (homePill ? .infinity : nil),
+                maxWidth: goldFullWidth ? .infinity : nil,
                 minHeight: fixedBtnH > 0 ? fixedBtnH : nil,
                 maxHeight: fixedBtnH > 0 ? fixedBtnH : nil
             )
@@ -250,9 +250,9 @@ struct SDUIComponentView: View {
         .disabled(component.action == nil)
 
         return Group {
-            if goldFullWidth || homePill {
+            if goldFullWidth {
                 tapButton.frame(maxWidth: .infinity)
-            } else if centered {
+            } else if homePill || centered {
                 HStack {
                     Spacer(minLength: 0)
                     tapButton

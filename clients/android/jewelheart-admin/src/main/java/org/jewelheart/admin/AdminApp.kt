@@ -611,6 +611,7 @@ private fun SduiComponentView(
             val label = c.label ?: c.content ?: "Button"
             val multiline = c.style?.multiline == true || label.contains('\n')
             val maxLines = when {
+                homeActionPill -> 1
                 goldFullWidth -> 1
                 multiline -> 2
                 else -> 1

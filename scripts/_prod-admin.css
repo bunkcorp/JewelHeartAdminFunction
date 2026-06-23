@@ -1366,6 +1366,9 @@ body.jh-signed-in .jh-admin-corner {
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .jh-sdui-home-middle > .jh-sdui-container > .jh-sdui-container .jh-sdui-home-action-pill.jh-sdui-bar,
