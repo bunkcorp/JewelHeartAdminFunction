@@ -191,7 +191,6 @@ struct SDUIComponentView: View {
                     .background {
                         raisedButtonBackground(bg, style: component.style)
                     }
-                    .padding(.horizontal, homePill ? 6 : 0)
             } else {
                 label
             }
@@ -237,7 +236,6 @@ struct SDUIComponentView: View {
                     raisedButtonBackground(bg, style: component.style)
                 }
             }
-            .padding(.horizontal, homePill ? 6 : 0)
 
         let tapButton = Button {
             if let a = component.action {
@@ -316,11 +314,14 @@ struct SDUIComponentView: View {
 
     private func barPadding(from style: ComponentStyle?) -> EdgeInsets {
         let p = style?.padding
+        let homePill = style?.homeActionPill == true
+        let isGold = style?.backgroundColor?.uppercased() == "#FFCA10"
+        let minSide: CGFloat = homePill ? (isGold ? 14 : 12) : 0
         return EdgeInsets(
             top: CGFloat(p?.top ?? p?.all ?? 10),
-            leading: CGFloat(p?.left ?? p?.all ?? 8),
+            leading: max(CGFloat(p?.left ?? p?.all ?? 8), minSide),
             bottom: CGFloat(p?.bottom ?? p?.all ?? 10),
-            trailing: CGFloat(p?.right ?? p?.all ?? 8)
+            trailing: max(CGFloat(p?.right ?? p?.all ?? 8), minSide)
         )
     }
 

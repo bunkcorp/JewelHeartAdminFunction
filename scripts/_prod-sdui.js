@@ -1,9 +1,73 @@
 /**
  * Volunteer SDUI renderer for karmadots.org/login (parity with iOS JewelHeartAdmin SDUIRenderer).
- * Bump on each web deploy — shown beside API buildStamp in the toolbar.
+ * Web build stamp: America/New_York, minute precision. Overwritten by deploy scripts.
  */
-// Deploy label: YYYYMMDDHHmm in America/New_York (not UTC).
-export const JH_LOGIN_WEB_BUILD = '202606222130';
+export const JH_LOGIN_WEB_BUILD = 'pending-deploy';
+
+const PERSON_PICKER_MAX = 12;
+
+function filterPersonRoster(roster, query, maxVisible = PERSON_PICKER_MAX) {
+  const list = Array.isArray(roster) ? roster : [];
+  const q = String(query || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  if (!q) return { items: [], total: 0, capped: false };
+  const tokens = q.split(' ').filter(Boolean);
+  const scored = [];
+  for (const row of list) {
+    const displayName = row.displayName || row.display_name || '';
+    const name = String(displayName).toLowerCase();
+    const email = String(row.email || '').toLowerCase();
+    const words = name.split(/[\s\-']+/).filter(Boolean);
+    let ok = true;
+    let score = 0;
+    if (tokens.length > 1) {
+      let wi = 0;
+      for (const token of tokens) {
+        let matched = false;
+        for (let i = wi; i < words.length; i++) {
+          if (words[i].startsWith(token)) {
+            matched = true;
+            wi = i + 1;
+            break;
+          }
+        }
+        if (!matched) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        if (words[0]?.startsWith(tokens[0])) score += 15;
+        if (tokens.length > 1 && words.length > 1 && words[words.length - 1]?.startsWith(tokens[1])) score += 15;
+      }
+    } else {
+      const token = tokens[0];
+      const emailLocal = email.split('@')[0] || '';
+      const emailPrefix = token.length >= 2 && emailLocal.startsWith(token);
+      const wordStart = words.some((w) => w.startsWith(token));
+      const fullPrefix = name.startsWith(token);
+      if (!wordStart && !emailPrefix) ok = false;
+      else {
+        if (fullPrefix) score += 80;
+        else if (wordStart) score += 50;
+        else if (emailPrefix) score += 10;
+        if (words[0]?.startsWith(token)) score += 15;
+      }
+    }
+    if (!ok) continue;
+    score += tokens.length * 30;
+    score -= name.length * 0.02;
+    scored.push({ row: { ...row, displayName: displayName || row.displayName }, score });
+  }
+  scored.sort(
+    (a, b) => b.score - a.score || String(a.row.displayName).localeCompare(String(b.row.displayName)),
+  );
+  const total = scored.length;
+  return {
+    items: scored.slice(0, maxVisible).map((x) => x.row),
+    total,
+    capped: total > maxVisible,
+  };
+}
 
 const SEARCH_FILTER_KEYS = [
   'daysAll',
@@ -33,11 +97,16 @@ const VOLUNTEER_HOME_SCREENS = new Set([
   'jewelheart.volunteer.searchByType',
   'jewelheart.volunteer.assign',
   'jewelheart.volunteer.shift',
+  'jewelheart.volunteer.shiftDetail',
+  'jewelheart.volunteer.shiftEdit',
+  'jewelheart.volunteer.shiftInfo',
   'jewelheart.volunteer.checkin',
   'jewelheart.volunteer.messages',
   'jewelheart.volunteer.mine',
   'jewelheart.volunteer.account',
   'jewelheart.volunteer.preferences',
+  'jewelheart.volunteer.manage',
+  'jewelheart.volunteer.userManage',
   'jewelheart.volunteer.admin',
 ]);
 
@@ -55,6 +124,8 @@ export function createVolunteerSduiController(options) {
   let rootActionsBound = false;
   const actionStore = new Map();
   let actionSeq = 0;
+  let profileVolunteerMeta = null;
+  const personPickerState = new Map();
 
   function clearActionStore() {
     actionStore.clear();
@@ -136,6 +207,13 @@ export function createVolunteerSduiController(options) {
     if (!msgEl) return;
     msgEl.textContent = text || '';
     msgEl.className = 'msg' + (isErr ? ' err' : text ? ' ok' : '');
+  }
+
+  function syncShiftEditStateFromMetadata(screen) {
+    const st = screen?.metadata?.shiftEditState;
+    if (!st || typeof st !== 'object') return;
+    if (st.outcome) params.editOutcome = String(st.outcome);
+    if (st.reassignedName) params.reassignedName = String(st.reassignedName);
   }
 
   function syncFilterStateFromMetadata(envelope) {
@@ -350,11 +428,40 @@ export function createVolunteerSduiController(options) {
       }
 
       if (payload.taskId) params.taskId = payload.taskId;
-      else if (target === 'jewelheart.volunteer.checkin') delete params.taskId;
+      else if (
+        target === 'jewelheart.volunteer.checkin' ||
+        target === 'jewelheart.volunteer.shiftDetail'
+      ) {
+        delete params.taskId;
+      }
+
+      if (payload.shiftEditOp) params.shiftEditOp = payload.shiftEditOp;
+      else if (target === 'jewelheart.volunteer.shiftEdit') {
+        delete params.shiftEditOp;
+      }
+
+      if (payload.pickVolunteerId) params.pickVolunteerId = payload.pickVolunteerId;
+      else if (target === 'jewelheart.volunteer.shiftEdit') delete params.pickVolunteerId;
+
+      if (payload.editOutcome) params.editOutcome = payload.editOutcome;
+      else if (target !== 'jewelheart.volunteer.shiftEdit') delete params.editOutcome;
+
+      if (payload.reassignedName) params.reassignedName = payload.reassignedName;
+      else if (target !== 'jewelheart.volunteer.shiftEdit') delete params.reassignedName;
+
+      if (payload.shiftMode) params.shiftMode = payload.shiftMode;
+      else if (
+        target !== 'jewelheart.volunteer.shiftDetail' &&
+        target !== 'jewelheart.volunteer.shiftEdit' &&
+        target !== 'jewelheart.volunteer.shiftInfo'
+      ) {
+        delete params.shiftMode;
+      }
 
       if (payload.checkinOp) params.checkinOp = payload.checkinOp;
       else if (
         target === 'jewelheart.volunteer.checkin' ||
+        target === 'jewelheart.volunteer.shiftDetail' ||
         target === 'jewelheart.volunteer.shift' ||
         target === 'jewelheart.volunteer.mine'
       ) {
@@ -365,10 +472,26 @@ export function createVolunteerSduiController(options) {
       else if (target !== 'jewelheart.volunteer.shift') delete params.shiftOp;
 
       if (payload.jobId) params.jobId = payload.jobId;
-      else if (target !== 'jewelheart.volunteer.shift') delete params.jobId;
+      else if (
+        target !== 'jewelheart.volunteer.shift' &&
+        target !== 'jewelheart.volunteer.shiftDetail' &&
+        target !== 'jewelheart.volunteer.shiftEdit' &&
+        target !== 'jewelheart.volunteer.shiftInfo' &&
+        target !== 'jewelheart.volunteer.checkin'
+      ) {
+        delete params.jobId;
+      }
 
       if (payload.dayIso) params.dayIso = payload.dayIso;
-      else if (target !== 'jewelheart.volunteer.shift') delete params.dayIso;
+      else if (
+        target !== 'jewelheart.volunteer.shift' &&
+        target !== 'jewelheart.volunteer.shiftDetail' &&
+        target !== 'jewelheart.volunteer.shiftEdit' &&
+        target !== 'jewelheart.volunteer.shiftInfo' &&
+        target !== 'jewelheart.volunteer.checkin'
+      ) {
+        delete params.dayIso;
+      }
 
       if (payload.volunteerId) params.volunteerId = payload.volunteerId;
       else if (target !== 'jewelheart.volunteer.shift') delete params.volunteerId;
@@ -382,6 +505,32 @@ export function createVolunteerSduiController(options) {
 
       if (payload.returnTo) params.returnTo = payload.returnTo;
       else if (target === 'jewelheart.home') delete params.returnTo;
+
+      if (payload.userManageClear === '1') {
+        delete params.userManageVolunteerId;
+        delete params.userManageVolunteerName;
+        delete params.userManageStatusNote;
+        delete params.userManagePendingOp;
+      } else {
+        if (payload.userManageVolunteerId) params.userManageVolunteerId = String(payload.userManageVolunteerId);
+        if (payload.userManageVolunteerName) params.userManageVolunteerName = String(payload.userManageVolunteerName);
+        if (payload.userManageStatusNote != null && payload.userManageStatusNote !== '') {
+          params.userManageStatusNote = String(payload.userManageStatusNote);
+        }
+        if (payload.userManagePendingClear === '1') {
+          delete params.userManagePendingOp;
+        } else if (payload.userManagePendingOp) {
+          params.userManagePendingOp = String(payload.userManagePendingOp);
+        }
+      }
+
+      if (target !== 'jewelheart.volunteer.userManage') {
+        delete params.userManageVolunteerId;
+        delete params.userManageVolunteerName;
+        delete params.userManageStatusNote;
+        delete params.userManageClear;
+        delete params.userManagePendingOp;
+      }
 
       if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search') {
         for (const [k, v] of Object.entries(payload)) {
@@ -399,6 +548,10 @@ export function createVolunteerSduiController(options) {
               'taskId',
               'checkinOp',
               'shiftOp',
+              'shiftEditOp',
+              'pickVolunteerId',
+              'editOutcome',
+              'reassignedName',
               'jobId',
               'dayIso',
               'volunteerId',
@@ -407,6 +560,13 @@ export function createVolunteerSduiController(options) {
               'allJobsTap',
               'filterReset',
               'returnTo',
+              'userManageConfirm',
+              'userManageClear',
+              'userManageVolunteerId',
+              'userManageVolunteerName',
+              'userManageStatusNote',
+              'userManagePendingOp',
+              'userManagePendingClear',
             ].includes(k) &&
             v != null &&
             v !== ''
@@ -423,6 +583,8 @@ export function createVolunteerSduiController(options) {
   function snapshotForStack() {
     const historyParams = { ...params };
     delete historyParams.checkinOp;
+    delete historyParams.shiftEditOp;
+    delete historyParams.pickVolunteerId;
     return { screenId, retreatId, params: historyParams };
   }
 
@@ -513,6 +675,119 @@ export function createVolunteerSduiController(options) {
     return data;
   }
 
+  async function patchVolunteerProfile(mode, actionPayload = {}) {
+    const body = {};
+    if (mode === 'profile') {
+      const meta = profileVolunteerMeta;
+      if (meta?.canEditEmail) {
+        const el = rootEl.querySelector('[data-profile-field="email"]');
+        const v = el?.value?.trim();
+        if (v) body.email = v;
+      }
+      if (meta?.canEditPhone) {
+        const el = rootEl.querySelector('[data-profile-field="phone"]');
+        const v = el?.value?.trim();
+        if (v) body.phone = v;
+      }
+      if (!body.email && !body.phone) {
+        setMsg('Enter an email address or phone number to save.', true);
+        return;
+      }
+    } else if (mode === 'prefs') {
+      const key = actionPayload.fieldKey;
+      if (key === 'notifyEmail' || key === 'notifySms') {
+        body[key] = actionPayload.checked === true;
+      }
+    }
+    setMsg('Saving…', false);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${apiBase}/volunteer/me`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      setMsg(mode === 'prefs' ? '' : 'Saved.', false);
+      if (mode === 'profile' || mode === 'prefs') await load();
+    } catch (e) {
+      console.error('patchVolunteer', e);
+      setMsg(e.message || String(e), true);
+      if (mode === 'prefs') await load();
+    }
+  }
+
+  async function handleVolunteerUserManage(action) {
+    const op = action.payload?.op;
+    const volunteerId = String(action.payload?.volunteerId || params.userManageVolunteerId || '').trim();
+    const rid = retreatId || params.retreatId;
+    if (!volunteerId || !rid) {
+      setMsg('No volunteer selected.', true);
+      return;
+    }
+    const token = await getIdToken();
+    const base = `${apiBase}/retreats/${encodeURIComponent(rid)}/volunteers/${encodeURIComponent(volunteerId)}`;
+
+    try {
+      if (op === 'status') {
+        setMsg('Loading status…', false);
+        const res = await fetch(`${base}/user-access`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        params.userManageStatusNote = (j.lines || []).join('\n');
+        return load();
+      }
+      if (op === 'unlink') {
+        if (!action.payload?.confirmed) {
+          params.userManagePendingOp = 'unlink';
+          setMsg('', false);
+          return load();
+        }
+        setMsg('Unlinking…', false);
+        const res = await fetch(`${base}/unlink-auth`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        delete params.userManageStatusNote;
+        delete params.userManagePendingOp;
+        setMsg(j.message || 'Unlinked.', false);
+        return load();
+      }
+      if (op === 'resetOnboarding') {
+        if (!action.payload?.confirmed) {
+          params.userManagePendingOp = 'resetOnboarding';
+          setMsg('', false);
+          return load();
+        }
+        setMsg('Resetting onboarding…', false);
+        const res = await fetch(`${base}/reset-onboarding`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        delete params.userManageStatusNote;
+        delete params.userManagePendingOp;
+        setMsg(j.message || 'Onboarding reset.', false);
+        return load();
+      }
+      setMsg('Unknown action.', true);
+    } catch (e) {
+      console.error('volunteerUserManage', e);
+      setMsg(e.message || String(e), true);
+    }
+  }
+
   function handleAction(action) {
     if (!action) return;
     if (action.type === 'navBack') {
@@ -520,17 +795,43 @@ export function createVolunteerSduiController(options) {
       return Promise.resolve();
     }
     if (action.type === 'navigate') {
+      let navAction = action;
+      if (navAction.payload?.userManageConfirm) {
+        const pickerId = navAction.payload.pickVolunteerFrom || 'userManagePicker';
+        const st = personPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload };
+        payload.userManageVolunteerId = st.selectedId;
+        payload.userManageVolunteerName = st.selectedName || '';
+        delete payload.userManageConfirm;
+        delete payload.pickVolunteerFrom;
+        delete payload.userManageStatusNote;
+        navAction = { ...navAction, payload };
+      } else if (navAction.payload?.pickVolunteerFrom) {
+        const pickerId = navAction.payload.pickVolunteerFrom;
+        const st = personPickerState.get(pickerId);
+        if (navAction.payload.shiftEditOp === 'reassign' && !st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload, pickVolunteerId: st?.selectedId || '' };
+        delete payload.pickVolunteerFrom;
+        navAction = { ...navAction, payload };
+      }
       // Preserve job-list scroll when toggling filters on Find open shifts.
       if (
-        (action.target === 'jewelheart.volunteer.search' && screenId === 'jewelheart.volunteer.search') ||
-        (action.target === 'jewelheart.volunteer.searchByType' && screenId === 'jewelheart.volunteer.searchByType')
+        (navAction.target === 'jewelheart.volunteer.search' && screenId === 'jewelheart.volunteer.search') ||
+        (navAction.target === 'jewelheart.volunteer.searchByType' && screenId === 'jewelheart.volunteer.searchByType')
       ) {
         const scrollEl =
           rootEl.querySelector('.jh-sdui-job-list-scroll') ||
           rootEl.querySelector('.jh-sdui-scroll');
         if (scrollEl) pendingScrollTop = scrollEl.scrollTop;
       }
-      applyNavigate(action);
+      applyNavigate(navAction);
       return load();
     }
     if (action.type === 'adminWorkspace') {
@@ -542,6 +843,14 @@ export function createVolunteerSduiController(options) {
     }
     if (action.type === 'openUrl' && action.target) {
       window.open(action.target, '_blank', 'noopener,noreferrer');
+      return Promise.resolve();
+    }
+    if (action.type === 'patchVolunteer') {
+      const mode = action.payload?.mode === 'prefs' ? 'prefs' : 'profile';
+      return patchVolunteerProfile(mode, action.payload || {});
+    }
+    if (action.type === 'volunteerUserManage') {
+      return handleVolunteerUserManage(action);
     }
   }
 
@@ -567,6 +876,254 @@ export function createVolunteerSduiController(options) {
         el.appendChild(renderComponent(child));
       }
       return el;
+    }
+
+    if (type === 'profileField') {
+      const wrap = document.createElement('div');
+      wrap.className = 'jh-sdui-profile-field';
+      const lab = document.createElement('label');
+      lab.className = 'jh-sdui-profile-label';
+      lab.textContent = component.label || '';
+      wrap.appendChild(lab);
+      if (component.editable) {
+        const input = document.createElement('input');
+        input.type = component.fieldKey === 'email' ? 'email' : 'tel';
+        input.className = 'jh-sdui-profile-input';
+        input.placeholder = component.placeholder || '';
+        input.dataset.profileField = component.fieldKey || '';
+        input.value = component.value || '';
+        wrap.appendChild(input);
+      } else {
+        const val = document.createElement('div');
+        val.className = 'jh-sdui-profile-value';
+        val.textContent = component.value || '—';
+        wrap.appendChild(val);
+      }
+      return wrap;
+    }
+
+    if (type === 'profilePanel') {
+      const panel = document.createElement('div');
+      panel.className = 'jh-sdui-profile-panel';
+      for (const child of component.children || []) {
+        panel.appendChild(renderComponent(child));
+      }
+      return panel;
+    }
+
+    if (type === 'profileIntro') {
+      const el = document.createElement('p');
+      el.className = 'jh-sdui-profile-intro';
+      el.textContent = component.content || '';
+      return el;
+    }
+
+    if (type === 'prefCheckbox') {
+      const wrap = document.createElement('label');
+      wrap.className = 'jh-sdui-pref-checkbox';
+      if (component.disabled) wrap.classList.add('jh-sdui-pref-checkbox-disabled');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = component.checked === true;
+      input.disabled = component.disabled === true;
+      input.dataset.prefField = component.fieldKey || '';
+      if (!component.disabled) {
+        input.addEventListener('change', () => {
+          handleAction({
+            type: 'patchVolunteer',
+            payload: {
+              mode: 'prefs',
+              fieldKey: component.fieldKey,
+              checked: input.checked,
+            },
+          });
+        });
+      }
+      const span = document.createElement('span');
+      span.textContent = component.label || '';
+      wrap.appendChild(input);
+      wrap.appendChild(span);
+      return wrap;
+    }
+
+    if (type === 'personPicker') {
+      const pickerId = component.id || 'personPicker';
+      const disabled = component.disabled === true;
+      const maxVisible = component.maxVisible ?? PERSON_PICKER_MAX;
+      const excludeId = component.excludeVolunteerId ? String(component.excludeVolunteerId) : '';
+      const localRoster = (component.roster || []).filter((r) => r && String(r.id) !== excludeId);
+
+      if (!personPickerState.has(pickerId)) {
+        personPickerState.set(pickerId, {
+          selectedId: component.selectedId || '',
+          selectedName: component.selectedName || '',
+          query: component.selectedName || '',
+          localRoster,
+          apiResults: [],
+          searchTimer: null,
+          searchGen: 0,
+        });
+      }
+      const st = personPickerState.get(pickerId);
+      st.localRoster = localRoster;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'jh-sdui-person-picker';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'jh-sdui-person-picker-input';
+      input.placeholder = component.placeholder || 'Start typing a name here...';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.disabled = disabled;
+      input.value = disabled ? st.selectedName || st.query : st.query;
+
+      const status = document.createElement('p');
+      status.className = 'jh-sdui-person-picker-status';
+
+      const list = document.createElement('div');
+      list.className = 'jh-sdui-person-picker-results';
+      list.hidden = true;
+
+      function normalizeVolunteerRows(items) {
+        return (items || [])
+          .map((row) => {
+            const v = row.volunteer || row;
+            const id = String(row.volunteerId || v.id || '');
+            return {
+              id,
+              displayName: v.displayName || v.display_name || '',
+              email: v.email || '',
+            };
+          })
+          .filter((r) => r.id && r.displayName && r.id !== excludeId);
+      }
+
+      function paintResults(items, total, capped) {
+        list.innerHTML = '';
+        const selectedHint =
+          component.selectedHint ||
+          (pickerId === 'userManagePicker'
+            ? 'Selected — tap Confirm'
+            : 'Selected — tap Reassign to confirm');
+        if (!items.length) {
+          list.hidden = true;
+          status.textContent = 'No matches — try another spelling.';
+          return;
+        }
+        list.hidden = false;
+        status.textContent = capped
+          ? `Showing ${items.length} of ${total} — keep typing to narrow`
+          : `${total} match(es) — tap one to select`;
+        for (const row of items) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'jh-sdui-person-picker-item';
+          btn.textContent = row.displayName;
+          btn.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            st.selectedId = row.id;
+            st.selectedName = row.displayName;
+            input.value = st.selectedName;
+            list.hidden = true;
+            status.textContent = selectedHint;
+          });
+          list.appendChild(btn);
+        }
+      }
+
+      async function runPersonSearch(q) {
+        const gen = ++st.searchGen;
+        try {
+          const token = await getIdToken();
+          const searchScope = component.searchScope || 'retreat+global';
+          const pickerRetreatId = component.retreatId || retreatId || '';
+          const body = {
+            screenId: 'jewelheart.personSearch',
+            params: {
+              q,
+              limit: 80,
+              scope: searchScope,
+              excludeVolunteerId: excludeId,
+            },
+          };
+          if (pickerRetreatId) {
+            body.retreatId = pickerRetreatId;
+            body.params.retreatId = pickerRetreatId;
+          }
+          const res = await fetch(`${apiBase}/sdui/screen`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          if (gen !== st.searchGen) return;
+          const meta = data?.screen?.metadata || {};
+          st.apiResults = normalizeVolunteerRows(meta.personSearchResults || []);
+          const merged = mergePersonRoster(st.localRoster, st.apiResults);
+          const { items, total, capped } = filterPersonRoster(merged, q, maxVisible);
+          paintResults(items, total, capped);
+        } catch {
+          if (gen !== st.searchGen) return;
+          const { items, total, capped } = filterPersonRoster(st.localRoster, q, maxVisible);
+          paintResults(items, total, capped);
+        }
+      }
+
+      function mergePersonRoster(a, b) {
+        const byId = new Map();
+        for (const row of [...(a || []), ...(b || [])]) {
+          if (row?.id) byId.set(String(row.id), row);
+        }
+        return [...byId.values()];
+      }
+
+      function renderMatches() {
+        if (disabled) {
+          list.hidden = true;
+          status.textContent = '';
+          return;
+        }
+        const q = input.value.trim();
+        st.query = input.value;
+        clearTimeout(st.searchTimer);
+        if (!q) {
+          st.selectedId = '';
+          st.selectedName = '';
+          st.apiResults = [];
+          list.hidden = true;
+          list.innerHTML = '';
+          status.textContent = '';
+          return;
+        }
+        const local = filterPersonRoster(st.localRoster, q, maxVisible);
+        if (local.items.length) {
+          paintResults(local.items, local.total, local.capped);
+        } else {
+          list.hidden = true;
+          status.textContent = 'Searching…';
+        }
+        st.searchTimer = setTimeout(() => {
+          runPersonSearch(q);
+        }, 180);
+      }
+
+      input.addEventListener('input', () => {
+        st.selectedId = '';
+        st.selectedName = '';
+        renderMatches();
+      });
+      input.addEventListener('focus', renderMatches);
+
+      wrap.appendChild(input);
+      wrap.appendChild(status);
+      wrap.appendChild(list);
+      return wrap;
     }
 
     if (type === 'jobListScroll') {
@@ -698,6 +1255,12 @@ export function createVolunteerSduiController(options) {
     if (bg) {
       el.style.backgroundColor = bg;
       const pad = padFromStyle(style);
+      if (style.homeActionPill) {
+        const isGold = /^#ffca10$/i.test(String(bg));
+        const minSide = isGold ? 14 : 12;
+        pad.left = Math.max(pad.left, minSide);
+        pad.right = Math.max(pad.right, minSide);
+      }
       el.style.padding = `${pad.top}px ${pad.right}px ${pad.bottom}px ${pad.left}px`;
     }
 
@@ -760,6 +1323,13 @@ export function createVolunteerSduiController(options) {
         }
       }
       if (style.instructionBarBleed) el.classList.add('jh-sdui-instruction-bar-bleed');
+      if (style.barWrap) {
+        el.classList.add('jh-sdui-bar-wrap');
+        el.style.whiteSpace = 'normal';
+        el.style.overflowWrap = 'break-word';
+        el.style.wordBreak = 'normal';
+        el.style.textAlign = textStyle.textAlign || 'center';
+      }
     } else if (style.parentCentered || textStyle.textAlign === 'center') {
       el.classList.add('jh-sdui-label-centered');
     }
@@ -767,9 +1337,7 @@ export function createVolunteerSduiController(options) {
     if (style.flexGrow) el.classList.add('jh-sdui-flex-child');
 
     if (component.action) {
-      if (!(isButton && style.parentCentered)) {
-        attachAction(el, component.action);
-      }
+      attachAction(el, component.action);
     } else if (isButton) {
       el.disabled = true;
       el.style.cursor = 'default';
@@ -781,22 +1349,43 @@ export function createVolunteerSduiController(options) {
       wrap.className = 'jh-sdui-center-wrap';
       if (style.homeActionPillFullWidth) wrap.classList.add('jh-sdui-center-wrap-full');
       wrap.appendChild(el);
-      if (component.action) attachAction(el, component.action);
       return wrap;
     }
 
     return el;
   }
 
-  function updateBuildStamp(apiStamp) {
+  function formatLayoutWarnings(warnings) {
+    if (!warnings?.length) return '';
+    const n = warnings.length;
+    const codes = warnings.map((w) => String(w).split(':')[0]).join(', ');
+    return `${n} line${n === 1 ? '' : 's'} shortened (${codes})`;
+  }
+
+  function updateBuildStamp(apiStamp, screen) {
     if (!buildStampEl) return;
-    buildStampEl.textContent = `web ${JH_LOGIN_WEB_BUILD} · api ${apiStamp || '…'}`;
+    const isHome = screen?.id === 'jewelheart.home';
+    if (isHome) {
+      buildStampEl.hidden = false;
+      buildStampEl.textContent = `web: ${JH_LOGIN_WEB_BUILD} · api: ${apiStamp || '…'}`;
+      return;
+    }
+    const showWarnings = screen?.metadata?.layoutWarningsBelowBuildStamp === true;
+    const warn = showWarnings ? formatLayoutWarnings(screen.metadata?.layoutWarnings) : '';
+    if (!warn) {
+      buildStampEl.textContent = '';
+      buildStampEl.hidden = true;
+      return;
+    }
+    buildStampEl.hidden = false;
+    buildStampEl.textContent = warn;
   }
 
   function renderScreen(envelope) {
     const screen = envelope?.screen || envelope;
     if (screen.id) screenId = screen.id;
     clearActionStore();
+    personPickerState.clear();
     rootEl.innerHTML = '';
     rootEl.dataset.screenId = screen.id || screenId;
 
@@ -812,7 +1401,9 @@ export function createVolunteerSduiController(options) {
     rootEl.classList.toggle('jh-sdui-sticky-header', (stickyHeader || homeSplit) && !layoutFlat);
 
     if (titleEl) titleEl.textContent = screen.title || 'JewelHeart';
-    updateBuildStamp(screen.metadata?.buildStamp);
+    profileVolunteerMeta = screen.metadata?.volunteerProfile || null;
+    updateBuildStamp(screen.metadata?.buildStamp, screen);
+    syncShiftEditStateFromMetadata(screen);
     if (onScreenChange) onScreenChange(screen);
 
     if (backBtn) {
@@ -885,10 +1476,14 @@ export function createVolunteerSduiController(options) {
       // already applied it, so drop it to avoid replays on refresh/back.
       if (
         screenId === 'jewelheart.volunteer.checkin' ||
+        screenId === 'jewelheart.volunteer.shiftDetail' ||
+        screenId === 'jewelheart.volunteer.shiftEdit' ||
         screenId === 'jewelheart.volunteer.shift' ||
         screenId === 'jewelheart.volunteer.mine'
       ) {
         delete params.checkinOp;
+        delete params.shiftEditOp;
+        delete params.pickVolunteerId;
       }
     }
   }

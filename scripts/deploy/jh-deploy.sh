@@ -66,10 +66,12 @@ restart_env(){
 
 patch_web(){
   local env="$1" dir f tmp
-  dir="$(env_dir "$env")"; f="$dir/public/login/index.html"
-  [ -f "$f" ] || { echo "[$env] no public/login/index.html"; return 0; }
-  tmp="$(mktemp)"
-  sed "s@const API = 'https://api.karmadots.org/jewelheart';@const API = (location.hostname.indexOf('api') === 0 ? location.origin : 'https://api.karmadots.org') + '/jewelheart';@" "$f" > "$tmp" && mv "$tmp" "$f"
+  dir="$(env_dir "$env")"
+  for f in "$dir/public/login/index.html" "$dir/public/login/volunteer.html"; do
+    [ -f "$f" ] || continue
+    tmp="$(mktemp)"
+    sed "s@const API = 'https://api.karmadots.org/jewelheart';@const API = (location.hostname.indexOf('api') === 0 ? location.origin : 'https://api.karmadots.org') + '/jewelheart';@" "$f" > "$tmp" && mv "$tmp" "$f"
+  done
   echo "[$env] web API base normalized to same-origin"
 }
 
@@ -145,6 +147,15 @@ deploy_local(){
   [ -d "$dir" ] || die "env dir not found: $dir"
   copy_if "$repo/integrations/private-server/jewelheart-sdui-home.js" \
     "$dir/src/jewelheart/jewelheart-sdui-home.js" "jewelheart-sdui-home.js"
+  copy_if "$repo/integrations/private-server/jewelheart-shift-checkins.js" \
+    "$dir/src/jewelheart/jewelheart-shift-checkins.js" "jewelheart-shift-checkins.js"
+  copy_if "$repo/integrations/private-server/jewelheart-poster-xlsx.js" \
+    "$dir/src/jewelheart/jewelheart-poster-xlsx.js" "jewelheart-poster-xlsx.js"
+  copy_if "$repo/integrations/private-server/jewelheart-volunteer-invite.fragment.js" \
+    "$dir/src/jewelheart/jewelheart-volunteer-invite.js" "jewelheart-volunteer-invite.js"
+  copy_if "$repo/shared/jewelheart-auth-identity.js" \
+    "$dir/src/jewelheart/jewelheart-auth-identity.js" "jewelheart-auth-identity.js"
+  copy_if "$repo/scripts/sduiScreens.prod.js" "$dir/src/jewelheart/sduiScreens.js" "sduiScreens.js"
   if [ -f "$repo/scripts/apply-jewelheart-sdui-fragment.mjs" ]; then
     JEWELHEART_PRIVATE_SERVER_SRC="$dir/src/jewelheart" \
       "$(command -v node || echo /Users/kevinwoods/.nvm/versions/node/v20.20.0/bin/node)" \

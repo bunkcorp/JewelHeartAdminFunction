@@ -4,6 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/login/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/login/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/login/apple-touch-icon.png" />
+  <link rel="manifest" href="/login/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-title" content="JewelHeart" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#92160e" />
   <title>Jewel Heart Volunteer Admin — KarmaDots</title>
   <link rel="canonical" href="https://karmadots.org/login/" />
   <style>
@@ -727,7 +734,7 @@
     }
     #sdui-msg { margin-top: 0.5rem; }
   </style>
-  <link rel="stylesheet" href="jewelheart-admin.css?v=202606222130" />
+  <link rel="stylesheet" href="jewelheart-admin.css?v=202606241630" />
 </head>
 <body>
   <header>
@@ -803,11 +810,11 @@
         <span id="sdui-title">JewelHeart</span>
         <button type="button" id="sdui-reload" class="secondary small">Reload</button>
       </div>
-      <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
       <p class="hint" style="margin-top: 0">
         Same SDUI as the iOS/Android <strong>Volunteer</strong> tab (<code>jewelheart.home</code> and related screens).
       </p>
       <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
+      <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
       <div class="msg" id="sdui-msg" aria-live="polite"></div>
     </section>
 
@@ -939,7 +946,7 @@
   </main>
 
   <script type="module">
-    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from './jewelheart-sdui.js?v=202606222130';
+    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from './jewelheart-sdui.js?v=202606241630';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import {
       getAuth,

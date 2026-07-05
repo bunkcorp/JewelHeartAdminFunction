@@ -1,0 +1,3816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Jewel Heart Volunteer Admin — KarmaDots</title>
+  <link rel="canonical" href="https://karmadots.org/login/" />
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --surface: #12151c;
+      --panel: #161a22;
+      --panel-elevated: #1a1f29;
+      --text: #e8eaef;
+      --muted: #8b95a8;
+      --accent: #e5484d;
+      --tab-bg: transparent;
+      --tab-bg-hover: rgba(255, 255, 255, 0.06);
+      --tab-active-bg: rgba(37, 99, 235, 0.22);
+      --tab-active-border: #3b6fb8;
+      --tab-active-ring: rgba(59, 130, 246, 0.35);
+      --border: #252b38;
+      --sidebar-border: #1e2430;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+      transition: opacity 0.2s var(--ease);
+    }
+    body.jh-loading {
+      cursor: progress;
+    }
+    body.jh-loading .jh-shell {
+      opacity: 0.72;
+      pointer-events: none;
+      transition: opacity 0.2s var(--ease);
+    }
+    header {
+      padding: 0.85rem 1.35rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      background: var(--surface);
+    }
+    header h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    header a { color: var(--muted); text-decoration: none; }
+    header a:hover { color: var(--text); }
+    main a { color: #8ab4f8; text-decoration: underline; text-underline-offset: 2px; }
+    main a:hover { color: #c4d9fc; }
+    main {
+      max-width: 88rem;
+      margin: 0 auto;
+      padding: 1rem 1.35rem 2.5rem;
+    }
+    .jh-about {
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .jh-about > summary {
+      cursor: pointer;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 500;
+      list-style: none;
+      user-select: none;
+      transition: background 0.15s var(--ease), color 0.15s var(--ease);
+    }
+    .jh-about > summary::-webkit-details-marker {
+      display: none;
+    }
+    .jh-about > summary::before {
+      content: "▸ ";
+      opacity: 0.65;
+    }
+    .jh-about[open] > summary::before {
+      content: "▾ ";
+    }
+    .jh-about > summary:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+    }
+    .jh-about .jh-about-body {
+      padding: 0 0.85rem 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    }
+    .jh-content-sheet {
+      background: var(--panel-elevated);
+      min-height: 12rem;
+    }
+    .panel h2 { font-size: 0.95rem; margin: 0 0 0.65rem; color: var(--muted); font-weight: 600; }
+    .panel h3 { font-size: 0.85rem; margin: 1rem 0 0.5rem; color: var(--muted); font-weight: 600; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: var(--accent);
+      color: #fff;
+      margin: 0.2rem 0.3rem 0.2rem 0;
+      transition: background 0.15s var(--ease), transform 0.12s var(--ease), box-shadow 0.15s var(--ease);
+    }
+    button:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    button.secondary { background: #3d4454; color: var(--text); }
+    button.small { padding: 0.3rem 0.55rem; font-size: 0.78rem; }
+    button.danger { background: #7f1d1d; }
+    /* Sidebar retreat panel: full-width buttons so labels never clip (includes edit-wrap). */
+    .jh-sidebar-scroll .panel button {
+      display: block;
+      width: 100%;
+      margin-left: 0;
+      margin-right: 0;
+      box-sizing: border-box;
+      white-space: normal;
+      text-align: center;
+      line-height: 1.25;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input, select, textarea {
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+      font-size: 0.85rem;
+      max-width: 100%;
+    }
+    input[type="email"], input[type="password"] { max-width: 20rem; }
+    label { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 0.35rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.35rem; }
+    .row > * { flex: 1 1 8rem; min-width: 0; }
+    .msg { font-size: 0.82rem; margin-top: 0.45rem; white-space: pre-wrap; }
+    .msg.err { color: var(--err); }
+    .msg.ok { color: var(--ok); }
+    .uid { font-family: ui-monospace, monospace; font-size: 0.72rem; word-break: break-all; color: var(--muted); }
+    .hint { font-size: 0.78rem; color: var(--muted); margin: 0.25rem 0 0.5rem; }
+    .jh-shell {
+      display: flex;
+      gap: 0;
+      /* flex-start: sidebar height = content (no in-column scroll); page scrolls instead. */
+      align-items: flex-start;
+      min-height: calc(100vh - 8rem);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: visible;
+      background: var(--surface);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .jh-sidebar {
+      width: 268px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--sidebar-border);
+      background: #0f1218;
+      display: flex;
+      flex-direction: column;
+    }
+    .jh-sidebar-scroll {
+      flex: 0 0 auto;
+      overflow: visible;
+      padding: 0.85rem 0.75rem 1.25rem;
+    }
+    .jh-brand {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      padding: 0.35rem 0.5rem 0.65rem;
+      border-bottom: 1px solid var(--sidebar-border);
+      margin-bottom: 0.65rem;
+    }
+    .jh-sidenav-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      padding: 0.75rem 0.5rem 0.35rem;
+    }
+    .jh-sidenav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-top: 0.25rem;
+    }
+    .jh-sidenav button {
+      margin: 0;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: var(--tab-bg);
+      color: var(--text);
+      border: 1px solid transparent;
+      box-shadow: none;
+    }
+    .jh-sidenav button:hover {
+      background: var(--tab-bg-hover);
+      color: #fff;
+    }
+    .jh-sidenav button.tab-active {
+      background: var(--tab-active-bg);
+      border-color: var(--tab-active-border);
+      color: #fff;
+      box-shadow: 0 0 0 1px var(--tab-active-ring);
+    }
+    .jh-maincol {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+    .jh-maincol-inner {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.15rem 1.5rem;
+    }
+    .jh-view-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.65rem 1rem;
+      padding-bottom: 0.85rem;
+      margin-bottom: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .jh-view-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    /* Beat `.panel h2` (muted small) for the main retreat title. */
+    .jh-content-sheet .jh-view-header h2.jh-view-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    .jh-view-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .jh-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .chip-draft {
+      color: #cbd5e1;
+      border-color: #475569;
+    }
+    .chip-published {
+      color: #a7f3d0;
+      border-color: rgba(52, 211, 153, 0.45);
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .chip-archived {
+      color: #fca5a5;
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+    .chip-warn {
+      color: #fde68a;
+      border-color: rgba(251, 191, 36, 0.45);
+      background: rgba(251, 191, 36, 0.1);
+    }
+    .chip-ok {
+      color: #a7f3d0;
+      border-color: rgba(52, 211, 153, 0.4);
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .jh-session-strip.panel {
+      margin-bottom: 1rem;
+      padding: 0.65rem 1rem;
+    }
+    .jh-session-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+    }
+    .jh-session-row .uid {
+      flex: 1 1 12rem;
+      margin: 0;
+    }
+    @media (max-width: 900px) {
+      .jh-shell {
+        flex-direction: column;
+        min-height: 0;
+      }
+      .jh-sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--sidebar-border);
+      }
+      .jh-sidenav {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .jh-sidenav button {
+        width: auto;
+        flex: 1 1 auto;
+        min-width: 6rem;
+      }
+    }
+    ul.retreats {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    ul.retreats li {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.65rem;
+      margin-bottom: 0.4rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+    }
+    ul.retreats li:hover {
+      border-color: #4a5568;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    ul.retreats li.active {
+      border-color: var(--accent);
+      background: rgba(229, 72, 77, 0.08);
+    }
+    .jh-sidenav-block {
+      margin-top: 0.5rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid var(--sidebar-border);
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.65rem; }
+    .tabs button {
+      margin: 0;
+      background: var(--tab-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .tabs button:hover {
+      background: var(--tab-bg-hover);
+      color: #fff;
+    }
+    .tabs button.tab-active {
+      background: var(--tab-active-bg);
+      color: #fff;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 2px var(--tab-active-ring);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.visible { display: block; }
+    .jh-task-instr-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(6, 8, 12, 0.78);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .jh-task-instr-overlay[hidden] {
+      display: none !important;
+    }
+    .jh-task-instr-card {
+      background: var(--panel-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 38rem;
+      width: 100%;
+      max-height: min(86vh, 34rem);
+      overflow: auto;
+      padding: 1rem 1.1rem;
+      box-shadow: 0 16px 56px rgba(0, 0, 0, 0.5);
+    }
+    .jh-task-instr-body h4 {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin: 0.85rem 0 0.35rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .jh-task-instr-body h4:first-child {
+      margin-top: 0;
+    }
+    .jh-instr-block {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin: 0;
+      padding: 0.5rem 0.65rem;
+      background: rgba(0, 0, 0, 0.22);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 0.35rem;
+    }
+    table.data th,
+    table.data td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.5rem;
+      vertical-align: top;
+    }
+    table.data thead th {
+      color: var(--muted);
+      font-weight: 600;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      background: var(--panel-elevated);
+      z-index: 1;
+      box-shadow: 0 1px 0 var(--border);
+    }
+    table.data tbody tr {
+      transition: background 0.12s var(--ease);
+    }
+    table.data tbody tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.025);
+    }
+    table.data tbody tr:hover {
+      background: rgba(59, 130, 246, 0.09);
+    }
+    .mono { font-family: ui-monospace, monospace; font-size: 0.72rem; word-break: break-all; }
+    .scroll-x { overflow-x: auto; }
+    .jobs { margin-top: 0.5rem; padding-left: 0.5rem; border-left: 2px solid var(--border); }
+    .job { margin-bottom: 0.65rem; }
+    .job-title { font-weight: 600; }
+    .subjobs { font-size: 0.78rem; color: var(--muted); margin: 0.2rem 0 0 0.85rem; }
+    select.rvol-picklist {
+      width: 100%;
+      margin-top: 0.35rem;
+      padding: 0.4rem;
+      min-height: 11rem;
+      font-size: 0.85rem;
+    }
+    .jh-typeahead {
+      position: relative;
+      max-width: 36rem;
+      margin-top: 0.35rem;
+    }
+    .jh-typeahead > label {
+      margin-top: 0;
+    }
+    .jh-typeahead input[type="text"] {
+      width: 100%;
+    }
+    .jh-typeahead-results {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      max-height: 15rem;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-elevated);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      z-index: 30;
+    }
+    .jh-typeahead-results[hidden] {
+      display: none !important;
+    }
+    .jh-typeahead-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s var(--ease);
+    }
+    .jh-typeahead-item:last-child {
+      border-bottom: none;
+    }
+    .jh-typeahead-item:hover {
+      background: rgba(59, 130, 246, 0.14);
+    }
+    .jh-typeahead-item .jh-typeahead-name {
+      font-weight: 600;
+      display: block;
+    }
+    .jh-typeahead-item .jh-typeahead-email,
+    .jh-typeahead-item .jh-typeahead-phone,
+    .jh-typeahead-item .jh-typeahead-duties {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+      margin-top: 0.12rem;
+      line-height: 1.35;
+    }
+    .jh-typeahead-item .jh-typeahead-duties {
+      max-height: 3.2rem;
+      overflow: hidden;
+    }
+    .jh-typeahead-empty {
+      padding: 0.55rem 0.75rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .jh-selected-vol {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin: 0.75rem 0 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .jh-selected-vol-detail {
+      flex: 1 1 14rem;
+      min-width: 0;
+    }
+    .jh-sel-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.15rem;
+    }
+    .jh-sel-line {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+      word-break: break-word;
+      line-height: 1.4;
+    }
+    .jh-phrase-filters {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem 1rem;
+      background: var(--surface);
+      margin-bottom: 1rem;
+    }
+    .jh-chip-section {
+      margin-bottom: 0.65rem;
+    }
+    .jh-chip-section-label {
+      font-size: 0.64rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .jh-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .jh-chip-row-scroll {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      max-width: 100%;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+    button.jh-chip {
+      margin: 0;
+      padding: 0.32rem 0.62rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    button.jh-chip:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+    button.jh-chip.jh-chip-on {
+      background: rgba(37, 99, 235, 0.38);
+      border-color: #60a5fa;
+      color: #fff;
+    }
+    button.jh-chip-toggle.jh-chip-on {
+      background: rgba(37, 99, 235, 0.5);
+      border-color: #93c5fd;
+    }
+    .jh-filter-strip {
+      margin-top: 0.65rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%);
+      color: #e2e8f0;
+      font-size: 0.76rem;
+      line-height: 1.35;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .jh-filter-strip button {
+      margin: 0;
+      flex-shrink: 0;
+    }
+    table.matrix {
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      font-size: 0.72rem;
+      table-layout: fixed;
+    }
+    table.matrix thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--panel-elevated);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    table.matrix th,
+    table.matrix td {
+      border: 1px solid var(--border);
+      padding: 4px;
+      vertical-align: top;
+    }
+    table.matrix th.site-col { width: 7.5rem; }
+    table.matrix th.day-col { width: 11rem; }
+    table.matrix textarea.matrix-cell {
+      width: 100%;
+      min-height: 5.5rem;
+      min-width: 8rem;
+      resize: vertical;
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
+      line-height: 1.35;
+      background: #0b0d12;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    #matrix-msg { margin-top: 0.45rem; }
+
+    /* Volunteer SDUI (parity with iOS jewelheart.home) */
+    .jh-mode-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+      flex-wrap: wrap;
+    }
+    .jh-mode-tabs button {
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .jh-mode-tabs button.active {
+      background: var(--tab-active-bg);
+      border-color: var(--tab-active-border);
+      box-shadow: 0 0 0 1px var(--tab-active-ring);
+    }
+    #sdui-msg { margin-top: 0.5rem; }
+  </style>
+  <link rel="stylesheet" href="jewelheart-admin.css?v=20260622" />
+</head>
+<body>
+  <header>
+    <h1>Jewel Heart Volunteer Admin</h1>
+    <nav><a href="../">← KarmaDots home</a></nav>
+  </header>
+  <main>
+    <details class="jh-about">
+      <summary>About this admin page &amp; API</summary>
+      <div class="jh-about-body">
+        <p class="hint" style="margin-top: 0.35rem">
+          Same Firebase project as JewelHeart Admin apps (iOS/Android). REST API:
+          <code>https://api.karmadots.org/jewelheart/</code>.
+          Specs, migrations, and native shells live in
+          <a href="https://github.com/bunkcorp/JewelHeartAdminFunction" rel="noopener noreferrer">JewelHeartAdminFunction</a>
+          (OpenAPI <code>openapi/jewelheart.yaml</code>). Mobile schedule UI is <strong>SDUI</strong> on the same API
+          (<code>retreat.schedule</code>, <code>retreat.schedule.day</code>; server router
+          <code>private-server/src/jewelheart/sduiScreens.js</code> in buddhist-stone-ios-app).
+          Postgres ACL: <code>jewelheart_admins</code> / <code>jewelheart_retreat_admins</code>.
+          Sign in with <strong>Firebase</strong> (Google, email, anonymous) or <strong>Keycloak</strong> (same realm as the KarmaDots apps).
+          Unauthorized domain → Firebase Authentication → Authorized domains.
+        </p>
+        <p class="hint">
+          <strong>Bulk retreat data:</strong> The July 20–25, 2026 volunteer grid (jobs, slots, tasks) from the v2 Excel pack is seeded with
+          <code>scripts/seed_summer_retreat_july_2026_from_xlsx.py</code> in that repo (run against the same <code>DATABASE_URL</code> as private-server; see script docstring). This page is for sign-in and ongoing CRUD after rows exist.
+        </p>
+      </div>
+    </details>
+
+    <section class="panel" id="auth-panel">
+      <h2>Sign in</h2>
+      <div>
+        <button type="button" id="btn-google">Google</button>
+        <button type="button" id="btn-keycloak">Keycloak</button>
+      </div>
+      <div style="margin-top: 0.65rem;">
+        <input type="email" id="email" placeholder="Email" autocomplete="username" />
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+        <button type="button" id="btn-email" class="secondary">Email sign-in</button>
+      </div>
+      <div style="margin-top: 0.65rem;">
+        <input type="tel" id="phone" placeholder="Phone (+1… or 10 digits)" autocomplete="tel" />
+        <input type="text" id="phone-code" placeholder="SMS code" inputmode="numeric" autocomplete="one-time-code" />
+        <button type="button" id="btn-phone-send" class="secondary">Send code</button>
+        <button type="button" id="btn-phone-signin" class="secondary">Phone sign-in</button>
+        <div id="recaptcha-phone" class="hint" style="margin-top:0.35rem"></div>
+        <p class="hint" style="margin-top:0.35rem">
+          Phone sign-in uses <strong>Firebase</strong> SMS (not Twilio). Enable Phone in Firebase Console → Authentication → Sign-in method, and add this site to Authorized domains.
+        </p>
+      </div>
+      <div class="msg" id="auth-msg" aria-live="polite"></div>
+    </section>
+
+    <section class="panel jh-session-strip" id="session-panel" hidden>
+      <div class="jh-session-row">
+        <button type="button" id="btn-out" class="secondary">Sign out</button>
+        <button type="button" id="btn-load">Reload retreats</button>
+      </div>
+      <div class="msg" id="api-msg" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" id="volunteer-sdui-section" hidden>
+      <div class="jh-sdui-toolbar">
+        <button type="button" id="sdui-back" class="secondary small" hidden>Back</button>
+        <span id="sdui-title">JewelHeart</span>
+        <button type="button" id="sdui-reload" class="secondary small">Reload</button>
+      </div>
+      <p class="hint" style="margin-top: 0">
+        Same SDUI as the iOS/Android <strong>Volunteer</strong> tab (<code>jewelheart.home</code> and related screens).
+      </p>
+      <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
+      <div class="msg" id="sdui-msg" aria-live="polite"></div>
+    </section>
+
+    <section id="workspace" hidden aria-hidden="true" style="display: none !important">
+      <div class="jh-shell">
+        <aside class="jh-sidebar">
+          <div class="jh-sidebar-scroll">
+            <div class="jh-brand">JewelHeart</div>
+            <div class="panel" style="margin-bottom: 0.75rem">
+              <h2>Retreats</h2>
+              <h3>New retreat</h3>
+              <div class="row">
+                <div><label>Name</label><input type="text" id="new-retreat-name" placeholder="Spring retreat" /></div>
+              </div>
+              <div class="row">
+                <div><label>Timezone (IANA)</label><input type="text" id="new-retreat-tz" value="America/New_York" /></div>
+              </div>
+              <div class="row">
+                <div><label>Start</label><input type="date" id="new-retreat-start" /></div>
+                <div><label>End</label><input type="date" id="new-retreat-end" /></div>
+                <div>
+                  <label>Status</label>
+                  <select id="new-retreat-status">
+                    <option value="draft">draft</option>
+                    <option value="published">published</option>
+                    <option value="archived">archived</option>
+                  </select>
+                </div>
+              </div>
+              <button type="button" id="btn-create-retreat" class="secondary">Create retreat</button>
+
+              <h3>Your retreats</h3>
+              <ul class="retreats" id="retreat-list"></ul>
+
+              <div id="retreat-edit-wrap" hidden>
+                <h3>Edit selected retreat</h3>
+                <div class="row">
+                  <div><label>Name</label><input type="text" id="edit-retreat-name" /></div>
+                </div>
+                <div class="row">
+                  <div><label>Timezone</label><input type="text" id="edit-retreat-tz" /></div>
+                </div>
+                <div class="row">
+                  <div><label>Start</label><input type="date" id="edit-retreat-start" /></div>
+                  <div><label>End</label><input type="date" id="edit-retreat-end" /></div>
+                  <div>
+                    <label>Status</label>
+                    <select id="edit-retreat-status"></select>
+                  </div>
+                </div>
+                <button type="button" id="btn-save-retreat" class="secondary">Save changes</button>
+                <button type="button" id="btn-delete-retreat" class="danger">Delete retreat</button>
+              </div>
+            </div>
+
+            <div id="retreat-sidenav-wrap" class="jh-sidenav-block" hidden>
+              <div class="jh-sidenav-label">Workspace</div>
+              <nav class="jh-sidenav" id="retreat-tabs" aria-label="Retreat sections"></nav>
+            </div>
+          </div>
+        </aside>
+
+        <div class="jh-maincol">
+          <div class="jh-maincol-inner panel jh-content-sheet" id="retreat-work-panel">
+            <header id="view-header" class="jh-view-header" hidden>
+              <div>
+                <h2 class="jh-view-title" id="view-title">Retreat</h2>
+                <p class="jh-view-meta" id="view-meta"></p>
+              </div>
+              <div class="jh-chips" id="view-chips"></div>
+            </header>
+            <p id="pick-hint" class="hint">Select a retreat to manage jobs, slots, tasks, linked volunteers, schedule, site matrix (spreadsheet-style), and reports.</p>
+            <div id="retreat-tabs-wrap" hidden>
+              <div id="tab-panels"></div>
+            </div>
+            <div id="task-instructions-overlay" class="jh-task-instr-overlay" hidden aria-hidden="true">
+              <div
+                class="jh-task-instr-card"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="task-instructions-title"
+              >
+                <div class="row" style="justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.35rem">
+                  <h3 id="task-instructions-title" style="margin: 0; font-size: 1rem; max-width: 88%">Task instructions</h3>
+                  <button type="button" class="secondary small" id="btn-task-instructions-close">Close</button>
+                </div>
+                <p class="hint mono" id="task-instructions-meta" style="margin: 0 0 0.75rem; font-size: 0.78rem; word-break: break-all"></p>
+                <div id="task-instructions-body" class="jh-task-instr-body"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel" id="global-dir-panel" hidden aria-hidden="true" style="display: none !important">
+        <h2>Volunteer directory (global)</h2>
+        <p class="hint">Search, create, and update people in <code>GET/POST/PATCH /jewelheart/volunteers</code>. Link them to a retreat from the <strong>Linked volunteers</strong> tab.</p>
+        <div class="jh-typeahead" id="dir-typeahead-wrap">
+          <label for="dir-q">Search directory</label>
+          <input type="text" id="dir-q" placeholder="Start typing a name or email…" autocomplete="off" spellcheck="false" />
+          <div id="dir-typeahead-results" class="jh-typeahead-results" role="listbox" aria-label="Volunteer matches" hidden></div>
+        </div>
+        <p class="hint" id="dir-typeahead-status">Type at least one character to search; click a match to edit below.</p>
+        <h3>Create volunteer</h3>
+        <div class="row">
+          <div><label>Display name</label><input type="text" id="dir-new-name" /></div>
+          <div><label>Email</label><input type="text" id="dir-new-email" /></div>
+        </div>
+        <div class="row">
+          <div><label>Phone</label><input type="text" id="dir-new-phone" /></div>
+          <div><label>Other duties</label><input type="text" id="dir-new-other" /></div>
+        </div>
+        <button type="button" id="btn-dir-create" class="secondary">Create</button>
+        <div id="dir-edit" hidden>
+          <h3>Edit volunteer <span class="mono" id="dir-edit-id"></span></h3>
+          <div class="row">
+            <div><label>Display name</label><input type="text" id="dir-edit-name" /></div>
+            <div><label>Email</label><input type="text" id="dir-edit-email" /></div>
+          </div>
+          <div class="row">
+            <div><label>Phone</label><input type="text" id="dir-edit-phone" /></div>
+            <div><label>Other duties</label><input type="text" id="dir-edit-other" /></div>
+          </div>
+          <button type="button" id="btn-dir-save" class="secondary">Save</button>
+          <button type="button" id="btn-dir-delete" class="danger">Delete volunteer</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createVolunteerSduiController } from './jewelheart-sdui.js?v=20260622';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signInWithEmailAndPassword,
+      signInWithPhoneNumber,
+      RecaptchaVerifier,
+      signOut,
+      onAuthStateChanged,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyAd7WirDcLLX9bl1BY4uAhjiXEvpB-HiFw',
+      authDomain: 'gettingstoned-4aee3.firebaseapp.com',
+      projectId: 'gettingstoned-4aee3',
+      storageBucket: 'gettingstoned-4aee3.firebasestorage.app',
+      messagingSenderId: '120549448949',
+      appId: '1:120549448949:ios:189513e804833eed5db9bc',
+    };
+
+    const API = 'https://api.karmadots.org/jewelheart';
+    const TIME_BANDS = ['early', 'lunchtime', 'dinnertime', 'allday', 'anytime'];
+    const STATUSES = ['draft', 'published', 'archived'];
+
+    const KEYCLOAK_ISSUER = 'https://auth.karmadots.org/realms/karmadots';
+    const KEYCLOAK_CLIENT_ID = 'karmadots-web';
+    const KEYCLOAK_SESSION_KEY = 'jh_keycloak_session';
+    const KEYCLOAK_STATE_KEY = 'jh_kc_oauth_state';
+
+    /** @type {'firebase' | 'keycloak' | null} */
+    let authSource = null;
+
+    /** @type {import('firebase/auth').ConfirmationResult | null} */
+    let phoneConfirmation = null;
+    /** @type {import('firebase/auth').RecaptchaVerifier | null} */
+    let phoneRecaptcha = null;
+
+    function keycloakRedirectUri() {
+      // Canonical login URL so OAuth + logout redirects always match Keycloak client config.
+      return new URL('/login/', window.location.origin).href;
+    }
+
+    function loadKeycloakSession() {
+      try {
+        const raw = sessionStorage.getItem(KEYCLOAK_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveKeycloakSession({ accessToken, refreshToken, sub, email, idToken, phone }) {
+      const expMs = decodeJwtExpMs(accessToken);
+      sessionStorage.setItem(
+        KEYCLOAK_SESSION_KEY,
+        JSON.stringify({
+          accessToken,
+          refreshToken,
+          sub,
+          email: email || null,
+          phone: phone || null,
+          idToken: idToken || null,
+          expMs,
+        }),
+      );
+    }
+
+    function clearKeycloakSession() {
+      sessionStorage.removeItem(KEYCLOAK_SESSION_KEY);
+      sessionStorage.removeItem(KEYCLOAK_STATE_KEY);
+    }
+
+    function base64UrlDecode(s) {
+      const padded = s + '=='.slice((s.length + 3) % 4);
+      return atob(padded.replace(/-/g, '+').replace(/_/g, '/'));
+    }
+
+    function decodeJwtPayload(token) {
+      const parts = String(token).split('.');
+      if (parts.length < 2) return null;
+      try {
+        return JSON.parse(base64UrlDecode(parts[1]));
+      } catch {
+        return null;
+      }
+    }
+
+    function decodeJwtExpMs(token) {
+      const p = decodeJwtPayload(token);
+      return p && p.exp ? p.exp * 1000 : null;
+    }
+
+    function keycloakIssuerBase() {
+      return KEYCLOAK_ISSUER.replace(/\/$/, '');
+    }
+
+    function keycloakAuthorizationEndpoint() {
+      return `${keycloakIssuerBase()}/protocol/openid-connect/auth`;
+    }
+
+    function keycloakLogoutEndpoint() {
+      return `${keycloakIssuerBase()}/protocol/openid-connect/logout`;
+    }
+
+    function keycloakTokenEndpoint() {
+      return `${keycloakIssuerBase()}/protocol/openid-connect/token`;
+    }
+
+    function normalizePhoneE164(raw) {
+      const digits = String(raw || '').replace(/\D/g, '');
+      if (!digits) return null;
+      if (String(raw).trim().startsWith('+')) return `+${digits}`;
+      if (digits.length === 10) return `+1${digits}`;
+      if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+      return `+${digits}`;
+    }
+
+    async function getPhoneRecaptcha() {
+      if (phoneRecaptcha) {
+        try {
+          phoneRecaptcha.clear();
+        } catch {
+          /* ignore */
+        }
+        phoneRecaptcha = null;
+      }
+      phoneRecaptcha = new RecaptchaVerifier(auth, 'recaptcha-phone', {
+        size: 'invisible',
+      });
+      await phoneRecaptcha.render();
+      return phoneRecaptcha;
+    }
+
+    async function sendFirebasePhoneCode(phoneE164) {
+      setAuthMsg('');
+      clearKeycloakSession();
+      authSource = null;
+      phoneConfirmation = null;
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+      const verifier = await getPhoneRecaptcha();
+      phoneConfirmation = await signInWithPhoneNumber(auth, phoneE164, verifier);
+    }
+
+    async function completeFirebasePhoneSignIn(code) {
+      if (!phoneConfirmation) throw new Error('Tap Send code first.');
+      await phoneConfirmation.confirm(String(code || '').trim());
+      phoneConfirmation = null;
+    }
+
+    async function exchangeKeycloakCode(code) {
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: KEYCLOAK_CLIENT_ID,
+        redirect_uri: keycloakRedirectUri(),
+        code,
+      });
+      const res = await fetch(keycloakTokenEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        throw new Error(json?.error_description || json?.error || text || `Token exchange HTTP ${res.status}`);
+      }
+      const accessToken = json.access_token;
+      const refreshToken = json.refresh_token;
+      if (!accessToken || !refreshToken) throw new Error('Keycloak did not return tokens');
+      const payload = decodeJwtPayload(accessToken);
+      const sub = payload?.sub;
+      if (!sub) throw new Error('Keycloak token missing subject');
+      return { accessToken, refreshToken, sub, email: payload?.email || null, idToken: json.id_token || null };
+    }
+
+    async function refreshKeycloakAccessToken() {
+      const session = loadKeycloakSession();
+      if (!session?.refreshToken) throw new Error('Not signed in');
+      const body = new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: KEYCLOAK_CLIENT_ID,
+        refresh_token: session.refreshToken,
+      });
+      const res = await fetch(keycloakTokenEndpoint(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      });
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = null;
+      }
+      if (!res.ok) {
+        clearKeycloakSession();
+        throw new Error(json?.error_description || json?.error || `Refresh HTTP ${res.status}`);
+      }
+      const accessToken = json.access_token;
+      const refreshToken = json.refresh_token || session.refreshToken;
+      if (!accessToken) throw new Error('Refresh did not return access_token');
+      const payload = decodeJwtPayload(accessToken);
+      saveKeycloakSession({
+        accessToken,
+        refreshToken,
+        sub: payload?.sub || session.sub,
+        email: payload?.email || session.email,
+        phone: session.phone || null,
+        idToken: session.idToken || null,
+      });
+      return accessToken;
+    }
+
+    async function getKeycloakAccessToken(forceRefresh = false) {
+      const session = loadKeycloakSession();
+      if (!session?.accessToken) throw new Error('Not signed in');
+      if (!forceRefresh && session.expMs && session.expMs > Date.now() + 60_000) {
+        return session.accessToken;
+      }
+      return refreshKeycloakAccessToken();
+    }
+
+    async function getBearerToken(forceRefresh = false) {
+      if (authSource === 'keycloak') return getKeycloakAccessToken(forceRefresh);
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not signed in');
+      return user.getIdToken(forceRefresh);
+    }
+
+    function requireSignedIn() {
+      if (authSource === 'keycloak') {
+        if (!loadKeycloakSession()?.accessToken) throw new Error('Not signed in');
+        return;
+      }
+      if (!auth.currentUser) throw new Error('Not signed in');
+    }
+
+    async function startKeycloakLogin() {
+      setAuthMsg('');
+      clearKeycloakSession();
+      authSource = null;
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+      const state = crypto.randomUUID();
+      sessionStorage.setItem(KEYCLOAK_STATE_KEY, state);
+      const url = new URL(keycloakAuthorizationEndpoint());
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('client_id', KEYCLOAK_CLIENT_ID);
+      url.searchParams.set('redirect_uri', keycloakRedirectUri());
+      url.searchParams.set('scope', 'openid email profile');
+      url.searchParams.set('state', state);
+      url.searchParams.set('prompt', 'login');
+      window.location.assign(url.toString());
+    }
+
+    function signOutKeycloak() {
+      const session = loadKeycloakSession();
+      authSource = null;
+      setApiMsg('');
+      applySignedOutUi();
+      const url = new URL(keycloakLogoutEndpoint());
+      url.searchParams.set('client_id', KEYCLOAK_CLIENT_ID);
+      url.searchParams.set('post_logout_redirect_uri', keycloakRedirectUri());
+      if (session?.idToken) url.searchParams.set('id_token_hint', session.idToken);
+      clearKeycloakSession();
+      window.location.assign(url.toString());
+    }
+
+    async function maybeCompleteKeycloakCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('error');
+      if (err) throw new Error(params.get('error_description') || err);
+      const code = params.get('code');
+      if (!code) return false;
+      const state = params.get('state');
+      const saved = sessionStorage.getItem(KEYCLOAK_STATE_KEY);
+      sessionStorage.removeItem(KEYCLOAK_STATE_KEY);
+      if (!saved || state !== saved) throw new Error('Invalid Keycloak sign-in state (try again)');
+      const tokens = await exchangeKeycloakCode(code);
+      saveKeycloakSession(tokens);
+      window.history.replaceState({}, document.title, keycloakRedirectUri());
+      return true;
+    }
+
+    function formatKeycloakError(e) {
+      const m = e && e.message != null ? String(e.message) : String(e);
+      if (/load failed|failed to fetch|networkerror/i.test(m)) {
+        return (
+          'Could not reach auth.karmadots.org from this browser (network, VPN, or privacy extension). ' +
+          'Try again on cellular/Wi‑Fi or allow auth.karmadots.org.'
+        );
+      }
+      if (/invalid_redirect_uri/i.test(m)) {
+        return (
+          m +
+          ' Add redirect URI ' +
+          keycloakRedirectUri() +
+          ' to Keycloak client "' +
+          KEYCLOAK_CLIENT_ID +
+          '" (realm karmadots).'
+        );
+      }
+      return m;
+    }
+
+    function applySignedInUi() {
+      authPanel.hidden = true;
+      sessionPanel.hidden = false;
+      volunteerSduiSection.hidden = false;
+      workspace.hidden = true;
+      setAuthMsg('');
+      setApiMsg('', false);
+      sduiController.resetHome().catch((e) => {
+        console.error('sdui home (auth)', e);
+        document.getElementById('sdui-msg').textContent = friendlyApiError(e);
+        document.getElementById('sdui-msg').className = 'msg err';
+      });
+    }
+
+    function applySignedOutUi() {
+      authPanel.hidden = false;
+      sessionPanel.hidden = true;
+      volunteerSduiSection.hidden = true;
+      workspace.hidden = true;
+      retreatList.innerHTML = '';
+      selectedRetreatId = null;
+      setRetreatWorkspaceNavVisible(false);
+      retreatEditWrap.hidden = true;
+      pickHint.hidden = false;
+      tabsInitialized = false;
+      retreatTabs.innerHTML = '';
+      tabPanels.innerHTML = '';
+      hideViewHeader();
+    }
+
+    async function initAuth() {
+      try {
+        if (await maybeCompleteKeycloakCallback()) {
+          authSource = 'keycloak';
+          applySignedInUi();
+          return;
+        }
+      } catch (e) {
+        setAuthMsg(formatKeycloakError(e), true);
+        window.history.replaceState({}, document.title, keycloakRedirectUri());
+      }
+      const session = loadKeycloakSession();
+      if (session?.accessToken) {
+        try {
+          await getKeycloakAccessToken(false);
+          authSource = 'keycloak';
+          applySignedInUi();
+        } catch {
+          clearKeycloakSession();
+        }
+      }
+    }
+
+    const authReady = initAuth();
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const authPanel = document.getElementById('auth-panel');
+    const sessionPanel = document.getElementById('session-panel');
+    const volunteerSduiSection = document.getElementById('volunteer-sdui-section');
+    const workspace = document.getElementById('workspace');
+
+    const sduiController = createVolunteerSduiController({
+      apiBase: API,
+      getIdToken: () => getBearerToken(),
+      rootEl: document.getElementById('sdui-root'),
+      titleEl: document.getElementById('sdui-title'),
+      msgEl: document.getElementById('sdui-msg'),
+      backBtn: document.getElementById('sdui-back'),
+    });
+
+    document.getElementById('sdui-reload').addEventListener('click', () => {
+      sduiController.load().catch((e) => console.error('sdui reload', e));
+    });
+    document.getElementById('sdui-back').addEventListener('click', () => {
+      sduiController.goBack().catch((e) => console.error('sdui back', e));
+    });
+    const authMsg = document.getElementById('auth-msg');
+    const apiMsg = document.getElementById('api-msg');
+    const retreatList = document.getElementById('retreat-list');
+    const retreatEditWrap = document.getElementById('retreat-edit-wrap');
+    const pickHint = document.getElementById('pick-hint');
+    const retreatTabsWrap = document.getElementById('retreat-tabs-wrap');
+    const retreatSidenavWrap = document.getElementById('retreat-sidenav-wrap');
+    const retreatTabs = document.getElementById('retreat-tabs');
+    const tabPanels = document.getElementById('tab-panels');
+    const viewHeader = document.getElementById('view-header');
+    const viewTitle = document.getElementById('view-title');
+    const viewMeta = document.getElementById('view-meta');
+    const viewChips = document.getElementById('view-chips');
+
+    let jhApiDepth = 0;
+
+    function setRetreatWorkspaceNavVisible(show) {
+      if (retreatTabsWrap) retreatTabsWrap.hidden = !show;
+      if (retreatSidenavWrap) retreatSidenavWrap.hidden = !show;
+    }
+
+    function hideViewHeader() {
+      if (viewHeader) viewHeader.hidden = true;
+    }
+
+    function updateViewHeader() {
+      if (!viewHeader || !viewTitle || !viewMeta || !viewChips || !selectedRetreat) {
+        hideViewHeader();
+        return;
+      }
+      viewHeader.hidden = false;
+      viewTitle.textContent = selectedRetreat.name || 'Retreat';
+      const sd = (selectedRetreat.startDate || '').slice(0, 10);
+      const ed = (selectedRetreat.endDate || '').slice(0, 10);
+      const tz = selectedRetreat.timezone || '';
+      const range = sd && ed ? `${sd} → ${ed}` : '';
+      viewMeta.textContent = [range, tz].filter(Boolean).join(' · ') || selectedRetreat.id;
+      const st = selectedRetreat.status || 'draft';
+      viewChips.innerHTML = '';
+      const stEl = document.createElement('span');
+      stEl.className =
+        'chip ' + (st === 'published' ? 'chip-published' : st === 'archived' ? 'chip-archived' : 'chip-draft');
+      stEl.textContent = st;
+      viewChips.appendChild(stEl);
+      const idEl = document.createElement('span');
+      idEl.className = 'chip mono';
+      idEl.style.fontWeight = '500';
+      idEl.textContent = selectedRetreat.id;
+      viewChips.appendChild(idEl);
+    }
+
+    let retreats = [];
+    let selectedRetreatId = null;
+    let selectedRetreat = null;
+    let jobsCache = [];
+    let slotsCache = [];
+    let activeTab = 'jobs';
+    let tabsInitialized = false;
+    /** Volunteer IDs already linked to the selected retreat (for link picklist). */
+    const linkedVolunteerIds = new Set();
+    /** Link-volunteer typeahead: selected directory volunteer (set by clicking a suggestion). */
+    let rvolPickVolunteer = null;
+    let rvolTypeaheadTimer = null;
+    let dirTypeaheadTimer = null;
+    let dirDirectoryCache = [];
+    let slotListFilterTimer = null;
+    /** Slots tab: phrase-picker style — empty sets mean “any”. */
+    const slotDayPick = new Set();
+    const slotBandPick = new Set();
+    let slotViewMode = 'slots';
+    /** Slots tab unassigned view: last filtered task rows (for per-job instruction details). */
+    let lastUnassignedTasksForPanel = [];
+    /** Task instructions overlay: close button, backdrop, Escape (wired once). */
+    let taskInstructionsUiWired = false;
+    /** Single document listener to close rvol + global dir typeahead dropdowns. */
+    let typeaheadOutsideClickBound = false;
+    /** Linked volunteers for task assignment picklist (refetched when opening task detail). */
+    let taskAssignVolunteersCache = [];
+    /** Volunteer IDs already assigned to the open task (excluded from picklist). */
+    let taskAssignExcludeIds = new Set();
+
+    /** Site matrix: snapshot per cell for diff on Send (key = site + tab + date). */
+    let matrixSnapshot = {};
+    let matrixWorkingJobs = [];
+
+    const MATRIX_SITE_ORDER = [
+      'Kitchen',
+      'Café',
+      'Coffee/snack area',
+      'Store',
+      'Hallway',
+      'Tara Paradise room',
+      "Men's room",
+      "Women's room",
+      'Foyer',
+      'Front room',
+      'Altar',
+      'JH office',
+      'Main hall',
+      'Lama office',
+      'Unisex bathroom',
+      'Lama bathroom',
+    ];
+    const MATRIX_SLOT_ORDER = [
+      'Start day',
+      'Morning break',
+      'Lunch break',
+      'Afternoon break',
+      'Dinner break',
+      'End day',
+    ];
+
+    function setMatrixMsg(text, err) {
+      const el = document.getElementById('matrix-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = 'msg' + (err ? ' err' : '');
+    }
+
+    function setAuthMsg(text, err) {
+      authMsg.textContent = text || '';
+      authMsg.className = 'msg' + (err ? ' err' : '');
+    }
+    function setApiMsg(text, err) {
+      apiMsg.textContent = text || '';
+      apiMsg.className = 'msg' + (err ? ' err' : '');
+    }
+
+    /** Turn fetch/API errors into actionable copy for the #api-msg strip. */
+    function friendlyApiError(e) {
+      const m = e && e.message != null ? String(e.message) : String(e);
+      const low = m.toLowerCase();
+      if (e && e.status === 401) {
+        return m + ' If this persists, sign out and sign in again (refreshes your ID token).';
+      }
+      if (e && e.status === 403) {
+        return (
+          m +
+          ' Your user id may be missing from Postgres ACL tables (jewelheart_admins or jewelheart_retreat_admins).'
+        );
+      }
+      const looksNetwork =
+        (e && e.name === 'TypeError') ||
+        low.includes('failed to fetch') ||
+        low.includes('load failed') ||
+        low.includes('networkerror') ||
+        low.includes('network request failed');
+      if (looksNetwork) {
+        return (
+          'Could not reach api.karmadots.org (network, DNS, VPN, firewall, or browser/privacy extension blocked the request). ' +
+          'Detail: ' +
+          m
+        );
+      }
+      return m;
+    }
+
+    function formatAuthError(e) {
+      const code = e && e.code;
+      if (code === 'auth/unauthorized-domain') {
+        const h = typeof location !== 'undefined' ? location.hostname : 'this site';
+        const alt =
+          h.startsWith('www.') && h.length > 4
+            ? h.slice(4)
+            : h.indexOf('.') > 0 && !h.startsWith('www.')
+              ? 'www.' + h
+              : '';
+        const extra = alt ? ' Also add "' + alt + '" if you use that URL.' : '';
+        return (
+          'auth/unauthorized-domain: Firebase Console (project ' +
+          firebaseConfig.projectId +
+          ') → Authentication → Settings → Authorized domains → add "' +
+          h +
+          '".' +
+          extra +
+          ' Then reload.'
+        );
+      }
+      return e && e.message ? e.message : String(e);
+    }
+
+    async function apiRequest(path, { method = 'GET', query, body, accept } = {}) {
+      requireSignedIn();
+      let url = `${API}/${path.replace(/^\//, '')}`;
+      if (query) {
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(query)) {
+          if (v !== undefined && v !== null && v !== '') sp.set(k, String(v));
+        }
+        const q = sp.toString();
+        if (q) url += '?' + q;
+      }
+      const buildInit = (token) => {
+        const headers = { Authorization: `Bearer ${token}` };
+        if (accept) headers.Accept = accept;
+        const init = { method, headers };
+        if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
+          headers['Content-Type'] = 'application/json';
+          init.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+        return init;
+      };
+      jhApiDepth += 1;
+      document.body.classList.add('jh-loading');
+      try {
+        let token = await getBearerToken(false);
+        let res = await fetch(url, buildInit(token));
+        let text = await res.text();
+        if (res.status === 401) {
+          token = await getBearerToken(true);
+          res = await fetch(url, buildInit(token));
+          text = await res.text();
+        }
+        if (res.status === 204 || !text) {
+          if (!res.ok) {
+            const e = new Error(`HTTP ${res.status}`);
+            e.status = res.status;
+            throw e;
+          }
+          return null;
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = { raw: text };
+        }
+        if (!res.ok) {
+          let errMsg = parsed?.error || parsed?.message;
+          const raw = typeof text === 'string' ? text : '';
+          if (!errMsg && raw && /<\s*html[\s>]|<!doctype/i.test(raw)) {
+            errMsg =
+              `HTTP ${res.status}: server returned HTML (often a gateway, WAF, or maintenance page), not JSON. URL: ${url}`;
+          } else if (!errMsg && raw) {
+            errMsg = raw.length > 400 ? raw.slice(0, 400) + '…' : raw;
+          }
+          errMsg = errMsg || `HTTP ${res.status}`;
+          const e = new Error(errMsg);
+          e.status = res.status;
+          throw e;
+        }
+        return parsed;
+      } finally {
+        jhApiDepth -= 1;
+        if (jhApiDepth <= 0) {
+          jhApiDepth = 0;
+          document.body.classList.remove('jh-loading');
+        }
+      }
+    }
+
+    async function apiBlob(path, query, accept) {
+      requireSignedIn();
+      const token = await getBearerToken();
+      let url = `${API}/${path.replace(/^\//, '')}`;
+      if (query) {
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(query)) {
+          if (v !== undefined && v !== null && v !== '') sp.set(k, String(v));
+        }
+        const q = sp.toString();
+        if (q) url += '?' + q;
+      }
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}`, Accept: accept || '*/*' },
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        let msg = t;
+        try {
+          const j = JSON.parse(t);
+          msg = j.error || j.message || t;
+        } catch { /* ignore */ }
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      return { blob: await res.blob(), type: res.headers.get('Content-Type') || '' };
+    }
+
+    function downloadBlob(blob, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.rel = 'noopener';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
+    function fillStatusSelect(sel, current) {
+      sel.innerHTML = '';
+      for (const s of STATUSES) {
+        const o = document.createElement('option');
+        o.value = s;
+        o.textContent = s;
+        if (s === current) o.selected = true;
+        sel.appendChild(o);
+      }
+    }
+
+    function buildTabs() {
+      retreatTabs.innerHTML = '';
+      tabPanels.innerHTML = '';
+      const tabs = [
+        { id: 'jobs', label: 'Jobs' },
+        { id: 'slots', label: 'Slots' },
+        { id: 'tasks', label: 'Tasks' },
+        { id: 'rvols', label: 'Linked volunteers' },
+        { id: 'schedule', label: 'Schedule' },
+        { id: 'matrix', label: 'Site matrix' },
+        { id: 'reports', label: 'Reports' },
+      ];
+      for (const t of tabs) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = t.label;
+        b.dataset.tab = t.id;
+        if (t.id === activeTab) b.classList.add('tab-active');
+        b.addEventListener('click', () => switchTab(t.id));
+        retreatTabs.appendChild(b);
+        const div = document.createElement('div');
+        div.className = 'tab-panel' + (t.id === activeTab ? ' visible' : '');
+        div.id = 'panel-' + t.id;
+        tabPanels.appendChild(div);
+      }
+      renderTabPanelsShell();
+    }
+
+    function switchTab(id) {
+      activeTab = id;
+      retreatTabs.querySelectorAll('button').forEach((b) => {
+        b.classList.toggle('tab-active', b.dataset.tab === id);
+      });
+      tabPanels.querySelectorAll('.tab-panel').forEach((p) => {
+        p.classList.toggle('visible', p.id === 'panel-' + id);
+      });
+      refreshActiveTab();
+    }
+
+    function renderTabPanelsShell() {
+      document.getElementById('panel-jobs').innerHTML = `
+        <div id="jobs-toolbar" class="row"></div>
+        <div id="jobs-list"></div>
+        <h3>New job</h3>
+        <div class="row">
+          <div style="flex:2"><label>Title</label><input type="text" id="job-new-title" /></div>
+          <div><label>Volunteers needed</label><input type="number" id="job-new-vol" min="1" value="1" /></div>
+          <div><label>Est. minutes</label><input type="number" id="job-new-min" min="0" value="0" /></div>
+        </div>
+        <label>Subjobs (one line each)</label>
+        <textarea id="job-new-subs" rows="3" style="width:100%;"></textarea>
+        <button type="button" class="secondary" id="btn-job-create">Create job</button>
+        <div id="job-editor" hidden>
+          <h3>Edit job <span class="mono" id="job-edit-id"></span></h3>
+          <div class="row">
+            <div style="flex:2"><label>Title</label><input type="text" id="job-edit-title" /></div>
+            <div><label>Volunteers</label><input type="number" id="job-edit-vol" min="1" /></div>
+            <div><label>Minutes</label><input type="number" id="job-edit-min" min="0" /></div>
+          </div>
+          <label>Subjobs (replaces all if you save)</label>
+          <textarea id="job-edit-subs" rows="4" style="width:100%;"></textarea>
+          <button type="button" class="secondary" id="btn-job-save">Save job</button>
+          <button type="button" class="danger" id="btn-job-delete">Delete job…</button>
+        </div>`;
+
+      document.getElementById('panel-slots').innerHTML = `
+        <div class="jh-phrase-filters" id="slots-filter-panel">
+          <h3 style="margin:0 0 0.35rem;font-size:0.92rem;color:var(--muted)">Slots &amp; coverage</h3>
+          <p class="hint" style="margin:0 0 0.65rem">Toggle <strong>days</strong> and <strong>time bands</strong> (empty selection = any). <strong>Unassigned jobs</strong> lists jobs that still have tasks with zero assignments, using the same slot filters.</p>
+          <div class="jh-chip-section">
+            <div class="jh-chip-section-label">Day</div>
+            <div class="jh-chip-row jh-chip-row-scroll" id="slot-day-chips"></div>
+          </div>
+          <div class="jh-chip-section">
+            <div class="jh-chip-section-label">Time band</div>
+            <div class="jh-chip-row" id="slot-band-chips"></div>
+          </div>
+          <div class="row">
+            <div style="flex:1 1 14rem"><label>Slot label</label><select id="slot-filter-label-pick"><option value="">Any label</option></select></div>
+            <div style="flex:1 1 12rem"><label>Search</label><input type="text" id="slot-filter-text" placeholder="label, id, context, job title…" autocomplete="off" spellcheck="false" /></div>
+          </div>
+          <div class="jh-chip-section-label" style="margin-top:0.65rem">View</div>
+          <div class="jh-chip-row">
+            <button type="button" class="jh-chip jh-chip-toggle jh-chip-on" data-slot-view="slots">Slots list</button>
+            <button type="button" class="jh-chip jh-chip-toggle" data-slot-view="unassigned">Unassigned jobs</button>
+          </div>
+          <div id="slot-filter-strip" class="jh-filter-strip" hidden>
+            <span id="slot-filter-strip-text"></span>
+            <button type="button" class="secondary small" id="btn-slots-strip-clear">Clear</button>
+          </div>
+          <div class="row" style="justify-content:flex-end;margin-top:0.55rem">
+            <button type="button" class="secondary small" id="btn-slots-clear-filters">Clear filters</button>
+            <button type="button" class="secondary" id="btn-slots-load">Refresh data</button>
+          </div>
+          <p class="hint" id="slot-filter-status" style="margin-top:0.5rem">—</p>
+        </div>
+        <div id="slots-list"></div>
+        <h3>New slot</h3>
+        <div class="row">
+          <div><label>Label</label><input type="text" id="slot-new-label" placeholder="Session 1" /></div>
+          <div><label>Date</label><input type="date" id="slot-new-date" /></div>
+          <div><label>Time band</label><select id="slot-new-band">${TIME_BANDS.map((b) => `<option value="${b}">${b}</option>`).join('')}</select></div>
+        </div>
+        <div class="row">
+          <div><label>Activity context (opt)</label><input type="text" id="slot-new-ctx" /></div>
+        </div>
+        <button type="button" class="secondary" id="btn-slot-create">Create slot</button>
+        <div id="slot-editor" hidden>
+          <h3>Edit slot <span class="mono" id="slot-edit-id"></span></h3>
+          <div class="row">
+            <div><label>Label</label><input type="text" id="slot-edit-label" /></div>
+            <div><label>Date</label><input type="date" id="slot-edit-date" /></div>
+            <div><label>Time band</label><select id="slot-edit-band">${TIME_BANDS.map((b) => `<option value="${b}">${b}</option>`).join('')}</select></div>
+          </div>
+          <button type="button" class="secondary" id="btn-slot-save">Save slot</button>
+          <button type="button" class="danger" id="btn-slot-delete">Delete slot…</button>
+        </div>`;
+
+      document.getElementById('panel-tasks').innerHTML = `
+        <div class="row">
+          <div><label><input type="checkbox" id="task-unassigned" /> unassignedOnly</label></div>
+          <div><label><input type="checkbox" id="task-under" /> underassignedOnly</label></div>
+          <div><label>&nbsp;</label><button type="button" class="secondary" id="btn-tasks-load">List tasks</button></div>
+        </div>
+        <div id="tasks-list"></div>
+        <h3>New task (job × slot)</h3>
+        <div class="row">
+          <div><label>Job</label><select id="task-new-job"></select></div>
+          <div><label>Slot</label><select id="task-new-slot"></select></div>
+        </div>
+        <label>Notes</label><input type="text" id="task-new-notes" />
+        <button type="button" class="secondary" id="btn-task-create">Create task</button>
+        <div id="task-detail" hidden>
+          <h3>Task <span class="mono" id="task-detail-id"></span></h3>
+          <label>Notes</label><input type="text" id="task-detail-notes" />
+          <div class="row">
+            <div><label>Move to slot</label><select id="task-detail-slot"></select></div>
+          </div>
+          <button type="button" class="secondary" id="btn-task-save">Save task</button>
+          <button type="button" class="secondary" id="btn-task-dup">Duplicate to slot…</button>
+          <button type="button" class="danger" id="btn-task-delete">Delete task…</button>
+          <h4>Assignments</h4>
+          <p class="hint">Only volunteers <strong>linked to this retreat</strong> can be assigned. Add them under <strong>Linked volunteers</strong> if the list is empty.</p>
+          <div class="row">
+            <div style="flex:2"><label>Filter by name or email</label><input type="text" id="task-assign-filter" placeholder="optional" autocomplete="off" /></div>
+            <div><label>&nbsp;</label><button type="button" class="secondary" id="btn-task-assign-refresh">Reload list</button></div>
+          </div>
+          <label>Pick volunteer</label>
+          <select id="task-assign-pick" class="rvol-picklist" size="6" aria-label="Volunteer to assign">
+            <option value="" disabled selected>— Open task loads linked volunteers —</option>
+          </select>
+          <button type="button" class="secondary" id="btn-task-assign">Assign to this task</button>
+          <div id="task-assignments"></div>
+        </div>`;
+
+      document.getElementById('panel-rvols').innerHTML = `
+        <button type="button" class="secondary" id="btn-rvols-load">Reload linked volunteers</button>
+        <div id="rvols-list"></div>
+        <h3>Link existing volunteer</h3>
+        <p class="hint">Type in the global directory — matches appear as you type. Click a row to select, then <strong>Link to this retreat</strong> (API uses the volunteer UUID).</p>
+        <div class="jh-typeahead" id="rvol-typeahead-wrap">
+          <label for="rvol-search-q">Search directory</label>
+          <input type="text" id="rvol-search-q" placeholder="Start typing a name or email…" autocomplete="off" spellcheck="false" />
+          <div id="rvol-typeahead-results" class="jh-typeahead-results" role="listbox" aria-label="Directory matches" hidden></div>
+        </div>
+        <p class="hint" id="rvol-typeahead-status" style="margin-top: 0.4rem">Type at least one character to search.</p>
+        <div id="rvol-selected-row" class="jh-selected-vol" hidden>
+          <span class="hint" style="margin:0">Selected</span>
+          <div id="rvol-selected-detail" class="jh-selected-vol-detail"></div>
+          <button type="button" class="secondary small" id="btn-rvol-clear-pick">Clear</button>
+        </div>
+        <button type="button" class="secondary" id="btn-rvol-link">Link to this retreat</button>
+        <h3>Import CSV</h3>
+        <p class="hint">Headers: display_name, email, phone, other_duties</p>
+        <input type="file" id="rvol-csv" accept=".csv,text/csv" />
+        <button type="button" class="secondary" id="btn-rvol-import">Upload import</button>
+        <pre id="rvol-import-result" class="mono" style="font-size:0.72rem; white-space:pre-wrap;"></pre>`;
+
+      document.getElementById('panel-schedule').innerHTML = `
+        <p class="hint">Only days that already have at least one <strong>slot</strong> are listed (pulled from this retreat’s slots).</p>
+        <div class="row">
+          <div style="flex:2; min-width:14rem;"><label>Day with activity</label>
+            <select id="sched-date-pick" style="width:100%; max-width:28rem; padding:0.45rem;">
+              <option value="" disabled selected>— Loading… —</option>
+            </select>
+          </div>
+          <div><label>&nbsp;</label><button type="button" class="secondary" id="btn-sched-refresh-dates">Refresh dates</button></div>
+          <div><label>&nbsp;</label><button type="button" class="secondary" id="btn-sched-load">Load day</button></div>
+        </div>
+        <div id="sched-out" class="scroll-x"></div>`;
+
+      document.getElementById('panel-matrix').innerHTML = `
+        <p class="hint">
+          Editable <strong>site × day</strong> grid (like the Excel “Site matrix” sheet). One task per line:
+          <code>Start day: Setup (2v, 15m)</code> — the part before <code>:</code> must match that day’s slot name (same text as before the em dash in <strong>Slots</strong>).
+          <strong>Send changes to database</strong> updates JewelHeart <strong>jobs + tasks</strong> in Postgres (same data as the REST API and the mobile SDUI schedule). Removed lines delete those tasks (assignments on them are dropped). New lines create or reuse jobs and add tasks. Days/columns come from existing slots only — add slots first if a date is missing.
+        </p>
+        <div class="row">
+          <button type="button" class="secondary" id="btn-matrix-load">Load matrix</button>
+          <button type="button" id="btn-matrix-send">Send changes to database</button>
+        </div>
+        <div id="matrix-msg" class="msg" aria-live="polite"></div>
+        <div class="scroll-x" id="matrix-wrap"><p class="hint">Select a retreat, open this tab, then Load matrix.</p></div>`;
+
+      document.getElementById('panel-reports').innerHTML = `
+        <div class="row">
+          <div><label>Date</label><input type="date" id="rep-date" /></div>
+        </div>
+        <button type="button" class="secondary" id="btn-rep-poster">Poster PDF</button>
+        <button type="button" class="secondary" id="btn-rep-daily-pdf">Daily PDF</button>
+        <button type="button" class="secondary" id="btn-rep-daily-csv">Daily CSV</button>`;
+
+      wireTabHandlers();
+    }
+
+    let selectedJobId = null;
+    let selectedSlotId = null;
+    let selectedTaskId = null;
+
+    function wireTabHandlers() {
+      document.getElementById('btn-job-create').onclick = onCreateJob;
+      document.getElementById('btn-job-save').onclick = onSaveJob;
+      document.getElementById('btn-job-delete').onclick = onDeleteJob;
+      document.getElementById('btn-slots-load').onclick = () => loadSlots(true);
+      wireSlotListFilters();
+      document.getElementById('btn-slot-create').onclick = onCreateSlot;
+      document.getElementById('btn-slot-save').onclick = onSaveSlot;
+      document.getElementById('btn-slot-delete').onclick = onDeleteSlot;
+      document.getElementById('btn-tasks-load').onclick = () => loadTasks(true);
+      document.getElementById('btn-task-create').onclick = onCreateTask;
+      document.getElementById('btn-task-save').onclick = onSaveTask;
+      document.getElementById('btn-task-delete').onclick = onDeleteTask;
+      document.getElementById('btn-task-dup').onclick = onDupTask;
+      document.getElementById('btn-task-assign').onclick = onAssignTask;
+      document.getElementById('btn-task-assign-refresh').onclick = async () => {
+        if (selectedTaskId) await openTaskDetail(selectedTaskId);
+      };
+      const taskAssignFilterEl = document.getElementById('task-assign-filter');
+      if (taskAssignFilterEl) {
+        taskAssignFilterEl.addEventListener('input', () => {
+          const sel = document.getElementById('task-assign-pick');
+          if (sel && taskAssignVolunteersCache.length) {
+            renderTaskAssignSelect(
+              sel,
+              taskAssignExcludeIds,
+              taskAssignFilterEl.value.trim().toLowerCase()
+            );
+          }
+        });
+      }
+      document.getElementById('btn-rvols-load').onclick = () => loadRetreatVolunteers(true);
+      document.getElementById('btn-rvol-link').onclick = onLinkVolunteer;
+      wireRvolTypeahead();
+      document.getElementById('btn-rvol-import').onclick = onImportCsv;
+      document.getElementById('btn-sched-load').onclick = onLoadSchedule;
+      document.getElementById('btn-sched-refresh-dates').onclick = () =>
+        populateScheduleDatePicklist().catch((e) => setApiMsg(e.message || String(e), true));
+      document.getElementById('btn-matrix-load').onclick = () =>
+        onMatrixLoad().catch((e) => {
+          setMatrixMsg(e.message || String(e), true);
+          setApiMsg(e.message || String(e), true);
+        });
+      document.getElementById('btn-matrix-send').onclick = () =>
+        onMatrixSend().catch((e) => {
+          setMatrixMsg(e.message || String(e), true);
+          setApiMsg(e.message || String(e), true);
+        });
+      document.getElementById('btn-rep-poster').onclick = () => downloadReport('poster');
+      document.getElementById('btn-rep-daily-pdf').onclick = () => downloadReport('daily', 'pdf');
+      document.getElementById('btn-rep-daily-csv').onclick = () => downloadReport('daily', 'csv');
+      wireTaskInstructionsUi();
+      wireTasksPanelDelegatedClicks();
+    }
+
+    function closeTaskInstructionsOverlay() {
+      const o = document.getElementById('task-instructions-overlay');
+      if (o) {
+        o.hidden = true;
+        o.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function wireTaskInstructionsUi() {
+      if (taskInstructionsUiWired) return;
+      taskInstructionsUiWired = true;
+      const overlay = document.getElementById('task-instructions-overlay');
+      document.getElementById('btn-task-instructions-close')?.addEventListener('click', closeTaskInstructionsOverlay);
+      overlay?.addEventListener('click', (ev) => {
+        if (ev.target === overlay) closeTaskInstructionsOverlay();
+      });
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        const o = document.getElementById('task-instructions-overlay');
+        if (o && !o.hidden) closeTaskInstructionsOverlay();
+      });
+    }
+
+    function wireTasksPanelDelegatedClicks() {
+      const panel = document.getElementById('panel-tasks');
+      if (!panel || panel.dataset.tasksInstrWired) return;
+      panel.dataset.tasksInstrWired = '1';
+      panel.addEventListener('click', onTasksPanelClick);
+    }
+
+    function onTasksPanelClick(ev) {
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      const btn = t.closest('[data-open-task-instr]');
+      if (btn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void openTaskInstructions(btn.getAttribute('data-open-task-instr'));
+      }
+    }
+
+    function formatJobSubjobsInstructionsHtml(job) {
+      const sub = job?.subjobs;
+      if (!sub || !sub.length) {
+        return '<p class="hint" style="margin: 0">No job checklist lines (subjobs).</p>';
+      }
+      const items = sub
+        .map((s) => {
+          const text = typeof s === 'string' ? s : s && s.text;
+          return String(text || '')
+            .trim();
+        })
+        .filter(Boolean);
+      if (!items.length) return '<p class="hint" style="margin: 0">No job checklist lines (subjobs).</p>';
+      return `<ol style="margin: 0; padding-left: 1.15rem; line-height: 1.5">${items
+        .map((txt) => `<li>${escapeHtml(txt)}</li>`)
+        .join('')}</ol>`;
+    }
+
+    function slotInstructionBlockHtml(slot, fallbackSlotId) {
+      if (!slot) {
+        return `<div class="jh-instr-block mono">${escapeHtml(String(fallbackSlotId || '—'))}</div>`;
+      }
+      const line1 = [slot.label, slot.slotDate, slot.timeBand]
+        .filter(Boolean)
+        .map((x) => escapeHtml(String(x)))
+        .join(' · ');
+      const ctx = slot.activityContext
+        ? `<p class="hint" style="margin: 0.4rem 0 0">${escapeHtml(String(slot.activityContext))}</p>`
+        : '';
+      return `<div class="jh-instr-block">${line1 || '—'}</div>${ctx}`;
+    }
+
+    async function openTaskInstructions(taskId) {
+      if (!selectedRetreatId || !taskId) return;
+      const overlay = document.getElementById('task-instructions-overlay');
+      const titleEl = document.getElementById('task-instructions-title');
+      const metaEl = document.getElementById('task-instructions-meta');
+      const bodyEl = document.getElementById('task-instructions-body');
+      if (!overlay || !titleEl || !metaEl || !bodyEl) return;
+      titleEl.textContent = 'Task instructions';
+      metaEl.textContent = taskId;
+      bodyEl.innerHTML = '<p class="hint">Loading…</p>';
+      overlay.hidden = false;
+      overlay.setAttribute('aria-hidden', 'false');
+      try {
+        const detail = await apiRequest(`retreats/${selectedRetreatId}/tasks/${taskId}`);
+        const job = jobsCache.find((j) => j.id === detail.jobId);
+        const slot = slotsCache.find((s) => s.id === detail.slotId);
+        const jobTitle = job ? job.title : detail.jobId;
+        metaEl.textContent = `${jobTitle} — ${taskId}`;
+        const notes = (detail.notes || '').trim();
+        bodyEl.innerHTML = `
+          <h4>Slot</h4>
+          ${slotInstructionBlockHtml(slot, detail.slotId)}
+          <h4>Task notes (instructions)</h4>
+          ${
+            notes
+              ? `<div class="jh-instr-block">${escapeHtml(notes)}</div>`
+              : '<p class="hint">No notes on this task.</p>'
+          }
+          <h4>Job checklist (subjobs)</h4>
+          ${formatJobSubjobsInstructionsHtml(job)}`;
+      } catch (e) {
+        bodyEl.innerHTML = '<p class="hint">Could not load this task.</p>';
+        setApiMsg(friendlyApiError(e), true);
+      }
+    }
+
+    async function openUnassignedJobInstructions(jobId) {
+      if (!selectedRetreatId || !jobId) return;
+      const overlay = document.getElementById('task-instructions-overlay');
+      const titleEl = document.getElementById('task-instructions-title');
+      const metaEl = document.getElementById('task-instructions-meta');
+      const bodyEl = document.getElementById('task-instructions-body');
+      if (!overlay || !titleEl || !metaEl || !bodyEl) return;
+      const job = jobsCache.find((j) => j.id === jobId);
+      const list = lastUnassignedTasksForPanel.filter((t) => t.jobId === jobId);
+      titleEl.textContent = 'Unassigned tasks — instructions';
+      metaEl.textContent = `${job ? job.title : jobId} — ${list.length} task(s)`;
+      bodyEl.innerHTML = '<p class="hint">Loading task details…</p>';
+      overlay.hidden = false;
+      overlay.setAttribute('aria-hidden', 'false');
+      if (!list.length) {
+        bodyEl.innerHTML = '<p class="hint">No tasks in this filtered list for this job.</p>';
+        return;
+      }
+      try {
+        const details = await Promise.all(
+          list.map((t) => apiRequest(`retreats/${selectedRetreatId}/tasks/${t.id}`))
+        );
+        let blocks = '';
+        for (const detail of details) {
+          const slot = slotsCache.find((s) => s.id === detail.slotId);
+          const notes = (detail.notes || '').trim();
+          blocks += `<section style="margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border)">
+            <p class="hint mono" style="margin: 0 0 0.35rem">${escapeHtml(detail.id)}</p>
+            <h4>Slot</h4>
+            ${slotInstructionBlockHtml(slot, detail.slotId)}
+            <h4>Task notes (instructions)</h4>
+            ${
+              notes
+                ? `<div class="jh-instr-block">${escapeHtml(notes)}</div>`
+                : '<p class="hint">No notes on this task.</p>'
+            }
+          </section>`;
+        }
+        blocks += `<h4>Job checklist (subjobs)</h4>${formatJobSubjobsInstructionsHtml(job)}`;
+        bodyEl.innerHTML = blocks;
+      } catch (e) {
+        bodyEl.innerHTML = '<p class="hint">Could not load task details.</p>';
+        setApiMsg(friendlyApiError(e), true);
+      }
+    }
+
+    function siteFromJobTitle(title) {
+      const t = String(title || '');
+      const i = t.indexOf(' — ');
+      if (i <= 0) return t.trim() || '(unknown site)';
+      return t.slice(0, i).trim();
+    }
+
+    function descFromJobTitle(title, site) {
+      const t = String(title || '');
+      const p = site + ' — ';
+      if (t.startsWith(p)) return t.slice(p.length).trim();
+      return t.trim();
+    }
+
+    function slotPrefixFromLabel(slot) {
+      const lab = String(slot?.label || '');
+      const parts = lab.split(' — ');
+      return (parts[0] || lab).trim();
+    }
+
+    function slotSortKey(slot) {
+      const p = slotPrefixFromLabel(slot);
+      const ix = MATRIX_SLOT_ORDER.indexOf(p);
+      return ix >= 0 ? ix : 99;
+    }
+
+    function normSigPart(s) {
+      return String(s || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    }
+
+    function taskSigFromModels(task, job, slot, site) {
+      const sp = slotPrefixFromLabel(slot);
+      const d = descFromJobTitle(job.title, site);
+      return `${normSigPart(sp)}|${normSigPart(d)}|${job.volunteersNeeded}|${job.estimatedMinutes}`;
+    }
+
+    function parseMatrixLine(line) {
+      const s = line.trim();
+      if (!s || s === '—' || s === '-') return null;
+      const m = s.match(/^(.+?):\s*(.+?)\s*\((\d+)v,\s*(\d+)m\)\s*$/i);
+      if (!m) {
+        throw new Error('Bad line (use "Slot name: description (2v, 10m)"): ' + s.slice(0, 100));
+      }
+      const v = parseInt(m[3], 10);
+      const em = parseInt(m[4], 10);
+      if (!Number.isFinite(v) || v < 1 || !Number.isFinite(em) || em < 0) {
+        throw new Error('Invalid (v) or (m) in: ' + s.slice(0, 100));
+      }
+      return { slotPrefix: m[1].trim(), desc: m[2].trim(), v, m };
+    }
+
+    function sigFromParsed(p) {
+      return `${normSigPart(p.slotPrefix)}|${normSigPart(p.desc)}|${p.v}|${p.m}`;
+    }
+
+    function findSlotForDay(slots, dateYmd, slotPrefix) {
+      const want = normSigPart(slotPrefix);
+      return slots.find((s) => {
+        if ((s.slotDate || '').slice(0, 10) !== dateYmd) return false;
+        return normSigPart(slotPrefixFromLabel(s)) === want;
+      });
+    }
+
+    function collectMatrixSites(jobs) {
+      const set = new Set(MATRIX_SITE_ORDER);
+      for (const j of jobs) set.add(siteFromJobTitle(j.title));
+      const extra = [...set].filter((s) => !MATRIX_SITE_ORDER.includes(s)).sort();
+      return [...MATRIX_SITE_ORDER.filter((s) => set.has(s)), ...extra];
+    }
+
+    function multisetTaskDiff(oldRows, newParsed) {
+      const oldBySig = new Map();
+      for (const r of oldRows) {
+        if (!oldBySig.has(r.sig)) oldBySig.set(r.sig, []);
+        oldBySig.get(r.sig).push(r);
+      }
+      const newList = newParsed.map((p) => ({ ...p, sig: sigFromParsed(p) }));
+      const newBySig = new Map();
+      for (const n of newList) {
+        if (!newBySig.has(n.sig)) newBySig.set(n.sig, []);
+        newBySig.get(n.sig).push(n);
+      }
+      const toDelete = [];
+      const toCreate = [];
+      const allSigs = new Set([...oldBySig.keys(), ...newBySig.keys()]);
+      for (const sig of allSigs) {
+        const olds = oldBySig.get(sig) || [];
+        const news = newBySig.get(sig) || [];
+        const d = news.length - olds.length;
+        if (d < 0) toDelete.push(...olds.slice(0, -d));
+        if (d > 0) toCreate.push(...news.slice(0, d));
+      }
+      return { toDelete, toCreate };
+    }
+
+    async function onMatrixLoad() {
+      if (!selectedRetreatId) {
+        setMatrixMsg('Select a retreat first.', true);
+        return;
+      }
+      setMatrixMsg('Loading…', false);
+      const rid = selectedRetreatId;
+      const [jobsD, slotsD, tasksD] = await Promise.all([
+        apiRequest(`retreats/${rid}/jobs`),
+        apiRequest(`retreats/${rid}/slots`, {}),
+        apiRequest(`retreats/${rid}/tasks`, {}),
+      ]);
+      const jobs = jobsD.items || [];
+      const slots = slotsD.items || [];
+      const tasks = tasksD.items || [];
+      matrixWorkingJobs = jobs.slice();
+      const dates = [...new Set(slots.map((s) => (s.slotDate || '').slice(0, 10)).filter(Boolean))].sort();
+      if (!dates.length) {
+        document.getElementById('matrix-wrap').innerHTML =
+          '<p class="hint">No slots yet — add slots for each day first.</p>';
+        matrixSnapshot = {};
+        setMatrixMsg('No slot dates.', true);
+        return;
+      }
+      const sites = collectMatrixSites(jobs);
+      const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
+      const slotMap = Object.fromEntries(slots.map((s) => [s.id, s]));
+
+      matrixSnapshot = {};
+      const wrap = document.getElementById('matrix-wrap');
+      let thead = '<tr><th class="site-col">Site</th>';
+      for (const d of dates) {
+        thead += `<th class="day-col">${escapeHtml(formatMatrixDateHeader(d))}</th>`;
+      }
+      thead += '</tr>';
+      let tbody = '';
+      for (const site of sites) {
+        tbody += '<tr><th>' + escapeHtml(site) + '</th>';
+        for (const date of dates) {
+          const cellTasks = tasks.filter((t) => {
+            const j = jobMap[t.jobId];
+            const sl = slotMap[t.slotId];
+            if (!j || !sl) return false;
+            return siteFromJobTitle(j.title) === site && (sl.slotDate || '').slice(0, 10) === date;
+          });
+          cellTasks.sort((a, b) => {
+            const sa = slotSortKey(slotMap[a.slotId]) - slotSortKey(slotMap[b.slotId]);
+            if (sa !== 0) return sa;
+            return String(slotMap[a.slotId].label).localeCompare(String(slotMap[b.slotId].label));
+          });
+          const lines = cellTasks.map((t) => {
+            const j = jobMap[t.jobId];
+            const sl = slotMap[t.slotId];
+            const sp = slotPrefixFromLabel(sl);
+            const desc = descFromJobTitle(j.title, site);
+            return `${sp}: ${desc} (${j.volunteersNeeded}v, ${j.estimatedMinutes}m)`;
+          });
+          const key = site + '\t' + date;
+          matrixSnapshot[key] = cellTasks.map((t) => {
+            const j = jobMap[t.jobId];
+            const sl = slotMap[t.slotId];
+            return {
+              taskId: t.id,
+              jobId: t.jobId,
+              sig: taskSigFromModels(t, j, sl, site),
+            };
+          });
+          const ta = lines.join('\n');
+          tbody +=
+            '<td><textarea class="matrix-cell" data-site="' +
+            escapeHtml(site) +
+            '" data-date="' +
+            escapeHtml(date) +
+            '">' +
+            escapeHtml(ta) +
+            '</textarea></td>';
+        }
+        tbody += '</tr>';
+      }
+      wrap.innerHTML = '<table class="matrix"><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+      setMatrixMsg('Loaded ' + sites.length + ' sites × ' + dates.length + ' day(s). Edit cells, then Send.', false);
+      setApiMsg('Site matrix loaded.', false);
+    }
+
+    function formatMatrixDateHeader(iso) {
+      if (!iso || iso.length < 10) return iso;
+      const d = new Date(iso.slice(0, 10) + 'T12:00:00');
+      if (Number.isNaN(d.getTime())) return iso;
+      const human = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      return iso.slice(0, 10) + ' — ' + human;
+    }
+
+    async function findOrCreateJobId(site, desc, v, em) {
+      const title = site + ' — ' + desc;
+      let j = matrixWorkingJobs.find(
+        (x) => x.title === title && x.volunteersNeeded === v && x.estimatedMinutes === em
+      );
+      if (j) return j.id;
+      const created = await apiRequest(`retreats/${selectedRetreatId}/jobs`, {
+        method: 'POST',
+        body: { title, volunteersNeeded: v, estimatedMinutes: em },
+      });
+      matrixWorkingJobs.push(created);
+      return created.id;
+    }
+
+    async function onMatrixSend() {
+      if (!selectedRetreatId) {
+        setMatrixMsg('Select a retreat first.', true);
+        return;
+      }
+      const rid = selectedRetreatId;
+      const slotsD = await apiRequest(`retreats/${rid}/slots`, {});
+      const slots = slotsD.items || [];
+      const cells = document.querySelectorAll('textarea.matrix-cell');
+      if (!cells.length) {
+        setMatrixMsg('Nothing to send — Load matrix first.', true);
+        return;
+      }
+      let deleted = 0;
+      let created = 0;
+      for (const ta of cells) {
+        const site = ta.getAttribute('data-site') || '';
+        const date = ta.getAttribute('data-date') || '';
+        const key = site + '\t' + date;
+        const oldRows = matrixSnapshot[key] || [];
+        const rawLines = ta.value.split('\n');
+        const newParsed = [];
+        for (let li = 0; li < rawLines.length; li++) {
+          const p = parseMatrixLine(rawLines[li]);
+          if (p) newParsed.push(p);
+        }
+        const { toDelete, toCreate } = multisetTaskDiff(oldRows, newParsed);
+        for (const row of toDelete) {
+          await apiRequest(`retreats/${rid}/tasks/${row.taskId}`, { method: 'DELETE' });
+          deleted++;
+        }
+        for (const p of toCreate) {
+          const slot = findSlotForDay(slots, date, p.slotPrefix);
+          if (!slot) {
+            throw new Error(
+              'No slot on ' + date + ' for "' + p.slotPrefix + '" (site ' + site + '). Check slot labels in Slots tab.'
+            );
+          }
+          const jobId = await findOrCreateJobId(site, p.desc, p.v, p.m);
+          await apiRequest(`retreats/${rid}/tasks`, {
+            method: 'POST',
+            body: { jobId, slotId: slot.id },
+          });
+          created++;
+        }
+      }
+      setMatrixMsg('Saved: +' + created + ' task(s), removed ' + deleted + '. Reloading matrix…', false);
+      setApiMsg('Site matrix saved (+' + created + ' / −' + deleted + ' tasks).', false);
+      await onMatrixLoad();
+    }
+
+    async function refreshActiveTab() {
+      if (!selectedRetreatId) return;
+      try {
+        if (activeTab === 'jobs') await loadJobs(true);
+        if (activeTab === 'slots') await loadSlots(false);
+        if (activeTab === 'tasks') {
+          await Promise.all([loadJobs(false), loadSlots(false)]);
+          await loadTasks(false);
+        }
+        if (activeTab === 'rvols') await loadRetreatVolunteers(false);
+        if (activeTab === 'schedule') await populateScheduleDatePicklist();
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function loadRetreats() {
+      try {
+        const data = await apiRequest('retreats');
+        let items = [];
+        if (Array.isArray(data)) items = data;
+        else if (data && Array.isArray(data.items)) items = data.items;
+        retreats = items;
+        retreatList.innerHTML = '';
+        if (!retreats.length) {
+          retreatList.innerHTML = '<li>No retreats (or no access).</li>';
+          setApiMsg('', false);
+          return;
+        }
+        for (const r of retreats) {
+          const li = document.createElement('li');
+          li.textContent = `${r.name || r.id} (${r.status || '?'})`;
+          li.dataset.id = r.id;
+          li.addEventListener('click', () => selectRetreat(r.id, li));
+          retreatList.appendChild(li);
+        }
+        setApiMsg('', false);
+        if (selectedRetreatId && !retreats.find((x) => x.id === selectedRetreatId)) {
+          selectedRetreatId = null;
+          selectedRetreat = null;
+          retreatEditWrap.hidden = true;
+          setRetreatWorkspaceNavVisible(false);
+          pickHint.hidden = false;
+          hideViewHeader();
+        }
+      } catch (e) {
+        console.error('loadRetreats', e);
+        setApiMsg(friendlyApiError(e), true);
+        retreats = [];
+        retreatList.innerHTML =
+          '<li style="cursor:default;border-style:dashed;font-size:0.8rem;color:var(--muted)">Could not load retreats.</li>';
+      }
+    }
+
+    async function selectRetreat(id, liEl) {
+      selectedRetreatId = id;
+      retreatList.querySelectorAll('li').forEach((el) => el.classList.remove('active'));
+      if (liEl) liEl.classList.add('active');
+      retreatEditWrap.hidden = false;
+      setRetreatWorkspaceNavVisible(true);
+      pickHint.hidden = true;
+      hideViewHeader();
+      selectedJobId = null;
+      selectedSlotId = null;
+      selectedTaskId = null;
+      try {
+        selectedRetreat = await apiRequest(`retreats/${id}`);
+        document.getElementById('edit-retreat-name').value = selectedRetreat.name || '';
+        document.getElementById('edit-retreat-tz').value = selectedRetreat.timezone || '';
+        document.getElementById('edit-retreat-start').value = (selectedRetreat.startDate || '').slice(0, 10);
+        document.getElementById('edit-retreat-end').value = (selectedRetreat.endDate || '').slice(0, 10);
+        fillStatusSelect(document.getElementById('edit-retreat-status'), selectedRetreat.status || 'draft');
+        if (!tabsInitialized) {
+          buildTabs();
+          tabsInitialized = true;
+        } else {
+          retreatTabs.querySelectorAll('button').forEach((b) => {
+            b.classList.toggle('tab-active', b.dataset.tab === activeTab);
+          });
+          tabPanels.querySelectorAll('.tab-panel').forEach((p) => {
+            p.classList.toggle('visible', p.id === 'panel-' + activeTab);
+          });
+        }
+        document.getElementById('job-editor').hidden = true;
+        document.getElementById('slot-editor').hidden = true;
+        document.getElementById('task-detail').hidden = true;
+        matrixSnapshot = {};
+        matrixWorkingJobs = [];
+        const mw = document.getElementById('matrix-wrap');
+        if (mw) mw.innerHTML = '<p class="hint">Open Site matrix tab and Load matrix for this retreat.</p>';
+        setMatrixMsg('', false);
+        updateViewHeader();
+        await refreshActiveTab();
+        setApiMsg('Retreat loaded.', false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    document.getElementById('btn-create-retreat').addEventListener('click', async () => {
+      const name = document.getElementById('new-retreat-name').value.trim();
+      const timezone = document.getElementById('new-retreat-tz').value.trim();
+      if (!name || !timezone) {
+        setApiMsg('Name and timezone required.', true);
+        return;
+      }
+      const body = {
+        name,
+        timezone,
+        status: document.getElementById('new-retreat-status').value,
+      };
+      const sd = document.getElementById('new-retreat-start').value;
+      const ed = document.getElementById('new-retreat-end').value;
+      if (sd) body.startDate = sd;
+      if (ed) body.endDate = ed;
+      try {
+        const r = await apiRequest('retreats', { method: 'POST', body });
+        setApiMsg('Created retreat ' + r.id, false);
+        await loadRetreats();
+        const li = [...retreatList.querySelectorAll('li')].find((x) => x.dataset.id === r.id);
+        if (li) selectRetreat(r.id, li);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById('btn-save-retreat').addEventListener('click', async () => {
+      if (!selectedRetreatId) return;
+      const patch = {
+        name: document.getElementById('edit-retreat-name').value.trim(),
+        timezone: document.getElementById('edit-retreat-tz').value.trim(),
+        status: document.getElementById('edit-retreat-status').value,
+      };
+      const sd = document.getElementById('edit-retreat-start').value;
+      const ed = document.getElementById('edit-retreat-end').value;
+      patch.startDate = sd || null;
+      patch.endDate = ed || null;
+      try {
+        selectedRetreat = await apiRequest(`retreats/${selectedRetreatId}`, { method: 'PATCH', body: patch });
+        setApiMsg('Retreat updated.', false);
+        updateViewHeader();
+        await loadRetreats();
+        const li = [...retreatList.querySelectorAll('li')].find((x) => x.dataset.id === selectedRetreatId);
+        if (li) li.classList.add('active');
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById('btn-delete-retreat').addEventListener('click', async () => {
+      if (!selectedRetreatId) return;
+      if (!confirm('Delete this retreat and all related jobs, slots, tasks, and links?')) return;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}`, { method: 'DELETE' });
+        setApiMsg('Retreat deleted.', false);
+        selectedRetreatId = null;
+        selectedRetreat = null;
+        retreatEditWrap.hidden = true;
+        setRetreatWorkspaceNavVisible(false);
+        pickHint.hidden = false;
+        hideViewHeader();
+        await loadRetreats();
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    function subsToLines(subjobs) {
+      if (!subjobs || !subjobs.length) return '';
+      return subjobs.map((s) => (typeof s === 'string' ? s : s.text || '')).join('\n');
+    }
+
+    async function loadJobs(showMsg) {
+      if (!selectedRetreatId) return;
+      const data = await apiRequest(`retreats/${selectedRetreatId}/jobs`);
+      jobsCache = data.items || [];
+      const el = document.getElementById('jobs-list');
+      if (!jobsCache.length) {
+        if (el) el.innerHTML = '<p class="hint">No jobs.</p>';
+        return;
+      }
+      if (!el) return;
+      let html = '<table class="data"><thead><tr><th>Title</th><th>Vol</th><th>Min</th><th>ID</th></tr></thead><tbody>';
+      for (const j of jobsCache) {
+        html += `<tr data-job="${j.id}" style="cursor:pointer"><td>${escapeHtml(j.title)}</td><td>${j.volunteersNeeded}</td><td>${j.estimatedMinutes}</td><td class="mono">${j.id}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      el.innerHTML = html;
+      el.querySelectorAll('tr[data-job]').forEach((tr) => {
+        tr.addEventListener('click', () => openJobEditor(tr.dataset.job));
+      });
+      if (showMsg) setApiMsg(jobsCache.length + ' job(s)', false);
+    }
+
+    function openJobEditor(jobId) {
+      selectedJobId = jobId;
+      const j = jobsCache.find((x) => x.id === jobId);
+      if (!j) return;
+      document.getElementById('job-editor').hidden = false;
+      document.getElementById('job-edit-id').textContent = jobId;
+      document.getElementById('job-edit-title').value = j.title || '';
+      document.getElementById('job-edit-vol').value = j.volunteersNeeded;
+      document.getElementById('job-edit-min').value = j.estimatedMinutes;
+      document.getElementById('job-edit-subs').value = subsToLines(j.subjobs);
+    }
+
+    async function onCreateJob() {
+      if (!selectedRetreatId) return;
+      const title = document.getElementById('job-new-title').value.trim();
+      const volunteersNeeded = parseInt(document.getElementById('job-new-vol').value, 10);
+      const estimatedMinutes = parseInt(document.getElementById('job-new-min').value, 10) || 0;
+      if (!title) {
+        setApiMsg('Job title required.', true);
+        return;
+      }
+      const lines = document.getElementById('job-new-subs').value.split('\n').map((s) => s.trim()).filter(Boolean);
+      const body = { title, volunteersNeeded, estimatedMinutes };
+      if (lines.length) body.subjobs = lines;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/jobs`, { method: 'POST', body });
+        setApiMsg('Job created.', false);
+        document.getElementById('job-new-title').value = '';
+        document.getElementById('job-new-subs').value = '';
+        await loadJobs(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onSaveJob() {
+      if (!selectedRetreatId || !selectedJobId) return;
+      const patch = {
+        title: document.getElementById('job-edit-title').value.trim(),
+        volunteersNeeded: parseInt(document.getElementById('job-edit-vol').value, 10),
+        estimatedMinutes: parseInt(document.getElementById('job-edit-min').value, 10) || 0,
+      };
+      patch.subjobs = document
+        .getElementById('job-edit-subs')
+        .value.split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length);
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/jobs/${selectedJobId}`, { method: 'PATCH', body: patch });
+        setApiMsg('Job saved.', false);
+        await loadJobs(false);
+        openJobEditor(selectedJobId);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onDeleteJob() {
+      if (!selectedRetreatId || !selectedJobId) return;
+      if (!confirm('Delete this job?')) return;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/jobs/${selectedJobId}`, { method: 'DELETE' });
+        selectedJobId = null;
+        document.getElementById('job-editor').hidden = true;
+        setApiMsg('Job deleted.', false);
+        await loadJobs(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    function slotDayChipCaption(ymd, index1) {
+      const d = new Date(ymd + 'T12:00:00');
+      if (Number.isNaN(d.getTime())) return String(ymd);
+      const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+      return index1 + ' ' + wd + ' ' + ymd.slice(5);
+    }
+
+    function rebuildSlotFilterLabelPickOptions() {
+      const sel = document.getElementById('slot-filter-label-pick');
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '';
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = 'Any label';
+      sel.appendChild(ph);
+      const labels = [...new Set((slotsCache || []).map((s) => s.label).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      );
+      for (const lab of labels) {
+        const o = document.createElement('option');
+        o.value = lab;
+        o.textContent = lab.length > 72 ? lab.slice(0, 72) + '…' : lab;
+        sel.appendChild(o);
+      }
+      if (labels.includes(cur)) sel.value = cur;
+    }
+
+    function rebuildSlotFilterChips() {
+      const dayRow = document.getElementById('slot-day-chips');
+      const bandRow = document.getElementById('slot-band-chips');
+      if (!dayRow || !bandRow) return;
+      const validDays = new Set();
+      for (const s of slotsCache || []) {
+        const y = (s.slotDate || '').toString().slice(0, 10);
+        if (y) validDays.add(y);
+      }
+      for (const y of [...slotDayPick]) if (!validDays.has(y)) slotDayPick.delete(y);
+
+      dayRow.innerHTML = '';
+      const dates = [...validDays].sort();
+      dates.forEach((ymd, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'jh-chip' + (slotDayPick.has(ymd) ? ' jh-chip-on' : '');
+        b.dataset.slotDayToggle = ymd;
+        b.textContent = slotDayChipCaption(ymd, i + 1);
+        dayRow.appendChild(b);
+      });
+      if (!dates.length) {
+        const sp = document.createElement('span');
+        sp.className = 'hint';
+        sp.style.fontSize = '0.78rem';
+        sp.textContent = 'No slot dates yet.';
+        dayRow.appendChild(sp);
+      }
+
+      bandRow.innerHTML = '';
+      for (const band of TIME_BANDS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'jh-chip' + (slotBandPick.has(band) ? ' jh-chip-on' : '');
+        b.dataset.slotBandToggle = band;
+        b.textContent = band;
+        bandRow.appendChild(b);
+      }
+    }
+
+    function onSlotsFilterPanelClick(ev) {
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest('#btn-slots-strip-clear')) {
+        clearSlotStripFilters();
+        return;
+      }
+      const unassignedInstr = t.closest('[data-unassigned-job-instr]');
+      if (unassignedInstr) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void openUnassignedJobInstructions(unassignedInstr.getAttribute('data-unassigned-job-instr'));
+        return;
+      }
+      const dayEl = t.closest('[data-slot-day-toggle]');
+      if (dayEl) {
+        const ymd = dayEl.getAttribute('data-slot-day-toggle');
+        if (slotDayPick.has(ymd)) slotDayPick.delete(ymd);
+        else slotDayPick.add(ymd);
+        dayEl.classList.toggle('jh-chip-on', slotDayPick.has(ymd));
+        scheduleSlotsViewRefresh();
+        return;
+      }
+      const bandEl = t.closest('[data-slot-band-toggle]');
+      if (bandEl) {
+        const band = bandEl.getAttribute('data-slot-band-toggle');
+        if (slotBandPick.has(band)) slotBandPick.delete(band);
+        else slotBandPick.add(band);
+        bandEl.classList.toggle('jh-chip-on', slotBandPick.has(band));
+        scheduleSlotsViewRefresh();
+        return;
+      }
+      const viewEl = t.closest('[data-slot-view]');
+      if (viewEl) {
+        slotViewMode = viewEl.getAttribute('data-slot-view') || 'slots';
+        document.getElementById('panel-slots')?.querySelectorAll('[data-slot-view]').forEach((btn) => {
+          btn.classList.toggle('jh-chip-on', btn.getAttribute('data-slot-view') === slotViewMode);
+        });
+        scheduleSlotsViewRefresh();
+        return;
+      }
+      if (t.closest('#btn-slots-clear-filters')) clearAllSlotFilters();
+    }
+
+    function scheduleSlotsViewRefresh() {
+      updateSlotFilterStrip();
+      void refreshSlotsPanelView();
+    }
+
+    function clearSlotStripFilters() {
+      slotDayPick.clear();
+      slotBandPick.clear();
+      const tp = document.getElementById('slot-filter-text');
+      if (tp) tp.value = '';
+      const pick = document.getElementById('slot-filter-label-pick');
+      if (pick) pick.value = '';
+      rebuildSlotFilterChips();
+      scheduleSlotsViewRefresh();
+    }
+
+    function clearAllSlotFilters() {
+      slotViewMode = 'slots';
+      slotDayPick.clear();
+      slotBandPick.clear();
+      const tp = document.getElementById('slot-filter-text');
+      if (tp) tp.value = '';
+      const pick = document.getElementById('slot-filter-label-pick');
+      if (pick) pick.value = '';
+      document.getElementById('panel-slots')?.querySelectorAll('[data-slot-view]').forEach((btn) => {
+        btn.classList.toggle('jh-chip-on', btn.getAttribute('data-slot-view') === 'slots');
+      });
+      rebuildSlotFilterChips();
+      scheduleSlotsViewRefresh();
+    }
+
+    function updateSlotFilterStrip() {
+      const strip = document.getElementById('slot-filter-strip');
+      const txt = document.getElementById('slot-filter-strip-text');
+      if (!strip || !txt) return;
+      const parts = [];
+      if (slotViewMode === 'unassigned') parts.push('SELECTED · Unassigned jobs');
+      else parts.push('SELECTED · Slots list');
+      if (slotDayPick.size > 0) parts.push('Days · ' + [...slotDayPick].sort().join(', '));
+      if (slotBandPick.size > 0) parts.push('Bands · ' + [...slotBandPick].join(', '));
+      const pl = document.getElementById('slot-filter-label-pick')?.value;
+      if (pl) parts.push('Label · ' + pl);
+      const tx = document.getElementById('slot-filter-text')?.value.trim();
+      if (tx) parts.push('Search · ' + tx);
+      const busy = slotDayPick.size || slotBandPick.size || pl || tx || slotViewMode === 'unassigned';
+      if (!busy) {
+        strip.hidden = true;
+        return;
+      }
+      txt.textContent = parts.join('   ');
+      strip.hidden = false;
+    }
+
+    function getFilteredSlots() {
+      const q = (document.getElementById('slot-filter-text')?.value || '').trim().toLowerCase();
+      const exactLabel = (document.getElementById('slot-filter-label-pick')?.value || '').trim();
+      return (slotsCache || []).filter((s) => {
+        const ymd = (s.slotDate || '').toString().slice(0, 10);
+        if (slotDayPick.size > 0 && !slotDayPick.has(ymd)) return false;
+        if (slotBandPick.size > 0 && !slotBandPick.has(String(s.timeBand || ''))) return false;
+        if (exactLabel && String(s.label || '') !== exactLabel) return false;
+        if (q) {
+          const lab = String(s.label || '').toLowerCase();
+          const id = String(s.id || '').toLowerCase();
+          const ctx = String(s.activityContext || '').toLowerCase();
+          if (!lab.includes(q) && !id.includes(q) && !ctx.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function taskMatchesSlotFilters(t) {
+      const slot = (slotsCache || []).find((x) => x.id === t.slotId);
+      if (!slot) return false;
+      const ymd = (slot.slotDate || '').toString().slice(0, 10);
+      if (slotDayPick.size > 0 && !slotDayPick.has(ymd)) return false;
+      if (slotBandPick.size > 0 && !slotBandPick.has(String(slot.timeBand || ''))) return false;
+      const pick = document.getElementById('slot-filter-label-pick')?.value || '';
+      if (pick && String(slot.label || '') !== pick) return false;
+      const q = (document.getElementById('slot-filter-text')?.value || '').trim().toLowerCase();
+      if (!q) return true;
+      const lab = String(slot.label || '').toLowerCase();
+      const sid = String(slot.id || '').toLowerCase();
+      const ctx = String(slot.activityContext || '').toLowerCase();
+      const job = jobsCache.find((j) => j.id === t.jobId);
+      const jt = String(job?.title || t.jobId || '').toLowerCase();
+      const tid = String(t.id || '').toLowerCase();
+      return lab.includes(q) || sid.includes(q) || ctx.includes(q) || jt.includes(q) || tid.includes(q);
+    }
+
+    async function renderUnassignedJobsTable() {
+      const el = document.getElementById('slots-list');
+      const st = document.getElementById('slot-filter-status');
+      if (!el || !selectedRetreatId) return;
+      el.innerHTML = '<p class="hint">Loading unassigned tasks…</p>';
+      try {
+        await loadJobs(false);
+        const data = await apiRequest(`retreats/${selectedRetreatId}/tasks`, { query: { unassignedOnly: 'true' } });
+        const tasks = (data.items || []).filter((t) => taskMatchesSlotFilters(t));
+        lastUnassignedTasksForPanel = tasks;
+        const map = new Map();
+        for (const t of tasks) map.set(t.jobId, (map.get(t.jobId) || 0) + 1);
+        if (!map.size) {
+          el.innerHTML =
+            '<p class="hint">No unassigned tasks match these filters (or none exist). Try clearing filters or switch back to Slots list.</p>';
+          if (st) st.textContent = '0 jobs in this view.';
+          return;
+        }
+        let html =
+          '<table class="data"><thead><tr><th>Job</th><th>Unassigned tasks</th><th>Job ID</th><th></th></tr></thead><tbody>';
+        for (const [jobId, cnt] of map) {
+          const j = jobsCache.find((x) => x.id === jobId);
+          html += `<tr><td>${escapeHtml(j ? j.title : jobId)}</td><td>${cnt}</td><td class="mono">${jobId}</td><td><button type="button" class="secondary small" data-unassigned-job-instr="${escapeHtml(
+            jobId
+          )}">Instructions</button></td></tr>`;
+        }
+        html +=
+          '</tbody></table><p class="hint" style="margin-top:0.45rem">Each count is a task (job × slot) with <strong>zero</strong> assignments. Use the <strong>Tasks</strong> tab to assign volunteers.</p>';
+        el.innerHTML = html;
+        if (st)
+          st.textContent = `${map.size} job(s) · ${tasks.length} unassigned task row(s) (filters applied).`;
+      } catch (e) {
+        el.innerHTML = '<p class="hint">Could not load unassigned tasks.</p>';
+        setApiMsg(friendlyApiError(e), true);
+      }
+    }
+
+    async function refreshSlotsPanelView() {
+      if (slotViewMode === 'unassigned') await renderUnassignedJobsTable();
+      else renderSlotsTable(getFilteredSlots(), false);
+      updateSlotFilterStrip();
+    }
+
+    function renderSlotsTable(items, showMsg) {
+      const el = document.getElementById('slots-list');
+      const st = document.getElementById('slot-filter-status');
+      if (!el) return;
+      const total = slotsCache.length;
+      if (!items.length) {
+        el.innerHTML =
+          total === 0
+            ? '<p class="hint">No slots in this retreat yet — create one below.</p>'
+            : '<p class="hint">No slots match these filters.</p>';
+        if (st) st.textContent = total === 0 ? '0 slots loaded.' : `Showing 0 of ${total} — adjust filters or clear them.`;
+        if (showMsg) setApiMsg(total === 0 ? '0 slots' : '0 matches (filters)', false);
+        return;
+      }
+      let html = '<table class="data"><thead><tr><th>Label</th><th>Date</th><th>Band</th><th>ID</th></tr></thead><tbody>';
+      for (const s of items) {
+        html += `<tr data-slot="${s.id}" style="cursor:pointer"><td>${escapeHtml(s.label)}</td><td>${s.slotDate}</td><td>${s.timeBand}</td><td class="mono">${s.id}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      el.innerHTML = html;
+      el.querySelectorAll('tr[data-slot]').forEach((tr) => {
+        tr.addEventListener('click', () => openSlotEditor(tr.dataset.slot));
+      });
+      if (st) st.textContent = `Showing ${items.length} of ${total} slot(s).`;
+      if (showMsg) setApiMsg(items.length + ' slot(s) in view', false);
+    }
+
+    function wireSlotListFilters() {
+      const panel = document.getElementById('panel-slots');
+      if (!panel || panel.dataset.slotFiltersWired) return;
+      panel.dataset.slotFiltersWired = '1';
+      panel.addEventListener('click', onSlotsFilterPanelClick);
+      document.getElementById('slot-filter-text')?.addEventListener('input', () => {
+        clearTimeout(slotListFilterTimer);
+        slotListFilterTimer = setTimeout(() => {
+          updateSlotFilterStrip();
+          void refreshSlotsPanelView();
+        }, 220);
+      });
+      document.getElementById('slot-filter-label-pick')?.addEventListener('change', () => {
+        updateSlotFilterStrip();
+        void refreshSlotsPanelView();
+      });
+    }
+
+    async function loadSlots(showMsg) {
+      if (!selectedRetreatId) return;
+      const data = await apiRequest(`retreats/${selectedRetreatId}/slots`, {});
+      slotsCache = data.items || [];
+      rebuildSlotFilterLabelPickOptions();
+      rebuildSlotFilterChips();
+      await refreshSlotsPanelView();
+      if (showMsg) setApiMsg((slotsCache.length || 0) + ' slot(s) loaded from API', false);
+    }
+
+    function openSlotEditor(slotId) {
+      selectedSlotId = slotId;
+      const s = slotsCache.find((x) => x.id === slotId);
+      if (!s) return;
+      document.getElementById('slot-editor').hidden = false;
+      document.getElementById('slot-edit-id').textContent = slotId;
+      document.getElementById('slot-edit-label').value = s.label || '';
+      document.getElementById('slot-edit-date').value = (s.slotDate || '').slice(0, 10);
+      document.getElementById('slot-edit-band').value = s.timeBand || 'early';
+    }
+
+    async function onCreateSlot() {
+      if (!selectedRetreatId) return;
+      const label = document.getElementById('slot-new-label').value.trim();
+      const slotDate = document.getElementById('slot-new-date').value;
+      const timeBand = document.getElementById('slot-new-band').value;
+      if (!label || !slotDate) {
+        setApiMsg('Label and date required.', true);
+        return;
+      }
+      const body = { label, slotDate, timeBand };
+      const ctx = document.getElementById('slot-new-ctx').value.trim();
+      if (ctx) body.activityContext = ctx;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/slots`, { method: 'POST', body });
+        setApiMsg('Slot created.', false);
+        await loadSlots(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onSaveSlot() {
+      if (!selectedRetreatId || !selectedSlotId) return;
+      const patch = {
+        label: document.getElementById('slot-edit-label').value.trim(),
+        slotDate: document.getElementById('slot-edit-date').value,
+        timeBand: document.getElementById('slot-edit-band').value,
+      };
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/slots/${selectedSlotId}`, { method: 'PATCH', body: patch });
+        setApiMsg('Slot saved.', false);
+        await loadSlots(false);
+        openSlotEditor(selectedSlotId);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onDeleteSlot() {
+      if (!selectedRetreatId || !selectedSlotId) return;
+      if (!confirm('Delete this slot?')) return;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/slots/${selectedSlotId}`, { method: 'DELETE' });
+        selectedSlotId = null;
+        document.getElementById('slot-editor').hidden = true;
+        setApiMsg('Slot deleted.', false);
+        await loadSlots(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    function fillJobSlotSelects() {
+      const sj = document.getElementById('task-new-job');
+      const ss = document.getElementById('task-new-slot');
+      sj.innerHTML = '';
+      ss.innerHTML = '';
+      for (const j of jobsCache) {
+        const o = document.createElement('option');
+        o.value = j.id;
+        o.textContent = (j.title || j.id).slice(0, 60);
+        sj.appendChild(o);
+      }
+      for (const s of slotsCache) {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = `${s.slotDate} ${s.label}`.slice(0, 80);
+        ss.appendChild(o);
+      }
+    }
+
+    async function loadTasks(showMsg) {
+      if (!selectedRetreatId) return;
+      fillJobSlotSelects();
+      const q = {};
+      if (document.getElementById('task-unassigned').checked) q.unassignedOnly = 'true';
+      if (document.getElementById('task-under').checked) q.underassignedOnly = 'true';
+      const data = await apiRequest(`retreats/${selectedRetreatId}/tasks`, { query: q });
+      const items = data.items || [];
+      const el = document.getElementById('tasks-list');
+      if (!items.length) {
+        el.innerHTML = '<p class="hint">No tasks.</p>';
+        if (showMsg) setApiMsg('0 tasks', false);
+        return;
+      }
+      let html =
+        '<table class="data"><thead><tr><th>Job</th><th>Slot</th><th>Asgn</th><th>Need</th><th>Status</th><th>ID</th></tr></thead><tbody>';
+      for (const t of items) {
+        const job = jobsCache.find((j) => j.id === t.jobId);
+        const slot = slotsCache.find((s) => s.id === t.slotId);
+        const need = Number(t.volunteersNeeded);
+        const needN = Number.isFinite(need) ? need : 0;
+        const asn = Number(t.assignmentCount);
+        const asnOk = Number.isFinite(asn);
+        const under =
+          t.isUnderassigned === true || (asnOk && needN > 0 && asn < needN);
+        const filled = asnOk && needN > 0 && asn >= needN;
+        const statusCell = under
+          ? '<span class="chip chip-warn">Understaffed</span>'
+          : filled
+            ? '<span class="chip chip-ok">Filled</span>'
+            : '<span class="chip">—</span>';
+        html += `<tr data-task="${t.id}" style="cursor:pointer"><td>${escapeHtml(job ? job.title : t.jobId)}</td><td>${escapeHtml(slot ? slot.label : t.slotId)}</td><td>${t.assignmentCount ?? '?'}</td><td>${t.volunteersNeeded ?? ''}</td><td>${statusCell}</td><td class="mono">${t.id}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      el.innerHTML = html;
+      el.querySelectorAll('tr[data-task]').forEach((tr) => {
+        tr.addEventListener('click', () => openTaskDetail(tr.dataset.task));
+      });
+      if (showMsg) setApiMsg(items.length + ' task(s)', false);
+    }
+
+    function renderTaskAssignSelect(sel, excludeIds, filterLc) {
+      if (!sel) return;
+      const f = filterLc || '';
+      sel.innerHTML = '';
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.disabled = true;
+      ph.selected = true;
+      const available = taskAssignVolunteersCache.filter((v) => {
+        if (!v.id || excludeIds.has(v.id)) return false;
+        if (!f) return true;
+        const name = (v.displayName || '').toLowerCase();
+        const em = (v.email || '').toLowerCase();
+        return name.includes(f) || em.includes(f);
+      });
+      if (!taskAssignVolunteersCache.length) {
+        ph.textContent = '— No volunteers linked to this retreat —';
+        sel.appendChild(ph);
+        return;
+      }
+      if (!available.length) {
+        ph.textContent =
+          excludeIds.size >= taskAssignVolunteersCache.length
+            ? '— Everyone linked is already assigned to this task —'
+            : f
+              ? '— No name matches filter —'
+              : '— No one left to assign —';
+        sel.appendChild(ph);
+        return;
+      }
+      ph.textContent = '— Pick volunteer (' + available.length + ') —';
+      sel.appendChild(ph);
+      for (const v of available) {
+        const o = document.createElement('option');
+        o.value = v.id;
+        o.textContent = (v.displayName || '(no name)') + (v.email ? ' — ' + v.email : '');
+        sel.appendChild(o);
+      }
+    }
+
+    async function refreshTaskAssignPicklist() {
+      const sel = document.getElementById('task-assign-pick');
+      if (!sel || !selectedRetreatId) return;
+      const data = await apiRequest(`retreats/${selectedRetreatId}/volunteers`);
+      const rows = data.items || [];
+      taskAssignVolunteersCache = rows.map((row) => {
+        const v = row.volunteer || {};
+        return { id: row.volunteerId, displayName: v.displayName || '', email: v.email || '' };
+      });
+      const filterEl = document.getElementById('task-assign-filter');
+      const filterLc = (filterEl && filterEl.value.trim().toLowerCase()) || '';
+      renderTaskAssignSelect(sel, taskAssignExcludeIds, filterLc);
+    }
+
+    async function openTaskDetail(taskId) {
+      selectedTaskId = taskId;
+      fillJobSlotSelects();
+      const detail = await apiRequest(`retreats/${selectedRetreatId}/tasks/${taskId}`);
+      document.getElementById('task-detail').hidden = false;
+      document.getElementById('task-detail-id').textContent = taskId;
+      document.getElementById('task-detail-notes').value = detail.notes || '';
+      const sel = document.getElementById('task-detail-slot');
+      sel.innerHTML = '';
+      for (const s of slotsCache) {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = `${s.slotDate} ${s.label}`.slice(0, 80);
+        if (s.id === detail.slotId) o.selected = true;
+        sel.appendChild(o);
+      }
+      const asg = detail.assignments || [];
+      taskAssignExcludeIds = new Set(
+        asg.map((a) => a.volunteerId || (a.volunteer && a.volunteer.id)).filter(Boolean)
+      );
+      await refreshTaskAssignPicklist();
+      let ah = '<table class="data"><thead><tr><th>Volunteer</th><th>Assignment ID</th><th></th></tr></thead><tbody>';
+      for (const a of asg) {
+        const vn = a.volunteer ? a.volunteer.displayName : a.volunteerId;
+        ah += `<tr><td>${escapeHtml(String(vn))}</td><td class="mono">${a.id}</td><td><button type="button" class="small secondary" data-rmass="${a.id}">Remove</button></td></tr>`;
+      }
+      ah += '</tbody></table>';
+      const wrap = document.getElementById('task-assignments');
+      wrap.innerHTML = ah;
+      wrap.querySelectorAll('button[data-rmass]').forEach((b) => {
+        b.addEventListener('click', async () => {
+          try {
+            await apiRequest(`retreats/${selectedRetreatId}/assignments/${b.dataset.rmass}`, { method: 'DELETE' });
+            setApiMsg('Assignment removed.', false);
+            await openTaskDetail(taskId);
+            await loadTasks(false);
+          } catch (e) {
+            setApiMsg(e.message || String(e), true);
+          }
+        });
+      });
+    }
+
+    async function onCreateTask() {
+      if (!selectedRetreatId) return;
+      const jobId = document.getElementById('task-new-job').value;
+      const slotId = document.getElementById('task-new-slot').value;
+      if (!jobId || !slotId) {
+        setApiMsg('Pick job and slot.', true);
+        return;
+      }
+      const body = { jobId, slotId };
+      const notes = document.getElementById('task-new-notes').value.trim();
+      if (notes) body.notes = notes;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/tasks`, { method: 'POST', body });
+        setApiMsg('Task created.', false);
+        await loadTasks(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onSaveTask() {
+      if (!selectedRetreatId || !selectedTaskId) return;
+      const patch = {
+        slotId: document.getElementById('task-detail-slot').value,
+        notes: document.getElementById('task-detail-notes').value.trim() || null,
+      };
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/tasks/${selectedTaskId}`, { method: 'PATCH', body: patch });
+        setApiMsg('Task saved.', false);
+        await loadTasks(false);
+        await openTaskDetail(selectedTaskId);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onDeleteTask() {
+      if (!selectedRetreatId || !selectedTaskId) return;
+      if (!confirm('Delete this task?')) return;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/tasks/${selectedTaskId}`, { method: 'DELETE' });
+        document.getElementById('task-detail').hidden = true;
+        selectedTaskId = null;
+        setApiMsg('Task deleted.', false);
+        await loadTasks(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onDupTask() {
+      if (!selectedRetreatId || !selectedTaskId) return;
+      const newSlotId = prompt('Target slot UUID for duplicate:');
+      if (!newSlotId) return;
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/tasks/${selectedTaskId}/duplicate`, {
+          method: 'POST',
+          body: { slotId: newSlotId.trim() },
+        });
+        setApiMsg('Task duplicated.', false);
+        await loadTasks(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onAssignTask() {
+      if (!selectedRetreatId || !selectedTaskId) return;
+      const pick = document.getElementById('task-assign-pick');
+      const volunteerId = pick ? pick.value.trim() : '';
+      if (!volunteerId) {
+        setApiMsg('Pick a volunteer from the list (link them to this retreat first if missing).', true);
+        return;
+      }
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/tasks/${selectedTaskId}/assignments`, {
+          method: 'POST',
+          body: { volunteerId },
+        });
+        setApiMsg('Assigned.', false);
+        await openTaskDetail(selectedTaskId);
+        await loadTasks(false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function loadRetreatVolunteers(showMsg) {
+      if (!selectedRetreatId) return;
+      const rvolInp = document.getElementById('rvol-search-q');
+      const pendingQ = rvolInp ? rvolInp.value.trim() : '';
+      const data = await apiRequest(`retreats/${selectedRetreatId}/volunteers`);
+      const items = data.items || [];
+      linkedVolunteerIds.clear();
+      for (const row of items) linkedVolunteerIds.add(row.volunteerId);
+      const el = document.getElementById('rvols-list');
+      if (!items.length) {
+        el.innerHTML = '<p class="hint">No linked volunteers.</p>';
+        if (showMsg) setApiMsg('0 linked', false);
+        if (rvolPickVolunteer && rvolPickVolunteer.id && linkedVolunteerIds.has(rvolPickVolunteer.id)) {
+          rvolPickVolunteer = null;
+          updateRvolSelectedChip();
+        }
+        if (pendingQ.length >= 1) await runRvolDirectoryQuery();
+        return;
+      }
+      let html = '<table class="data"><thead><tr><th>Name</th><th>Email</th><th>Volunteer ID</th><th></th></tr></thead><tbody>';
+      for (const row of items) {
+        const v = row.volunteer || {};
+        html += `<tr><td>${escapeHtml(v.displayName || '')}</td><td>${escapeHtml(v.email || '')}</td><td class="mono">${row.volunteerId}</td><td><button type="button" class="small secondary" data-unlink="${row.volunteerId}">Unlink</button></td></tr>`;
+      }
+      html += '</tbody></table>';
+      el.innerHTML = html;
+      el.querySelectorAll('button[data-unlink]').forEach((b) => {
+        b.addEventListener('click', async () => {
+          if (!confirm('Remove volunteer from this retreat?')) return;
+          try {
+            await apiRequest(`retreats/${selectedRetreatId}/volunteers/${b.dataset.unlink}`, { method: 'DELETE' });
+            setApiMsg('Unlinked.', false);
+            await loadRetreatVolunteers(true);
+          } catch (e) {
+            setApiMsg(e.message || String(e), true);
+          }
+        });
+      });
+      if (showMsg) setApiMsg(items.length + ' linked volunteer(s)', false);
+      if (rvolPickVolunteer && rvolPickVolunteer.id && linkedVolunteerIds.has(rvolPickVolunteer.id)) {
+        rvolPickVolunteer = null;
+        updateRvolSelectedChip();
+        setRvolTypeaheadStatus('That volunteer is now linked — pick another or clear search.');
+      }
+      if (pendingQ.length >= 1) await runRvolDirectoryQuery();
+    }
+
+    function setRvolTypeaheadStatus(text) {
+      const el = document.getElementById('rvol-typeahead-status');
+      if (el) el.textContent = text || '';
+    }
+
+    function snapshotVolunteerPick(v) {
+      if (!v || !v.id) return null;
+      const otherDuties = v.otherDuties != null && v.otherDuties !== '' ? v.otherDuties : v.other_duties || '';
+      return {
+        id: v.id,
+        displayName: v.displayName || '',
+        email: v.email || '',
+        phone: v.phone || '',
+        otherDuties: otherDuties || '',
+      };
+    }
+
+    function volunteerTypeaheadRowInnerHtml(v) {
+      const duties = v.otherDuties != null && v.otherDuties !== '' ? v.otherDuties : v.other_duties || '';
+      const name = escapeHtml(v.displayName || '(no name)');
+      const bits = ['<span class="jh-typeahead-name">' + name + '</span>'];
+      if (v.email) bits.push('<span class="jh-typeahead-email">' + escapeHtml(v.email) + '</span>');
+      if (v.phone) bits.push('<span class="jh-typeahead-phone">' + escapeHtml(v.phone) + '</span>');
+      if (duties) bits.push('<span class="jh-typeahead-duties">' + escapeHtml(duties) + '</span>');
+      return bits.join('');
+    }
+
+    function updateRvolSelectedChip() {
+      const row = document.getElementById('rvol-selected-row');
+      const detail = document.getElementById('rvol-selected-detail');
+      if (!row || !detail) return;
+      const v = rvolPickVolunteer;
+      if (!v || !v.id) {
+        row.hidden = true;
+        detail.innerHTML = '';
+        return;
+      }
+      row.hidden = false;
+      const bits = ['<div class="jh-sel-name">' + escapeHtml(v.displayName || '(no name)') + '</div>'];
+      if (v.email) bits.push('<div class="jh-sel-line">' + escapeHtml(v.email) + '</div>');
+      if (v.phone) bits.push('<div class="jh-sel-line"><span class="hint">Phone</span> ' + escapeHtml(v.phone) + '</div>');
+      if (v.otherDuties)
+        bits.push('<div class="jh-sel-line"><span class="hint">Other duties</span> ' + escapeHtml(v.otherDuties) + '</div>');
+      detail.innerHTML = bits.join('');
+    }
+
+    function resetRvolTypeaheadUI(statusMsg) {
+      rvolPickVolunteer = null;
+      const list = document.getElementById('rvol-typeahead-results');
+      if (list) {
+        list.innerHTML = '';
+        list.hidden = true;
+      }
+      updateRvolSelectedChip();
+      setRvolTypeaheadStatus(statusMsg != null ? statusMsg : 'Type at least one character to search.');
+    }
+
+    function wireRvolTypeahead() {
+      const inp = document.getElementById('rvol-search-q');
+      const list = document.getElementById('rvol-typeahead-results');
+      const clearBtn = document.getElementById('btn-rvol-clear-pick');
+      if (!inp || !list) return;
+      inp.addEventListener('input', () => {
+        rvolPickVolunteer = null;
+        updateRvolSelectedChip();
+        clearTimeout(rvolTypeaheadTimer);
+        const q = inp.value.trim();
+        if (q.length < 1) {
+          resetRvolTypeaheadUI();
+          return;
+        }
+        list.hidden = false;
+        list.innerHTML = '<div class="jh-typeahead-empty">Searching…</div>';
+        setRvolTypeaheadStatus('Searching…');
+        rvolTypeaheadTimer = setTimeout(() => runRvolDirectoryQuery(), 260);
+      });
+      inp.addEventListener('focus', () => {
+        const q = inp.value.trim();
+        if (q.length >= 1) {
+          list.hidden = false;
+          if (!list.querySelector('.jh-typeahead-item')) runRvolDirectoryQuery();
+        }
+      });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          rvolPickVolunteer = null;
+          updateRvolSelectedChip();
+          setRvolTypeaheadStatus('Selection cleared — pick another row or keep typing.');
+        });
+      }
+      ensureTypeaheadOutsideCloser();
+    }
+
+    function ensureTypeaheadOutsideCloser() {
+      if (typeaheadOutsideClickBound) return;
+      typeaheadOutsideClickBound = true;
+      document.addEventListener('click', (ev) => {
+        const rvolWrap = document.getElementById('rvol-typeahead-wrap');
+        const rvolList = document.getElementById('rvol-typeahead-results');
+        if (rvolWrap && rvolList && !rvolList.hidden && !rvolWrap.contains(ev.target)) rvolList.hidden = true;
+        const dirWrap = document.getElementById('dir-typeahead-wrap');
+        const dirList = document.getElementById('dir-typeahead-results');
+        if (dirWrap && dirList && !dirList.hidden && !dirWrap.contains(ev.target)) dirList.hidden = true;
+      });
+    }
+
+    async function runRvolDirectoryQuery() {
+      const inp = document.getElementById('rvol-search-q');
+      const list = document.getElementById('rvol-typeahead-results');
+      if (!inp || !list) return;
+      const q = inp.value.trim();
+      if (q.length < 1) {
+        resetRvolTypeaheadUI();
+        return;
+      }
+      list.hidden = false;
+      try {
+        const data = await apiRequest('volunteers', { query: { q, limit: 100 } });
+        const raw = data.items || [];
+        const items = raw.filter((v) => v && v.id && !linkedVolunteerIds.has(v.id));
+        list.innerHTML = '';
+        if (!items.length) {
+          list.appendChild(
+            Object.assign(document.createElement('div'), {
+              className: 'jh-typeahead-empty',
+              textContent: raw.length
+                ? 'Everyone matching this search is already linked to this retreat.'
+                : 'No matches — try another spelling or email fragment.',
+            })
+          );
+          setRvolTypeaheadStatus('0 volunteers to add for this query.');
+          return;
+        }
+        for (const v of items) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'jh-typeahead-item';
+          btn.setAttribute('role', 'option');
+          btn.innerHTML = volunteerTypeaheadRowInnerHtml(v);
+          btn.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            rvolPickVolunteer = snapshotVolunteerPick(v);
+            updateRvolSelectedChip();
+            list.hidden = true;
+            setRvolTypeaheadStatus('Selected — click Link to this retreat, or type again to search.');
+          });
+          list.appendChild(btn);
+        }
+        setRvolTypeaheadStatus(items.length + ' match(es) — click one to select.');
+      } catch (e) {
+        list.innerHTML = '';
+        list.appendChild(
+          Object.assign(document.createElement('div'), {
+            className: 'jh-typeahead-empty',
+            textContent: 'Could not load directory — check connection and try again.',
+          })
+        );
+        list.hidden = false;
+        setApiMsg(friendlyApiError(e), true);
+      }
+    }
+
+    async function onLinkVolunteer() {
+      if (!selectedRetreatId) return;
+      const volunteerId = rvolPickVolunteer && rvolPickVolunteer.id;
+      if (!volunteerId) {
+        setApiMsg('Type to search the directory, then click a volunteer in the list to select them.', true);
+        return;
+      }
+      try {
+        await apiRequest(`retreats/${selectedRetreatId}/volunteers`, { method: 'POST', body: { volunteerId } });
+        setApiMsg('Linked.', false);
+        const inp = document.getElementById('rvol-search-q');
+        if (inp) inp.value = '';
+        resetRvolTypeaheadUI();
+        await loadRetreatVolunteers(true);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function onImportCsv() {
+      if (!selectedRetreatId) return;
+      const inp = document.getElementById('rvol-csv');
+      if (!inp.files || !inp.files[0]) {
+        setApiMsg('Choose a CSV file.', true);
+        return;
+      }
+      const file = inp.files[0];
+      const token = await getBearerToken();
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      const res = await fetch(`${API}/retreats/${selectedRetreatId}/volunteers/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const text = await res.text();
+      let body;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = { raw: text };
+      }
+      if (!res.ok) {
+        setApiMsg(body?.error || body?.message || text || `HTTP ${res.status}`, true);
+        return;
+      }
+      document.getElementById('rvol-import-result').textContent = JSON.stringify(body, null, 2);
+      setApiMsg('Import finished.', false);
+      await loadRetreatVolunteers(true);
+    }
+
+    function formatSchedDateLabel(isoYmd) {
+      if (!isoYmd || isoYmd.length < 10) return isoYmd;
+      const d = new Date(isoYmd.slice(0, 10) + 'T12:00:00');
+      if (Number.isNaN(d.getTime())) return isoYmd;
+      const human = d.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      return isoYmd.slice(0, 10) + ' — ' + human;
+    }
+
+    async function populateScheduleDatePicklist() {
+      const sel = document.getElementById('sched-date-pick');
+      if (!sel || !selectedRetreatId) return;
+      sel.innerHTML = '<option value="" disabled selected>Loading…</option>';
+      try {
+        const data = await apiRequest(`retreats/${selectedRetreatId}/slots`, {});
+        const items = data.items || [];
+        const dates = [...new Set(items.map((s) => (s.slotDate || '').toString().slice(0, 10)).filter(Boolean))];
+        dates.sort();
+        sel.innerHTML = '';
+        if (!dates.length) {
+          const o = document.createElement('option');
+          o.value = '';
+          o.textContent = '— No slots yet — add slots under Slots tab —';
+          o.disabled = true;
+          o.selected = true;
+          sel.appendChild(o);
+          setApiMsg('Schedule: no slot dates yet.', false);
+          return;
+        }
+        const ph = document.createElement('option');
+        ph.value = '';
+        ph.disabled = true;
+        ph.selected = true;
+        ph.textContent = '— Pick a date (' + dates.length + ' day' + (dates.length === 1 ? '' : 's') + ') —';
+        sel.appendChild(ph);
+        for (const iso of dates) {
+          const o = document.createElement('option');
+          o.value = iso;
+          o.textContent = formatSchedDateLabel(iso);
+          sel.appendChild(o);
+        }
+        setApiMsg('Schedule: ' + dates.length + ' day(s) with slots — pick one and Load day.', false);
+      } catch (e) {
+        sel.innerHTML = '';
+        const o = document.createElement('option');
+        o.value = '';
+        o.textContent = '— Could not load dates —';
+        o.disabled = true;
+        o.selected = true;
+        sel.appendChild(o);
+        throw e;
+      }
+    }
+
+    async function onLoadSchedule() {
+      if (!selectedRetreatId) return;
+      const sel = document.getElementById('sched-date-pick');
+      const date = sel ? sel.value : '';
+      if (!date) {
+        setApiMsg('Pick a date from the list (refresh dates if empty).', true);
+        return;
+      }
+      try {
+        const data = await apiRequest(`retreats/${selectedRetreatId}/schedule`, { query: { date } });
+        document.getElementById('sched-out').innerHTML =
+          '<pre class="mono" style="font-size:0.72rem; white-space:pre-wrap; max-height:50vh; overflow:auto;">' +
+          escapeHtml(JSON.stringify(data, null, 2)) +
+          '</pre>';
+        setApiMsg('Schedule loaded.', false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    async function downloadReport(kind, fmt) {
+      if (!selectedRetreatId) return;
+      const date = document.getElementById('rep-date').value;
+      if (!date) {
+        setApiMsg('Pick a date for reports.', true);
+        return;
+      }
+      try {
+        if (kind === 'poster') {
+          const { blob } = await apiBlob(`retreats/${selectedRetreatId}/reports/poster`, { date }, 'application/pdf');
+          downloadBlob(blob, `poster-${date}.pdf`);
+        } else {
+          const format = fmt || 'pdf';
+          const { blob } = await apiBlob(
+            `retreats/${selectedRetreatId}/reports/daily`,
+            { date, format },
+            format === 'csv' ? 'text/csv' : 'application/pdf'
+          );
+          downloadBlob(blob, `daily-${date}.${format === 'csv' ? 'csv' : 'pdf'}`);
+        }
+        setApiMsg('Download started.', false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    let dirSelectedId = null;
+
+    function wireDirTypeahead() {
+      const inp = document.getElementById('dir-q');
+      const list = document.getElementById('dir-typeahead-results');
+      const st = document.getElementById('dir-typeahead-status');
+      if (!inp || !list) return;
+      inp.addEventListener('input', () => {
+        clearTimeout(dirTypeaheadTimer);
+        const q = inp.value.trim();
+        if (q.length < 1) {
+          list.innerHTML = '';
+          list.hidden = true;
+          dirDirectoryCache = [];
+          if (st) st.textContent = 'Type at least one character to search; click a match to edit below.';
+          return;
+        }
+        list.hidden = false;
+        list.innerHTML = '<div class="jh-typeahead-empty">Searching…</div>';
+        if (st) st.textContent = 'Searching…';
+        dirTypeaheadTimer = setTimeout(() => runDirectoryQuery(), 260);
+      });
+      inp.addEventListener('focus', () => {
+        const q = inp.value.trim();
+        if (q.length >= 1) {
+          list.hidden = false;
+          if (!list.querySelector('.jh-typeahead-item')) runDirectoryQuery();
+        }
+      });
+      ensureTypeaheadOutsideCloser();
+    }
+
+    async function runDirectoryQuery() {
+      const inp = document.getElementById('dir-q');
+      const list = document.getElementById('dir-typeahead-results');
+      const st = document.getElementById('dir-typeahead-status');
+      if (!inp || !list) return;
+      const q = inp.value.trim();
+      if (q.length < 1) {
+        list.innerHTML = '';
+        list.hidden = true;
+        dirDirectoryCache = [];
+        if (st) st.textContent = 'Type at least one character to search; click a match to edit below.';
+        return;
+      }
+      list.hidden = false;
+      try {
+        const data = await apiRequest('volunteers', { query: { q, limit: 50 } });
+        const items = data.items || [];
+        dirDirectoryCache = items;
+        list.innerHTML = '';
+        if (!items.length) {
+          list.appendChild(
+            Object.assign(document.createElement('div'), {
+              className: 'jh-typeahead-empty',
+              textContent: 'No matches — try another spelling or email fragment.',
+            })
+          );
+          if (st) st.textContent = 'No results for this query.';
+          return;
+        }
+        for (const v of items) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'jh-typeahead-item';
+          btn.setAttribute('role', 'option');
+          btn.innerHTML = volunteerTypeaheadRowInnerHtml(v);
+          btn.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            openDirEditor(v.id, dirDirectoryCache);
+            list.hidden = true;
+            if (st) st.textContent = 'Editing in the form below — type again to search for someone else.';
+          });
+          list.appendChild(btn);
+        }
+        if (st) st.textContent = items.length + ' match(es) — click one to open the editor.';
+      } catch (e) {
+        list.innerHTML = '';
+        list.appendChild(
+          Object.assign(document.createElement('div'), {
+            className: 'jh-typeahead-empty',
+            textContent: 'Search failed — try again.',
+          })
+        );
+        list.hidden = false;
+        setApiMsg(friendlyApiError(e), true);
+      }
+    }
+
+    wireDirTypeahead();
+
+    function openDirEditor(id, list) {
+      dirSelectedId = id;
+      const v = (list || []).find((x) => x.id === id) || {};
+      document.getElementById('dir-edit').hidden = false;
+      document.getElementById('dir-edit-id').textContent = id;
+      document.getElementById('dir-edit-name').value = v.displayName || '';
+      document.getElementById('dir-edit-email').value = v.email || '';
+      document.getElementById('dir-edit-phone').value = v.phone || '';
+      document.getElementById('dir-edit-other').value = v.otherDuties || v.other_duties || '';
+    }
+
+    document.getElementById('btn-dir-create').addEventListener('click', async () => {
+      const displayName = document.getElementById('dir-new-name').value.trim();
+      if (!displayName) {
+        setApiMsg('Display name required.', true);
+        return;
+      }
+      const body = { displayName };
+      const em = document.getElementById('dir-new-email').value.trim();
+      const ph = document.getElementById('dir-new-phone').value.trim();
+      const ot = document.getElementById('dir-new-other').value.trim();
+      if (em) body.email = em;
+      if (ph) body.phone = ph;
+      if (ot) body.otherDuties = ot;
+      try {
+        const v = await apiRequest('volunteers', { method: 'POST', body });
+        setApiMsg('Created volunteer ' + v.id, false);
+        for (const x of ['dir-new-name', 'dir-new-email', 'dir-new-phone', 'dir-new-other'])
+          document.getElementById(x).value = '';
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById('btn-dir-save').addEventListener('click', async () => {
+      if (!dirSelectedId) return;
+      const patch = {
+        displayName: document.getElementById('dir-edit-name').value.trim(),
+        email: document.getElementById('dir-edit-email').value.trim() || null,
+        phone: document.getElementById('dir-edit-phone').value.trim() || null,
+        otherDuties: document.getElementById('dir-edit-other').value.trim() || null,
+      };
+      try {
+        await apiRequest(`volunteers/${dirSelectedId}`, { method: 'PATCH', body: patch });
+        setApiMsg('Volunteer updated.', false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById('btn-dir-delete').addEventListener('click', async () => {
+      if (!dirSelectedId) return;
+      if (!confirm('Delete this volunteer from the global directory?')) return;
+      try {
+        await apiRequest(`volunteers/${dirSelectedId}`, { method: 'DELETE' });
+        document.getElementById('dir-edit').hidden = true;
+        dirSelectedId = null;
+        setApiMsg('Volunteer deleted.', false);
+      } catch (e) {
+        setApiMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById('btn-google').addEventListener('click', async () => {
+      setAuthMsg('');
+      clearKeycloakSession();
+      authSource = null;
+      try {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      } catch (e) {
+        setAuthMsg(formatAuthError(e), true);
+      }
+    });
+    document.getElementById('btn-keycloak').addEventListener('click', async () => {
+      try {
+        await startKeycloakLogin();
+      } catch (e) {
+        setAuthMsg(formatKeycloakError(e), true);
+      }
+    });
+    document.getElementById('btn-phone-send').addEventListener('click', async () => {
+      const phoneE164 = normalizePhoneE164(document.getElementById('phone').value.trim());
+      if (!phoneE164) {
+        setAuthMsg('Enter a valid phone number.', true);
+        return;
+      }
+      try {
+        await sendFirebasePhoneCode(phoneE164);
+        setAuthMsg(`Code sent to ${phoneE164}.`, false);
+      } catch (e) {
+        setAuthMsg(formatAuthError(e), true);
+      }
+    });
+    document.getElementById('btn-phone-signin').addEventListener('click', async () => {
+      const code = document.getElementById('phone-code').value.trim();
+      if (!code) {
+        setAuthMsg('Enter the SMS code.', true);
+        return;
+      }
+      try {
+        await completeFirebasePhoneSignIn(code);
+      } catch (e) {
+        setAuthMsg(formatAuthError(e), true);
+      }
+    });
+    document.getElementById('btn-email').addEventListener('click', async () => {
+      setAuthMsg('');
+      clearKeycloakSession();
+      authSource = null;
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) {
+        setAuthMsg('Enter email and password.', true);
+        return;
+      }
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        setAuthMsg(formatAuthError(e), true);
+      }
+    });
+    document.getElementById('btn-out').addEventListener('click', async () => {
+      if (authSource === 'keycloak') {
+        signOutKeycloak();
+        return;
+      }
+      await signOut(auth);
+      authSource = null;
+      applySignedOutUi();
+      setApiMsg('');
+    });
+    document.getElementById('btn-load').addEventListener('click', async () => {
+      try {
+        await loadRetreats();
+        await sduiController.load();
+      } catch (e) {
+        console.error('btn-load', e);
+        setApiMsg(friendlyApiError(e), true);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'k') return;
+      const t = e.target;
+      const tag = t && t.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      e.preventDefault();
+      const d = document.getElementById('dir-q');
+      if (d && !sessionPanel.hidden) {
+        d.focus();
+        d.select();
+      }
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      await authReady;
+      if (authSource === 'keycloak') return;
+      if (user) {
+        clearKeycloakSession();
+        authSource = 'firebase';
+        applySignedInUi();
+      } else if (!authSource) {
+        applySignedOutUi();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/login/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/login/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/login/apple-touch-icon.png" />
+  <link rel="manifest" href="/login/manifest-volunteer.webmanifest" />
+  <meta name="apple-mobile-web-app-title" content="JewelHeart" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#92160e" />
+  <title>Jewel Heart Volunteers (dev)</title>
+  <!-- deploy-marker: dev-volunteer -->
+  <link rel="canonical" href="https://api-dev.karmadots.org/login/volunteer.html" />
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --surface: #12151c;
+      --panel: #161a22;
+      --text: #e8eaef;
+      --muted: #8b95a8;
+      --accent: #e5484d;
+      --border: #252b38;
+      --ok: #34d399;
+      --err: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 1rem 1.15rem 2rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      font-size: 0.95rem;
+      margin: 0 0 0.65rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: var(--accent);
+      color: #fff;
+      margin: 0.2rem 0.3rem 0.2rem 0;
+    }
+    button.secondary { background: #3d4454; color: var(--text); }
+    button.small { padding: 0.3rem 0.55rem; font-size: 0.78rem; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input {
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0b0d12;
+      color: var(--text);
+      font-size: 0.85rem;
+      width: 100%;
+    }
+    label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .msg { font-size: 0.82rem; margin-top: 0.45rem; white-space: pre-wrap; }
+    .msg.err { color: var(--err); }
+    .msg.ok { color: var(--ok); }
+    .hint { font-size: 0.78rem; color: var(--muted); margin: 0.25rem 0 0.5rem; }
+    .jh-auth-methods {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+      max-width: 20rem;
+    }
+    button.jh-btn-google {
+      background: #fff;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      width: 100%;
+      margin: 0;
+      padding: 0.55rem 0.85rem;
+    }
+    button.jh-btn-apple {
+      background: #000;
+      color: #fff;
+      width: 100%;
+      margin: 0;
+      padding: 0.55rem 0.85rem;
+    }
+    .jh-auth-block {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .jh-auth-block:first-of-type { margin-top: 0.65rem; padding-top: 0; border-top: none; }
+    .jh-auth-block-title { margin: 0 0 0.35rem; font-size: 0.82rem; font-weight: 600; }
+    .jh-auth-field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: flex-end;
+      margin-top: 0.35rem;
+    }
+    .jh-auth-field { flex: 1 1 10rem; min-width: 0; }
+    .jh-auth-steps {
+      margin: 0 0 0.65rem;
+      padding-left: 1.15rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .jh-sdui-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: auto;
+    }
+    .jh-invite-banner {
+      margin-bottom: 0.85rem;
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      background: rgba(52, 211, 153, 0.12);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      font-size: 0.82rem;
+    }
+    .jh-invite-banner.err {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: rgba(248, 113, 113, 0.35);
+    }
+    .jh-env-badge {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #bfdbfe;
+      background: rgba(37, 99, 235, 0.22);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+    }
+  </style>
+  <link rel="stylesheet" href="jewelheart-admin.css?v=__JH_WEB_BUILD__" />
+</head>
+<body>
+  <main>
+    <p class="jh-env-badge" aria-label="Environment">Dev volunteer login</p>
+
+    <section class="panel" id="auth-panel">
+      <h2>Sign in</h2>
+      <p class="hint">July 2026 retreat volunteers — api-dev backend.</p>
+      <div id="invite-banner" class="jh-invite-banner" hidden aria-live="polite"></div>
+
+      <div class="jh-auth-methods">
+        <button type="button" id="btn-google" class="jh-btn-google">Sign in with Google</button>
+        <button type="button" id="btn-apple" class="jh-btn-apple">Sign in with Apple</button>
+      </div>
+
+      <div class="jh-auth-block">
+        <p class="jh-auth-block-title">Phone</p>
+        <p class="hint">
+          Use the phone number on the roster. We text a one-time code each time you sign in.
+          Keep the app open between visits so you rarely need to sign in again.
+        </p>
+        <ol class="jh-auth-steps">
+          <li>Enter your phone number and tap <strong>Send code</strong> once. Wait for the text.</li>
+          <li>Type the code from the text, then tap <strong>Phone sign-in</strong>.</li>
+        </ol>
+        <div class="jh-auth-field-row">
+          <div class="jh-auth-field" style="flex: 2 1 14rem;">
+            <label for="phone">Phone number</label>
+            <input type="tel" id="phone" placeholder="7149559394" autocomplete="tel" />
+          </div>
+          <button type="button" id="btn-phone-send" class="secondary">Send code</button>
+        </div>
+        <div class="jh-auth-field-row" style="margin-top: 0.65rem;">
+          <div class="jh-auth-field" style="flex: 1 1 8rem; max-width: 10rem;">
+            <label for="phone-code">SMS code</label>
+            <input type="text" id="phone-code" placeholder="123456" inputmode="numeric" autocomplete="one-time-code" />
+          </div>
+          <button type="button" id="btn-phone-signin" class="secondary">Phone sign-in</button>
+        </div>
+        <div id="recaptcha-phone" class="hint" style="margin-top:0.35rem"></div>
+      </div>
+
+      <div class="msg" id="auth-msg" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" id="onboarding-panel" hidden>
+      <h2>Your volunteer profile</h2>
+      <p class="hint" id="onboarding-intro">
+        What first and last name do you want in the app? They appear on the volunteer shift poster (Merit Board) and identify you during jobs.
+      </p>
+      <p class="hint" id="onboarding-merit-note"></p>
+      <div class="jh-auth-field-row">
+        <div class="jh-auth-field">
+          <label for="ob-first">First name</label>
+          <input type="text" id="ob-first" autocomplete="given-name" />
+        </div>
+        <div class="jh-auth-field">
+          <label for="ob-last">Last name</label>
+          <input type="text" id="ob-last" autocomplete="family-name" />
+        </div>
+      </div>
+      <div class="jh-auth-field-row" style="margin-top:0.65rem">
+        <div class="jh-auth-field">
+          <label for="ob-email">Email address</label>
+          <input type="email" id="ob-email" autocomplete="email" />
+        </div>
+      </div>
+      <div id="ob-email-otp-block" hidden style="margin-top:0.65rem">
+        <p class="hint">This email differs from your sign-in. We sent a verification code.</p>
+        <div class="jh-auth-field-row">
+          <div class="jh-auth-field" style="max-width:10rem">
+            <label for="ob-email-code">Email code</label>
+            <input type="text" id="ob-email-code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" />
+          </div>
+          <button type="button" id="btn-ob-send-email" class="secondary">Send code</button>
+          <button type="button" id="btn-ob-verify-email" class="secondary">Verify email</button>
+        </div>
+      </div>
+      <div class="jh-auth-field-row" style="margin-top:0.65rem">
+        <div class="jh-auth-field">
+          <label for="ob-phone">Phone (optional)</label>
+          <input type="tel" id="ob-phone" autocomplete="tel" />
+        </div>
+      </div>
+      <p class="hint" id="ob-phone-hint" hidden></p>
+      <div style="margin-top:0.85rem">
+        <button type="button" id="btn-ob-save">Save and continue</button>
+        <button type="button" id="btn-ob-out" class="secondary">Sign out</button>
+      </div>
+      <div class="msg" id="onboarding-msg" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" id="volunteer-sdui-section" hidden>
+      <div class="jh-sdui-toolbar">
+        <button type="button" id="sdui-back" class="secondary small" hidden>Back</button>
+        <span id="sdui-title">JewelHeart</span>
+        <div class="jh-sdui-toolbar-actions">
+          <button type="button" id="btn-out" class="secondary">Sign out</button>
+        </div>
+      </div>
+      <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
+      <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
+      <div class="msg" id="sdui-msg" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from './jewelheart-sdui.js?v=__JH_WEB_BUILD__';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      OAuthProvider,
+      signInWithPopup,
+      signInWithPhoneNumber,
+      RecaptchaVerifier,
+      signOut,
+      onAuthStateChanged,
+    } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyAd7WirDcLLX9bl1BY4uAhjiXEvpB-HiFw',
+      authDomain: 'gettingstoned-4aee3.firebaseapp.com',
+      projectId: 'gettingstoned-4aee3',
+      storageBucket: 'gettingstoned-4aee3.firebasestorage.app',
+      messagingSenderId: '120549448949',
+      appId: '1:120549448949:ios:189513e804833eed5db9bc',
+    };
+
+    const API =
+      (location.hostname.indexOf('api') === 0 ? location.origin : 'https://api-dev.karmadots.org') +
+      '/jewelheart';
+
+    const INVITE_STORAGE_KEY = 'jh_volunteer_invite_token';
+    const VOLUNTEER_SIGNOUT_KEY = 'jh_volunteer_explicit_signout';
+
+    /** @type {{ displayName?: string, retreatName?: string } | null} */
+    let invitePreview = null;
+
+    /** @type {import('firebase/auth').ConfirmationResult | null} */
+    let phoneConfirmation = null;
+    /** @type {import('firebase/auth').RecaptchaVerifier | null} */
+    let phoneRecaptcha = null;
+    let phoneSendInFlight = false;
+    let phoneLastSentE164 = '';
+    let phoneLastSentAt = 0;
+
+    function loadStoredInviteToken() {
+      try {
+        return sessionStorage.getItem(INVITE_STORAGE_KEY) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    function saveInviteToken(token) {
+      const t = String(token || '').trim();
+      if (!t) return;
+      sessionStorage.setItem(INVITE_STORAGE_KEY, t);
+    }
+
+    function clearInviteToken() {
+      sessionStorage.removeItem(INVITE_STORAGE_KEY);
+    }
+
+    function captureInviteFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const invite = params.get('invite');
+      if (!invite) return null;
+      saveInviteToken(invite);
+      params.delete('invite');
+      const qs = params.toString();
+      const next = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
+      window.history.replaceState({}, document.title, next);
+      return invite;
+    }
+
+    function setInviteBanner(text, isErr = false) {
+      const el = document.getElementById('invite-banner');
+      if (!el) return;
+      if (!text) {
+        el.hidden = true;
+        el.textContent = '';
+        el.classList.remove('err');
+        return;
+      }
+      el.hidden = false;
+      el.textContent = text;
+      el.classList.toggle('err', isErr);
+    }
+
+    async function fetchInvitePreview(token) {
+      const res = await fetch(`${API}/invites/${encodeURIComponent(token)}/preview`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || `Invite preview failed (${res.status})`);
+      return data;
+    }
+
+    function rosterPhoneForInput(raw) {
+      const e164 = normalizePhoneE164(raw);
+      if (!e164) return '';
+      const digits = e164.replace(/\D/g, '');
+      if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1);
+      if (digits.length === 10) return digits;
+      return String(raw || '').trim();
+    }
+
+    function applyInviteFormPrefill() {
+      if (!invitePreview?.phone) return;
+      const phoneEl = document.getElementById('phone');
+      if (phoneEl && !phoneEl.value.trim()) {
+        phoneEl.value = rosterPhoneForInput(invitePreview.phone);
+      }
+    }
+
+    async function initInviteBanner() {
+      captureInviteFromUrl();
+      const token = loadStoredInviteToken();
+      if (!token) return;
+      try {
+        invitePreview = await fetchInvitePreview(token);
+        applyInviteFormPrefill();
+        if (invitePreview.status === 'active') {
+          const who = invitePreview.displayName || 'you';
+          const retreat = invitePreview.retreatName ? ` (${invitePreview.retreatName})` : '';
+          setInviteBanner(
+            `Welcome, ${who}${retreat}. Sign in with the email or phone the organizers have for you.`,
+          );
+        } else if (invitePreview.status === 'consumed') {
+          clearInviteToken();
+          setInviteBanner('You already used your invite. Sign in below with the same email or phone as on the roster.', false);
+        } else if (invitePreview.status === 'expired') {
+          clearInviteToken();
+          setInviteBanner('This invite link has expired. Ask the organizer for a new QR code.', true);
+        } else {
+          setInviteBanner('Invite link is not valid. Ask the organizer for a new QR code.', true);
+        }
+      } catch (e) {
+        setInviteBanner(String(e.message || e), true);
+      }
+    }
+
+    async function apiVolunteerSession(bearer) {
+      const res = await fetch(`${API}/volunteer/session`, {
+        headers: { Authorization: `Bearer ${bearer}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
+
+    async function apiRedeemInvite(bearer, inviteToken) {
+      const res = await fetch(`${API}/invites/redeem`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${bearer}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inviteToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
+
+    async function apiVolunteerBootstrap(bearer) {
+      const res = await fetch(`${API}/volunteer/bootstrap`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
+
+    /** @type {{ emailVerified?: boolean, draft?: object } | null} */
+    let onboardingState = null;
+
+    function normalizeEmailLocal(raw) {
+      const s = String(raw || '').trim().toLowerCase();
+      return s && s.includes('@') ? s : '';
+    }
+
+    function setOnboardingMsg(text, isErr = false) {
+      const el = document.getElementById('onboarding-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      el.className = 'msg' + (isErr ? ' err' : text ? ' ok' : '');
+    }
+
+    function emailNeedsOtp(draft) {
+      const ae = normalizeEmailLocal(draft?.authEmail);
+      const fe = normalizeEmailLocal(document.getElementById('ob-email')?.value);
+      if (!fe) return true;
+      if (!ae) return true;
+      return ae !== fe;
+    }
+
+    function refreshOnboardingOtpUi(draft) {
+      const block = document.getElementById('ob-email-otp-block');
+      const needs = emailNeedsOtp(draft);
+      if (block) block.hidden = !needs;
+      onboardingState = onboardingState || {};
+      if (!needs) onboardingState.emailVerified = true;
+    }
+
+    function fillOnboardingForm(draft) {
+      document.getElementById('ob-first').value = draft.firstName || '';
+      document.getElementById('ob-last').value = draft.lastName || '';
+      document.getElementById('ob-email').value = draft.email || '';
+      document.getElementById('ob-phone').value = draft.phone || '';
+      const mn = document.getElementById('onboarding-merit-note');
+      if (mn) mn.textContent = draft.meritBoardNote || '';
+      const ph = document.getElementById('ob-phone-hint');
+      if (ph) {
+        if (draft.phoneMustMatchAuth && draft.authPhone) {
+          ph.hidden = false;
+          ph.textContent = 'If you enter a phone number, it must match the number you signed in with, or leave blank.';
+        } else {
+          ph.hidden = true;
+        }
+      }
+      const intro = document.getElementById('onboarding-intro');
+      if (intro) {
+        intro.textContent = draft.reOnboarding
+          ? 'Confirm or update the first and last name you want in the app, plus your contact info.'
+          : 'What first and last name do you want in the app? They appear on the volunteer shift poster (Merit Board) and identify you during jobs.';
+      }
+      onboardingState = { emailVerified: !emailNeedsOtp(draft), draft };
+      refreshOnboardingOtpUi(draft);
+    }
+
+    function applyOnboardingUi() {
+      authPanel.hidden = true;
+      onboardingPanel.hidden = false;
+      volunteerSduiSection.hidden = true;
+      setAuthMsg('');
+    }
+
+    async function showOnboardingFromBootstrap(data) {
+      fillOnboardingForm(data);
+      applyOnboardingUi();
+    }
+
+    async function completeVolunteerAccess() {
+      const bearer = await getBearerToken(false);
+      const { res, data } = await apiVolunteerBootstrap(bearer);
+      if (!res.ok) throw new Error(data.error || `Bootstrap failed (${res.status})`);
+      if (data.profileConfirmed !== true) {
+        await showOnboardingFromBootstrap(data);
+        return { needsOnboarding: true };
+      }
+      return data;
+    }
+
+    function clearLegacyKeycloakSession() {
+      sessionStorage.removeItem('jh_keycloak_session');
+      sessionStorage.removeItem('jh_kc_oauth_state');
+    }
+
+    function normalizePhoneE164(raw) {
+      const digits = String(raw || '').replace(/\D/g, '');
+      if (!digits) return null;
+      if (String(raw).trim().startsWith('+')) return `+${digits}`;
+      if (digits.length === 10) return `+1${digits}`;
+      if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+      return `+${digits}`;
+    }
+
+    async function resetPhoneRecaptcha() {
+      if (phoneRecaptcha) {
+        try {
+          phoneRecaptcha.clear();
+        } catch {
+          /* ignore */
+        }
+        phoneRecaptcha = null;
+      }
+      const container = document.getElementById('recaptcha-phone');
+      if (container) container.replaceChildren();
+    }
+
+    async function getPhoneRecaptcha() {
+      await resetPhoneRecaptcha();
+      phoneRecaptcha = new RecaptchaVerifier(auth, 'recaptcha-phone', { size: 'invisible' });
+      await phoneRecaptcha.render();
+      return phoneRecaptcha;
+    }
+
+    function setPhoneSendUi(sending) {
+      const btn = document.getElementById('btn-phone-send');
+      if (!btn) return;
+      btn.disabled = sending;
+      btn.textContent = sending ? 'Sending…' : 'Send code';
+    }
+
+    function formatPhoneUserMessage(e) {
+      const code = e && e.code;
+      const m = e && e.message != null ? String(e.message) : String(e);
+      const low = m.toLowerCase();
+      if (code === 'PHONE_NEED_RESEND' || m === 'PHONE_NEED_RESEND') {
+        return 'Tap Send code again, wait for the text message, then enter the code and tap Phone sign-in.';
+      }
+      if (low.includes('recaptcha') && (low.includes('already') || low.includes('render'))) {
+        return 'Tap Send code once and wait a few seconds. If no text arrives, wait one minute and try again.';
+      }
+      if (code === 'auth/invalid-verification-code') {
+        return 'That code is not correct. Check the text message and try again, or tap Send code for a new one.';
+      }
+      if (code === 'auth/code-expired') {
+        return 'That code expired. Tap Send code to get a fresh one.';
+      }
+      if (code === 'auth/too-many-requests') {
+        return 'Too many tries. Wait a few minutes, then tap Send code again.';
+      }
+      if (code === 'auth/invalid-phone-number') {
+        return 'That phone number does not look valid. Use 10 digits (US) or include + and country code.';
+      }
+      if (code === 'auth/captcha-check-failed' || code === 'auth/missing-app-credential') {
+        return (
+          'Phone verification could not start (reCAPTCHA / app check). Try Google sign-in instead, or reload and try again.'
+        );
+      }
+      return formatAuthError(e);
+    }
+
+    async function sendFirebasePhoneCode(phoneE164) {
+      if (phoneSendInFlight) {
+        setAuthMsg('Still sending the code… wait a moment.', false);
+        return;
+      }
+
+      const now = Date.now();
+      if (phoneConfirmation && phoneLastSentE164 === phoneE164 && now - phoneLastSentAt < 90_000) {
+        setAuthMsg(
+          `We already sent a code to ${phoneE164}. Enter it below when it arrives. (Wait about a minute before requesting another.)`,
+          false,
+        );
+        return;
+      }
+
+      phoneSendInFlight = true;
+      setPhoneSendUi(true);
+      setAuthMsg('Sending code…', false);
+
+      try {
+        try {
+          await signOut(auth);
+        } catch {
+          /* ignore */
+        }
+        phoneConfirmation = null;
+        const verifier = await getPhoneRecaptcha();
+        phoneConfirmation = await signInWithPhoneNumber(auth, phoneE164, verifier);
+        phoneLastSentE164 = phoneE164;
+        phoneLastSentAt = Date.now();
+        setAuthMsg(
+          `Code sent to ${phoneE164}. Enter it below, then tap Phone sign-in. ` +
+            'If no text arrives within 2 minutes, use Google sign-in instead. ' +
+            'SMS requires Firebase billing and carrier delivery — on dev, phone auth often does not deliver texts.',
+          false,
+        );
+      } catch (e) {
+        phoneConfirmation = null;
+        phoneLastSentE164 = '';
+        phoneLastSentAt = 0;
+        await resetPhoneRecaptcha();
+        setAuthMsg(formatPhoneUserMessage(e), true);
+      } finally {
+        phoneSendInFlight = false;
+        setPhoneSendUi(false);
+      }
+    }
+
+    async function completeFirebasePhoneSignIn(code) {
+      if (!phoneConfirmation) {
+        const err = new Error('PHONE_NEED_RESEND');
+        err.code = 'PHONE_NEED_RESEND';
+        throw err;
+      }
+      await phoneConfirmation.confirm(String(code || '').trim());
+      phoneConfirmation = null;
+      phoneLastSentE164 = '';
+      phoneLastSentAt = 0;
+      await resetPhoneRecaptcha();
+    }
+
+    async function getBearerToken(forceRefresh = false) {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not signed in');
+      return user.getIdToken(forceRefresh);
+    }
+
+    function setAuthMsg(text, err) {
+      authMsg.textContent = text || '';
+      authMsg.className = 'msg' + (err ? ' err' : '');
+    }
+
+    function friendlyApiError(e) {
+      const m = e && e.message != null ? String(e.message) : String(e);
+      const low = m.toLowerCase();
+      if (e && e.status === 401) {
+        return m + ' If this persists, sign out and sign in again (refreshes your ID token).';
+      }
+      const looksNetwork =
+        (e && e.name === 'TypeError') ||
+        low.includes('failed to fetch') ||
+        low.includes('load failed') ||
+        low.includes('networkerror');
+      if (looksNetwork) {
+        return (
+          'Could not reach api-test.karmadots.org (network, DNS, VPN, firewall, or browser extension). Detail: ' + m
+        );
+      }
+      return m;
+    }
+
+    function formatAuthError(e) {
+      const code = e && e.code;
+      if (code === 'auth/popup-closed-by-user') {
+        return '';
+      }
+      if (code === 'auth/operation-not-allowed') {
+        return (
+          'That sign-in method is not enabled yet. Ask the organizers to enable it in Firebase Authentication.'
+        );
+      }
+      if (code === 'auth/unauthorized-domain') {
+        const h = typeof location !== 'undefined' ? location.hostname : 'this site';
+        return (
+          'auth/unauthorized-domain: Firebase Console → Authentication → Authorized domains → add "' +
+          h +
+          '". Then reload.'
+        );
+      }
+      return e && e.message != null ? String(e.message) : String(e);
+    }
+
+    function applySignedInUi() {
+      authPanel.hidden = true;
+      onboardingPanel.hidden = true;
+      volunteerSduiSection.hidden = false;
+      setAuthMsg('');
+      sduiController.resetHome().catch(async (e) => {
+        console.error('sdui home (auth)', e);
+        const msg = String(e?.message || e);
+        if (/complete volunteer onboarding|not bootstrapped|volunteer session not bootstrapped/i.test(msg)) {
+          try {
+            const bearer = await getBearerToken(false);
+            const { res, data } = await apiVolunteerBootstrap(bearer);
+            if (res.ok && data.profileConfirmed !== true) {
+              volunteerSduiSection.hidden = true;
+              await showOnboardingFromBootstrap(data);
+              return;
+            }
+          } catch (bootErr) {
+            console.error('onboarding redirect', bootErr);
+          }
+        }
+        sduiMsg.textContent = friendlyApiError(e);
+        sduiMsg.className = 'msg err';
+      });
+    }
+
+    async function enterVolunteerApp() {
+      try {
+        const access = await completeVolunteerAccess();
+        if (access?.needsOnboarding) return;
+        sessionStorage.removeItem(VOLUNTEER_SIGNOUT_KEY);
+        applySignedInUi();
+      } catch (e) {
+        console.error('volunteer access', e);
+        setAuthMsg(String(e.message || e), true);
+        try {
+          await signOut(auth);
+        } catch {
+          /* ignore */
+        }
+        markVolunteerSignedOut();
+      }
+    }
+
+    function applySignedOutUi() {
+      authPanel.hidden = false;
+      onboardingPanel.hidden = true;
+      volunteerSduiSection.hidden = true;
+      onboardingState = null;
+    }
+
+    function markVolunteerSignedOut() {
+      sessionStorage.setItem(VOLUNTEER_SIGNOUT_KEY, '1');
+      clearLegacyKeycloakSession();
+      applySignedOutUi();
+    }
+
+    async function initAuth() {
+      clearLegacyKeycloakSession();
+    }
+
+    function createAppleAuthProvider() {
+      const provider = new OAuthProvider('apple.com');
+      provider.addScope('email');
+      provider.addScope('name');
+      return provider;
+    }
+
+    async function startOAuthSignIn(provider) {
+      setAuthMsg('');
+      sessionStorage.removeItem(VOLUNTEER_SIGNOUT_KEY);
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        const msg = formatAuthError(e);
+        if (msg) setAuthMsg(msg, true);
+      }
+    }
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const authPanel = document.getElementById('auth-panel');
+    const onboardingPanel = document.getElementById('onboarding-panel');
+    const volunteerSduiSection = document.getElementById('volunteer-sdui-section');
+    const authMsg = document.getElementById('auth-msg');
+    const sduiMsg = document.getElementById('sdui-msg');
+
+    const sduiController = createVolunteerSduiController({
+      apiBase: API,
+      getIdToken: () => getBearerToken(),
+      rootEl: document.getElementById('sdui-root'),
+      titleEl: document.getElementById('sdui-title'),
+      msgEl: sduiMsg,
+      backBtn: document.getElementById('sdui-back'),
+      buildStampEl: document.getElementById('sdui-build-stamp'),
+      uiChannel: 'testers',
+    });
+    {
+      const bs0 = document.getElementById('sdui-build-stamp');
+      if (bs0) bs0.textContent = `web ${JH_LOGIN_WEB_BUILD} · api …`;
+    }
+
+    document.getElementById('sdui-back').addEventListener('click', () => {
+      sduiController.goBack().catch((e) => console.error('sdui back', e));
+    });
+
+    document.getElementById('btn-google').addEventListener('click', () => {
+      startOAuthSignIn(new GoogleAuthProvider());
+    });
+
+    document.getElementById('btn-apple').addEventListener('click', () => {
+      startOAuthSignIn(createAppleAuthProvider());
+    });
+
+    document.getElementById('btn-phone-send').addEventListener('click', async () => {
+      const phoneE164 = normalizePhoneE164(document.getElementById('phone').value.trim());
+      if (!phoneE164) {
+        setAuthMsg('Enter a valid phone number (10 digits, or + and country code).', true);
+        return;
+      }
+      await sendFirebasePhoneCode(phoneE164);
+    });
+
+    document.getElementById('btn-phone-signin').addEventListener('click', async () => {
+      const phoneE164 = normalizePhoneE164(document.getElementById('phone').value.trim());
+      const code = document.getElementById('phone-code').value.trim();
+      if (!phoneE164) {
+        setAuthMsg('Enter your phone number first.', true);
+        return;
+      }
+      if (!code) {
+        setAuthMsg('Enter the code from your text message.', true);
+        return;
+      }
+      if (!phoneConfirmation) {
+        setAuthMsg(
+          'Stay on this tab: tap Send code, wait for the text, enter the code, then tap Phone sign-in. Switching apps can reset the step.',
+          true,
+        );
+        return;
+      }
+      try {
+        await completeFirebasePhoneSignIn(code);
+      } catch (e) {
+        setAuthMsg(formatPhoneUserMessage(e), true);
+      }
+    });
+
+    document.getElementById('btn-out').addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+      markVolunteerSignedOut();
+    });
+
+    document.getElementById('ob-email').addEventListener('input', () => {
+      if (onboardingState?.draft) refreshOnboardingOtpUi(onboardingState.draft);
+    });
+
+    document.getElementById('btn-ob-send-email').addEventListener('click', async () => {
+      setOnboardingMsg('');
+      const email = document.getElementById('ob-email').value.trim();
+      if (!email) {
+        setOnboardingMsg('Enter an email address first.', true);
+        return;
+      }
+      try {
+        const bearer = await getBearerToken(false);
+        const res = await fetch(`${API}/volunteer/onboarding/send-otp`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel: 'email', email }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        setOnboardingMsg(data.message || 'Code sent.', false);
+      } catch (e) {
+        setOnboardingMsg(String(e.message || e), true);
+      }
+    });
+
+    document.getElementById('btn-ob-verify-email').addEventListener('click', async () => {
+      setOnboardingMsg('');
+      const email = document.getElementById('ob-email').value.trim();
+      const code = document.getElementById('ob-email-code').value.trim();
+      if (!email || !code) {
+        setOnboardingMsg('Enter email and code.', true);
+        return;
+      }
+      try {
+        const bearer = await getBearerToken(false);
+        const res = await fetch(`${API}/volunteer/onboarding/verify-otp`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, code }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        onboardingState = onboardingState || {};
+        onboardingState.emailVerified = true;
+        setOnboardingMsg('Email verified.', false);
+      } catch (e) {
+        setOnboardingMsg(String(e.message || e), true);
+      }
+    });
+
+    document.getElementById('btn-ob-save').addEventListener('click', async () => {
+      setOnboardingMsg('');
+      const draft = onboardingState?.draft;
+      if (emailNeedsOtp(draft) && !onboardingState?.emailVerified) {
+        setOnboardingMsg('Verify your email with the code we sent.', true);
+        return;
+      }
+      const body = {
+        firstName: document.getElementById('ob-first').value.trim(),
+        lastName: document.getElementById('ob-last').value.trim(),
+        email: document.getElementById('ob-email').value.trim(),
+        phone: document.getElementById('ob-phone').value.trim(),
+      };
+      try {
+        const bearer = await getBearerToken(false);
+        const res = await fetch(`${API}/volunteer/onboarding/complete`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        onboardingPanel.hidden = true;
+        onboardingState = null;
+        applySignedInUi();
+      } catch (e) {
+        setOnboardingMsg(String(e.message || e), true);
+      }
+    });
+
+    document.getElementById('btn-ob-out').addEventListener('click', async () => {
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+      markVolunteerSignedOut();
+    });
+
+    const authReady = initAuth();
+
+    onAuthStateChanged(auth, async (user) => {
+      await authReady;
+      if (user) {
+        await enterVolunteerApp();
+      } else if (!sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) {
+        applySignedOutUi();
+      }
+    });
+  </script>
+</body>
+</html>

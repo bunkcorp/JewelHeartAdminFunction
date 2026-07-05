@@ -75,10 +75,13 @@ class JewelHeartViewModel(
             } finally {
                 if (
                     screenId == "jewelheart.volunteer.checkin" ||
+                    screenId == "jewelheart.volunteer.shiftDetail" ||
                     screenId == "jewelheart.volunteer.shift" ||
                     screenId == "jewelheart.volunteer.mine"
                 ) {
-                    extraParams = extraParams.toMutableMap().apply { remove("checkinOp") }
+                    extraParams = extraParams.toMutableMap().apply {
+                        remove("checkinOp")
+                    }
                 }
                 loading = false
             }
@@ -197,7 +200,7 @@ class JewelHeartViewModel(
                     extraParams = extraParams + ("returnTo" to rt)
                 }
             }
-            "jewelheart.volunteer.searchByType", "jewelheart.volunteer.shift", "jewelheart.volunteer.checkin",
+            "jewelheart.volunteer.searchByType", "jewelheart.volunteer.shift", "jewelheart.volunteer.shiftDetail", "jewelheart.volunteer.checkin",
             "jewelheart.volunteer.messages", "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
             "jewelheart.volunteer.preferences", "jewelheart.volunteer.manage", "jewelheart.volunteer.admin" -> {
                 payload?.get("retreatId")?.takeIf { it.isNotBlank() }?.let { retreatId = it }
@@ -235,16 +238,19 @@ class JewelHeartViewModel(
                     val volunteerId = payload?.get("volunteerId")
                     val expandCheckin = payload?.get("expandCheckin")
                     val expandInstructions = payload?.get("expandInstructions")
+                    val shiftMode = payload?.get("shiftMode")
                     if (taskId != null) put("taskId", taskId)
-                    else if (target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shift") remove("taskId")
+                    else if (target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shiftDetail" || target == "jewelheart.volunteer.shift") remove("taskId")
+                    if (shiftMode != null) put("shiftMode", shiftMode)
+                    else if (target != "jewelheart.volunteer.shiftDetail") remove("shiftMode")
                     if (checkinOp != null) put("checkinOp", checkinOp)
                     else if (
-                        target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shift" ||
+                        target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shiftDetail" || target == "jewelheart.volunteer.shift" ||
                         target == "jewelheart.volunteer.mine"
                     ) remove("checkinOp")
                     if (shiftOp != null) put("shiftOp", shiftOp) else if (target != "jewelheart.volunteer.shift") remove("shiftOp")
-                    if (jobId != null) put("jobId", jobId) else if (target != "jewelheart.volunteer.shift") remove("jobId")
-                    if (dayIso != null) put("dayIso", dayIso) else if (target != "jewelheart.volunteer.shift") remove("dayIso")
+                    if (jobId != null) put("jobId", jobId) else if (target != "jewelheart.volunteer.shift" && target != "jewelheart.volunteer.shiftDetail") remove("jobId")
+                    if (dayIso != null) put("dayIso", dayIso) else if (target != "jewelheart.volunteer.shift" && target != "jewelheart.volunteer.shiftDetail") remove("dayIso")
                     if (volunteerId != null) put("volunteerId", volunteerId) else if (target != "jewelheart.volunteer.shift") remove("volunteerId")
                     if (expandCheckin != null) put("expandCheckin", expandCheckin) else if (target == "jewelheart.volunteer.shift") remove("expandCheckin")
                     if (expandInstructions != null) put("expandInstructions", expandInstructions)

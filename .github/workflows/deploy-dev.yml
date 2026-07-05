@@ -9,9 +9,11 @@ on:
     branches: [main]
     paths:
       - 'integrations/private-server/jewelheart-sdui-home.js'
+      - 'integrations/private-server/jewelheart-shift-checkins.js'
       - 'scripts/_prod-sdui.js'
       - 'scripts/_prod-admin.css'
       - 'scripts/_prod-index.html'
+      - 'scripts/sduiScreens.prod.js'
       - 'migrations/**'
       - 'scripts/deploy/jh-deploy.sh'
       - '.github/workflows/deploy-dev.yml'

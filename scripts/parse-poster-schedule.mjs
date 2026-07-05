@@ -1,10 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execSync } from 'child_process';
 
 const xlsxPath =
   process.argv[2] ||
-  'c:/Data/dev/RetreatVolunteer/Redesign/Retreat_Volunteer_Schedule v8, w abbrevs.xlsx';
+  'c:/Data/dev/RetreatVolunteer/Redesign/Retreat_Volunteer_Schedule v9.xlsx';
 
 const POSTER_DAY_COL_ISOS = {
   B: '2026-07-20',
@@ -81,7 +82,7 @@ function rowCellXml(rowXml, col, rowNum) {
 
 function rowCells(rowXml, rowNum, strings) {
   const out = {};
-  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'J']) {
+  for (const col of ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'L', 'M']) {
     const xml = rowCellXml(rowXml, col, rowNum);
     out[col] = xml ? cellValue(xml, strings) : '';
     out[`_${col}_xml`] = xml;
@@ -89,10 +90,14 @@ function rowCells(rowXml, rowNum, strings) {
   return out;
 }
 
-const tmpZip = path.join(os.tmpdir(), 'poster-v8.zip');
+const tmpZip = path.join(os.tmpdir(), `poster-${Date.now()}.zip`);
+const base = path.join(os.tmpdir(), `xlsx-parse-${Date.now()}`, 'xl');
+fs.mkdirSync(path.dirname(base), { recursive: true });
 fs.copyFileSync(xlsxPath, tmpZip);
-
-const base = path.join(os.tmpdir(), 'xlsx-v8b', 'xl');
+execSync(
+  `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${tmpZip}' -DestinationPath '${path.dirname(base)}' -Force"`,
+  { stdio: 'inherit' },
+);
 const strings = parseSharedStrings(fs.readFileSync(path.join(base, 'sharedStrings.xml'), 'utf8'));
 const sheet = fs.readFileSync(path.join(base, 'worksheets', 'sheet4.xml'), 'utf8');
 
@@ -102,13 +107,14 @@ for (let r = 2; r <= 18; r++) {
   if (!rowXml) continue;
   const cells = rowCells(rowXml[0], r, strings);
   const job = (cells.A || '').replace(/\r?\n/g, ' / ').trim();
-  const abbrev = (cells.J || '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
+  const jobType = (cells.L || '').trim().toLowerCase();
+  const abbrev = (cells.M || cells.J || '').replace(/\r?\n/g, ' ').replace(/\s+/g, ' ').trim();
   const scheduledDayIsos = [];
   for (const [col, iso] of Object.entries(POSTER_DAY_COL_ISOS)) {
     const xml = cells[`_${col}_xml`];
     if (isScheduledCell(xml, strings)) scheduledDayIsos.push(iso);
   }
-  jobs.push({ id: JOB_IDS[r - 2], title: job, abbrev, scheduledDayIsos });
+  jobs.push({ id: JOB_IDS[r - 2], title: job, abbrev, jobType, scheduledDayIsos });
 }
 
 console.log(JSON.stringify(jobs, null, 2));

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>JEWELHEART_VOLUNTEER_HOME_DEMO</key>
+		<string>1</string>
+		<key>PRIVATE_SERVER_DIR</key>
+		<string>/Users/kevinwoods/private-server-test</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>org.karmadots.private-server-test</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/kevinwoods/private-server-test/scripts/run-with-launchd.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/kevinwoods/private-server-test/logs/stderr.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/kevinwoods/private-server-test/logs/stdout.log</string>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/kevinwoods/private-server-test</string>
+</dict>
+</plist>

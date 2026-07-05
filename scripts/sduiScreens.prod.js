@@ -3,20 +3,30 @@
  * @see buddhist-stone-ios-app/shared/sdui-schema/examples/
  */
 
-import { HttpError } from './errors.js';
-import * as acl from './acl.js';
-import { assertUuid } from './service.js';
 import {
   buildJewelheartHomeScreen,
   buildJewelheartVolunteerSearchScreen,
+  buildJewelheartVolunteerSearchByTypeScreen,
   buildJewelheartVolunteerAssignScreen,
   buildJewelheartVolunteerShiftScreen,
+  buildJewelheartVolunteerShiftDetailScreen,
   buildJewelheartVolunteerCheckinScreen,
+  buildJewelheartVolunteerShiftInfoScreen,
+  buildJewelheartVolunteerShiftEditScreen,
   buildJewelheartVolunteerMessagesScreen,
   buildJewelheartVolunteerMineScreen,
   buildJewelheartVolunteerAccountScreen,
   buildJewelheartVolunteerPreferencesScreen,
+  buildJewelheartVolunteerAdminScreen,
+  buildJewelheartVolunteerManageScreen,
+  buildJewelheartVolunteerUserManageScreen,
+  searchJewelheartPeople,
 } from './jewelheart-sdui-home.js';
+import { assertVolunteerRosterAccess } from './jewelheart-volunteer-invite.js';
+import { HttpError } from './errors.js';
+import * as acl from './acl.js';
+import { assertUuid } from './service.js';
+import { query } from '../db.js';
 
 function wrap(screen) {
   return {
@@ -93,11 +103,26 @@ function todayISODate() {
  * @param {object} api - jewelheart service module exports
  * @param {object} [authToken] - decoded Firebase ID token (for anonymous read ACL)
  */
-export async function buildSduiResponse(firebaseUid, body, api, authToken = undefined) {
+export async function buildSduiResponse(
+  firebaseUid,
+  body,
+  api,
+  authToken = undefined,
+  keycloakPayload = undefined,
+) {
   const { screenId, retreatId: bodyRetreatId, params = {} } = body || {};
   if (!screenId) throw new HttpError(400, 'screenId required');
 
   const retreatId = bodyRetreatId || params.retreatId || null;
+
+  if (String(params?.uiChannel || '').toLowerCase() === 'testers') {
+    await assertVolunteerRosterAccess(firebaseUid, authToken, {
+      query,
+      retreatId,
+      keycloakPayload,
+    });
+  }
+
   if (retreatId) {
     assertUuid(retreatId, 'retreatId');
     await acl.assertRetreatReadAccess(firebaseUid, retreatId, authToken);
@@ -106,10 +131,22 @@ export async function buildSduiResponse(firebaseUid, body, api, authToken = unde
   switch (screenId) {
     case 'jewelheart.home':
     case 'home':
-      return wrap(await buildJewelheartHomeScreen(firebaseUid, authToken));
+      return wrap(
+        await buildJewelheartHomeScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
     case 'jewelheart.volunteer.search':
       return wrap(
         await buildJewelheartVolunteerSearchScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.searchByType':
+      return wrap(
+        await buildJewelheartVolunteerSearchByTypeScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),
@@ -128,6 +165,13 @@ export async function buildSduiResponse(firebaseUid, body, api, authToken = unde
           retreatId: retreatId || params.retreatId,
         }),
       );
+    case 'jewelheart.volunteer.shiftDetail':
+      return wrap(
+        await buildJewelheartVolunteerShiftDetailScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
     case 'jewelheart.volunteer.checkin':
       return wrap(
         await buildJewelheartVolunteerCheckinScreen(firebaseUid, authToken, {
@@ -135,6 +179,46 @@ export async function buildSduiResponse(firebaseUid, body, api, authToken = unde
           retreatId: retreatId || params.retreatId,
         }),
       );
+    case 'jewelheart.volunteer.shiftInfo':
+      return wrap(
+        await buildJewelheartVolunteerShiftInfoScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.shiftEdit':
+      return wrap(
+        await buildJewelheartVolunteerShiftEditScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.personSearch': {
+      const searchRetreatId = retreatId || params.retreatId || null;
+      if (searchRetreatId) {
+        assertUuid(searchRetreatId, 'retreatId');
+        await acl.assertRetreatReadAccess(firebaseUid, searchRetreatId, authToken);
+      }
+      const results = await searchJewelheartPeople(firebaseUid, authToken, {
+        ...params,
+        retreatId: searchRetreatId,
+        excludeVolunteerId: params.excludeVolunteerId ? String(params.excludeVolunteerId) : '',
+      });
+      return {
+        schemaVersion: 1,
+        minAppVersion: '2.0.0',
+        screen: {
+          id: 'jewelheart.personSearch',
+          title: 'Person search',
+          components: [{ type: 'spacer', style: { height: { value: 1 } } }],
+          metadata: {
+            personSearchResults: results.items,
+            personSearchTotal: results.total,
+            personSearchCapped: results.capped,
+          },
+        },
+      };
+    }
     case 'jewelheart.volunteer.messages':
       return wrap(
         await buildJewelheartVolunteerMessagesScreen(firebaseUid, authToken, {
@@ -159,6 +243,27 @@ export async function buildSduiResponse(firebaseUid, body, api, authToken = unde
     case 'jewelheart.volunteer.preferences':
       return wrap(
         await buildJewelheartVolunteerPreferencesScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.manage':
+      return wrap(
+        await buildJewelheartVolunteerManageScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.userManage':
+      return wrap(
+        await buildJewelheartVolunteerUserManageScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.admin':
+      return wrap(
+        await buildJewelheartVolunteerAdminScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),

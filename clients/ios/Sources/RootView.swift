@@ -181,7 +181,7 @@ struct SduiNavigationRootView: View {
             await MainActor.run {
                 envelope = env
                 syncFilterStateFromMetadata(env)
-                if screenId == "jewelheart.volunteer.checkin" {
+                if screenId == "jewelheart.volunteer.checkin" || screenId == "jewelheart.volunteer.shiftDetail" {
                     extraParams.removeValue(forKey: "checkinOp")
                 }
             }
@@ -259,7 +259,7 @@ struct SduiNavigationRootView: View {
 
                 switch target {
 
-                case "jewelheart.volunteer.checkin", "jewelheart.volunteer.messages",
+                case "jewelheart.volunteer.checkin", "jewelheart.volunteer.shiftDetail", "jewelheart.volunteer.messages",
                      "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
                      "jewelheart.volunteer.preferences":
 
@@ -273,17 +273,23 @@ struct SduiNavigationRootView: View {
 
                         extraParams["taskId"] = t
 
-                    } else if target == "jewelheart.volunteer.checkin" {
+                    } else if target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shiftDetail" {
 
                         extraParams.removeValue(forKey: "taskId")
 
+                    }
+
+                    if let mode = action.payload?["shiftMode"], !mode.isEmpty {
+                        extraParams["shiftMode"] = mode
+                    } else if target == "jewelheart.volunteer.shiftDetail" {
+                        extraParams.removeValue(forKey: "shiftMode")
                     }
 
                     if let op = action.payload?["checkinOp"], !op.isEmpty {
 
                         extraParams["checkinOp"] = op
 
-                    } else if target == "jewelheart.volunteer.checkin" {
+                    } else if target == "jewelheart.volunteer.checkin" || target == "jewelheart.volunteer.shiftDetail" {
 
                         extraParams.removeValue(forKey: "checkinOp")
 

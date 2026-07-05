@@ -1,0 +1,19 @@
+tunnel: 9a27f40c-dafb-451b-83d4-5f54ea1a718f
+credentials-file: /Users/kevinwoods/.cloudflared/9a27f40c-dafb-451b-83d4-5f54ea1a718f.json
+protocol: http2
+
+# Origin tuning: faster connect timeout, more frequent TCP keepalive to localhost
+originRequest:
+  connectTimeout: 15s
+  tcpKeepAlive: 15s
+
+ingress:
+  - hostname: api.karmadots.org
+    service: http://127.0.0.1:3001
+  - hostname: api-dev.karmadots.org
+    service: http://127.0.0.1:3003
+  - hostname: api-test.karmadots.org
+    service: http://127.0.0.1:3002
+  - hostname: auth.karmadots.org
+    service: http://127.0.0.1:8080
+  - service: http_status:404

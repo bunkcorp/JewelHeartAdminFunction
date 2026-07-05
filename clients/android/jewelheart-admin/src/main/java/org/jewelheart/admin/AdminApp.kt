@@ -532,7 +532,7 @@ private fun SduiComponentView(
                         },
                     )
                     .then(if (onTextClick != null) Modifier.clickable { onTextClick() } else Modifier)
-                    .padding(if (homeActionPill) PaddingValues(horizontal = 12.dp) else sduiHorizontalBarPadding(c.style))
+                    .padding(sduiHorizontalBarPadding(c.style))
                 Box(
                     modifier = if (homeActionPill) Modifier.fillMaxWidth() else barMod,
                     contentAlignment = Alignment.Center,
@@ -775,9 +775,16 @@ private fun sduiBarPadding(style: ComponentStyle?): PaddingValues {
 
 private fun sduiHorizontalBarPadding(style: ComponentStyle?): PaddingValues {
     val p = style?.padding ?: return PaddingValues(horizontal = 12.dp)
+    val homePill = style.homeActionPill == true
+    val isGold = style.backgroundColor?.equals("#FFCA10", ignoreCase = true) == true
+    val minH = when {
+        !homePill -> 0.0
+        isGold -> 14.0
+        else -> 12.0
+    }
     return PaddingValues(
-        start = (p.left ?: p.all ?: 12.0).dp,
-        end = (p.right ?: p.all ?: 12.0).dp,
+        start = maxOf(p.left ?: p.all ?: 12.0, minH).dp,
+        end = maxOf(p.right ?: p.all ?: 12.0, minH).dp,
     )
 }
 
