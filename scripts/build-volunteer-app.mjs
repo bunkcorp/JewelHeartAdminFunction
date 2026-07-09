@@ -68,9 +68,11 @@ export function buildVolunteerAppHtml(env, opts = {}) {
   const envBadgeHtml = cfg.envBadge
     ? `    <p class="jh-env-badge" aria-label="Environment">${cfg.envBadge}</p>\n`
     : '';
+  const magicLinkContinueUrl = cfg.pagesUrl || cfg.loginUrl;
   const uiChannelLine = cfg.uiChannel
     ? `      uiChannel: '${cfg.uiChannel}',\n`
     : '';
+  const uiChannelConst = cfg.uiChannel || '';
 
   return tpl
     .replaceAll('__JH_WEB_BUILD__', build)
@@ -80,6 +82,8 @@ export function buildVolunteerAppHtml(env, opts = {}) {
     .replaceAll('__JH_CANONICAL_URL__', canonical)
     .replaceAll('__JH_PAGE_TITLE__', title)
     .replaceAll('__JH_ENV_BADGE_HTML__', envBadgeHtml)
+    .replaceAll('__JH_UI_CHANNEL__', uiChannelConst)
+    .replaceAll('__JH_MAGIC_LINK_URL__', magicLinkContinueUrl)
     .replaceAll('__JH_UI_CHANNEL_LINE__', uiChannelLine);
 }
 

@@ -16,7 +16,9 @@ import {
   normalizeEmail,
   normalizePhoneE164,
   phoneDigitsLast10,
+  rosterIdentityMatches,
 } from './jewelheart-auth-identity.js';
+import { buildVolunteerTimeContext } from './jewelheart-volunteer-time-context.js';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS_PER_HOUR = 8;
@@ -381,7 +383,19 @@ export async function ensureVolunteerLinkedForAuth(query, uid, authToken, keyclo
       await ensureUidNotLinkedElsewhere(query, uid, rosterMatch.id);
       await linkVolunteerUid(query, rosterMatch.id, uid);
       volunteer = await volunteerByFirebaseUid(query, uid);
-    } else if (rosterMatch.firebaseUid !== uid) {
+    } else if (rosterIdentityMatches(rosterMatch, auth)) {
+      // Same verified roster email/phone as sign-in — replace stale uid (Google vs email link, etc.).
+      console.info(
+        'bootstrap: replacing volunteer firebase_uid',
+        rosterMatch.id,
+        rosterMatch.firebaseUid,
+        '->',
+        uid,
+      );
+      await ensureUidNotLinkedElsewhere(query, uid, rosterMatch.id);
+      await linkVolunteerUid(query, rosterMatch.id, uid);
+      volunteer = await volunteerByFirebaseUid(query, uid);
+    } else {
       throw new HttpError(
         409,
         'This roster contact is linked to a different sign-in. Contact the organizers.',
@@ -436,12 +450,24 @@ export async function bootstrapVolunteerSession(query, uid, authToken, keycloakP
   await ensureRetreatVolunteerLink(query, retreatId, volunteer.id);
 
   const draft = buildOnboardingDraft(volunteer, auth, authToken, keycloakPayload);
+  const timeContext = await buildVolunteerTimeContext(query);
   return {
     ok: true,
     volunteerId: volunteer.id,
     retreatId,
     profileConfirmed: draft.profileConfirmed,
     linked: true,
+    timeContext: {
+      testingEnabled: timeContext.testingEnabled,
+      todayIso: timeContext.todayIso,
+      liveTodayIso: timeContext.liveTodayIso,
+      retreatBannerLine: timeContext.retreatBannerLine,
+      testingNote: timeContext.testingNote,
+      retreat: {
+        startDate: timeContext.retreat?.startDate || null,
+        endDate: timeContext.retreat?.endDate || null,
+      },
+    },
     ...draft,
   };
 }

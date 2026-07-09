@@ -20,6 +20,7 @@ import {
   volunteerResolveAssignment,
   volunteerShiftIsFulfilled,
 } from './jewelheart-shift-checkins.js';
+import { buildVolunteerTimeContext, loadVolunteerTestingSettings } from './jewelheart-volunteer-time-context.js';
 
 /** Bump on each deploy (America/New_York, minute precision). Overwritten by deploy scripts. */
 const VOLUNTEER_SDUI_BUILD_STAMP = 'pending-deploy';
@@ -182,15 +183,6 @@ function volunteerHomeFitRetreatTitle(name, warnings) {
 
 function volunteerHomeLayoutWarningComponents(_warnings) {
   return [];
-}
-
-function volunteerHomeEffectiveTodayIso(timeZone) {
-  const test =
-    typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
-      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
-      : '';
-  if (test && isIsoDate(test)) return test;
-  return todayYmdInTimeZone(timeZone);
 }
 
 const VOLUNTEER_HOME_DEFAULT_RETREAT = {
@@ -566,53 +558,6 @@ function volunteerPreviousCheckinLabel(firebaseUid, taskId) {
   if (!last) return '';
   const t = last.finishedAt || last.startedAt;
   return t ? ` · prev: ${volunteerHomeFormatTimeAm(t)}` : '';
-}
-
-/**
- * Pin July 21 (retreat day 2) and demo shifts for management demos.
- * Set JEWELHEART_VOLUNTEER_HOME_DEMO=0 after go-live to use live dates/data.
- */
-function volunteerHomePinSummer2026Demo() {
-  const v =
-    typeof process !== 'undefined' && process.env
-      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_DEMO ?? '1').trim()
-      : '1';
-  if (v === '0' || v.toLowerCase() === 'false') return false;
-  if (v === '1' || v.toLowerCase() === 'true') return true;
-  const test =
-    typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
-      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
-      : '';
-  return Boolean(test && isIsoDate(test));
-}
-
-/** @deprecated use volunteerHomePinSummer2026Demo */
-function volunteerHomeForceDemoAssignments() {
-  return volunteerHomePinSummer2026Demo();
-}
-
-function volunteerHomeDemoTodayIso(timeZone) {
-  const forced =
-    typeof process !== 'undefined' && process.env && process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY
-      ? String(process.env.JEWELHEART_VOLUNTEER_HOME_TEST_TODAY).trim()
-      : '';
-  if (forced && isIsoDate(forced)) return forced;
-  if (volunteerHomePinSummer2026Demo()) return VOLUNTEER_HOME_DEMO_DAY_ISO;
-  return volunteerHomeEffectiveTodayIso(timeZone);
-}
-
-function volunteerHomeDefaultRetreat(retreat) {
-  if (
-    retreat &&
-    retreat.startDate === VOLUNTEER_HOME_DEFAULT_RETREAT.startDate &&
-    retreat.endDate === VOLUNTEER_HOME_DEFAULT_RETREAT.endDate
-  ) {
-    return retreat;
-  }
-  if (retreat?.id) {
-    return { ...VOLUNTEER_HOME_DEFAULT_RETREAT, id: retreat.id, name: retreat.name || VOLUNTEER_HOME_DEFAULT_RETREAT.name };
-  }
-  return { ...VOLUNTEER_HOME_DEFAULT_RETREAT };
 }
 
 function volunteerHomeCheckinTitle(taskId, fallbackLabel) {
@@ -1561,6 +1506,7 @@ const VOLUNTEER_SCREEN_BACK_LABELS = {
   'jewelheart.volunteer.preferences': 'Preferences',
   'jewelheart.volunteer.manage': 'Manage',
   'jewelheart.volunteer.userManage': 'User management',
+  'jewelheart.volunteer.testing': 'Testing',
   'jewelheart.volunteer.admin': 'Admin',
 };
 
@@ -2536,6 +2482,7 @@ const VOLUNTEER_SCREEN_TITLES = {
   'jewelheart.volunteer.preferences': 'Preferences',
   'jewelheart.volunteer.manage': 'Manage',
   'jewelheart.volunteer.userManage': 'User management',
+  'jewelheart.volunteer.testing': 'Testing',
   'jewelheart.volunteer.admin': 'Admin',
 };
 
@@ -3053,70 +3000,8 @@ function volunteerHomeGroupMatchesByDay(matches) {
 /** Shared header data for home and volunteer search screens. */
 export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefined, options = {}) {
   const explicitRetreatId = options.retreatId ? String(options.retreatId).trim() : '';
-  const tz = jewelheartDefaultTimeZoneId;
-  const todayIso = volunteerHomeDemoTodayIso(tz);
-
-  if (volunteerHomePinSummer2026Demo()) {
-    // Use the resolved today (JEWELHEART_VOLUNTEER_HOME_TEST_TODAY override → demo pin → real).
-    let retreat = volunteerHomeDefaultRetreat(null);
-    let volunteerName = 'Volunteer';
-    let volunteerId = null;
-    let errorNote = null;
-    let usingDemo = false;
-    let shiftCount = 0;
-    let todayCount = 0;
-    let rawTodayShifts = [];
-    let myShifts = [];
-    let jobs = [];
-    try {
-      const { items: retreats } = await listRetreats(firebaseUid, authToken);
-      const picked = volunteerHomePickRetreatFromList(retreats, todayIso, explicitRetreatId);
-      if (picked) retreat = picked;
-      const volunteerRow = await resolveVolunteerIdForHome(firebaseUid, retreat?.id);
-      if (volunteerRow?.displayName) volunteerName = volunteerRow.displayName;
-      volunteerId = volunteerRow?.id || null;
-      if (volunteerId && retreat?.id) {
-        const loaded = await volunteerHomeLoadMyShifts(
-          firebaseUid,
-          retreat,
-          volunteerId,
-          todayIso,
-          authToken,
-        );
-        shiftCount = loaded.shiftCount;
-        todayCount = loaded.todayCount;
-        rawTodayShifts = loaded.rawTodayShifts;
-        myShifts = loaded.myShifts;
-        try {
-          const jobRes = await listJobs(firebaseUid, retreat.id, authToken);
-          jobs = volunteerHomeSortJobs(jobRes?.items || []);
-        } catch {
-          jobs = [];
-        }
-      } else {
-        usingDemo = true;
-        errorNote = volunteerId ? null : 'Volunteer not linked to retreat.';
-      }
-    } catch (err) {
-      usingDemo = true;
-      errorNote = err && err.message ? err.message : String(err);
-    }
-    const layoutWarnings = [];
-    return {
-      ...volunteerHomeBuildContextFields(
-        todayIso,
-        retreat,
-        shiftCount,
-        todayCount,
-        rawTodayShifts,
-        layoutWarnings,
-        { jobs, usingDemo, errorNote, volunteerId, myShifts },
-      ),
-      firebaseUid,
-      volunteerName,
-      hasAnnouncements: volunteerHasUnreadAnnouncements(firebaseUid),
-    };
-  }
+  const timeCtx = await buildVolunteerTimeContext(query);
+  const todayIso = timeCtx.todayIso;
 
   let retreat = null;
   let shiftCount = 0;
@@ -3133,6 +3018,13 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
   try {
     const { items: retreats } = await listRetreats(firebaseUid, authToken);
     retreat = volunteerHomePickRetreatFromList(retreats, todayIso, explicitRetreatId);
+    if (retreat && timeCtx.retreatDateOverride) {
+      retreat = {
+        ...retreat,
+        startDate: timeCtx.retreat.startDate,
+        endDate: timeCtx.retreat.endDate,
+      };
+    }
     if (!retreat) {
       usingDemo = true;
       errorNote = 'No retreat found.';
@@ -3178,7 +3070,18 @@ export async function gatherVolunteerHomeContext(firebaseUid, authToken = undefi
       todayCount,
       rawTodayShifts,
       layoutWarnings,
-      { jobs, usingDemo, errorNote, volunteerId, myShifts },
+      {
+        jobs,
+        usingDemo,
+        errorNote,
+        volunteerId,
+        myShifts,
+        testingEnabled: timeCtx.testingEnabled,
+        liveTodayIso: timeCtx.liveTodayIso,
+        pinnedTodayIso: timeCtx.pinnedTodayIso,
+        retreatDateOverride: timeCtx.retreatDateOverride,
+        testingNote: timeCtx.testingNote,
+      },
     ),
     searchableDayIsos: usingDemo
       ? [todayIso, addDaysIsoYmd(todayIso, 1), addDaysIsoYmd(todayIso, 2)]
@@ -3238,7 +3141,14 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
       textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
     });
   }
-  if (ctx.usingDemo && !volunteerHomePinSummer2026Demo()) {
+  if (ctx.testingEnabled && ctx.testingNote) {
+    footerExtras.push({
+      type: 'text',
+      content: ctx.testingNote,
+      textStyle: { fontSize: 12, textAlign: 'center', color: '#666666' },
+    });
+  }
+  if (ctx.usingDemo) {
     footerExtras.push({
       type: 'text',
       content: 'Demo schedule — link volunteer for live data.',
@@ -4950,6 +4860,17 @@ export async function buildJewelheartVolunteerManageScreen(
       '#FFFFFF',
     ),
     volunteerHomeGap(),
+    volunteerHomeCenteredPill(
+      'Testing (today pin)',
+      'jewelheart.volunteer.testing',
+      volunteerHomeWithReturnTo(
+        navParams.retreatId ? { retreatId: navParams.retreatId } : {},
+        'jewelheart.volunteer.manage',
+      ),
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+    ),
+    volunteerHomeGap(),
     volunteerHomeBar(
       volunteerHomeFitLine(
         `${volunteerHomeCountLabel(checkinRows.length, 'recent check-in', 'recent check-ins')}`,
@@ -4986,6 +4907,131 @@ export async function buildJewelheartVolunteerManageScreen(
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.manage', 'JewelHeart', children, ctx.layoutWarnings, {
     navParams,
+  });
+}
+
+function volunteerTestingCheckbox(label, checked, fieldKey) {
+  return {
+    type: 'testingCheckbox',
+    label: String(label || ''),
+    checked: checked === true,
+    fieldKey: fieldKey || '',
+  };
+}
+
+function volunteerTestingDateField(label, value, fieldKey) {
+  return {
+    type: 'testingDateField',
+    label: String(label || ''),
+    value: value || '',
+    fieldKey: fieldKey || '',
+  };
+}
+
+function volunteerTestingPanel(children) {
+  return {
+    type: 'testingPanel',
+    children: children || [],
+  };
+}
+
+/**
+ * Manage → Testing — pin "today" and optional retreat window for QA (manager/admin).
+ */
+export async function buildJewelheartVolunteerTestingScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const ctx = await volunteerHomeGatherCtx(firebaseUid, authToken, params);
+  const isAdmin = await volunteerHomeIsAdmin(firebaseUid);
+  const isManager = await volunteerHomeIsManager(firebaseUid);
+  const navParams = {
+    retreatId: ctx.retreatId || params.retreatId || '',
+    returnTo: params.returnTo || 'jewelheart.volunteer.manage',
+  };
+
+  if (!isManager && !isAdmin) {
+    return volunteerHomeSimplePlaceholderScreen(
+      ctx,
+      'Testing',
+      'Manager access required.',
+      params,
+      'jewelheart.volunteer.testing',
+    );
+  }
+
+  const settings = await loadVolunteerTestingSettings(query);
+  const dbStart = ctx.retreat?.startDate || VOLUNTEER_HOME_DEFAULT_RETREAT.startDate;
+  const dbEnd = ctx.retreat?.endDate || VOLUNTEER_HOME_DEFAULT_RETREAT.endDate;
+  const formStart = settings.overrideStartDate || dbStart;
+  const formEnd = settings.overrideEndDate || dbEnd;
+  const formToday = settings.pinnedToday || ctx.todayIso || ctx.liveTodayIso;
+
+  const children = [
+    ...volunteerHomeBlueHeaderChildren(ctx, 'Testing'),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      ctx.testingEnabled
+        ? `Testing ON — app today ${ctx.todayIso}; live calendar ${ctx.liveTodayIso}.`
+        : `Testing OFF — live calendar today is ${ctx.liveTodayIso}.`,
+      ctx.layoutWarnings,
+      'testing_status',
+    ),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      `Header preview: ${ctx.retreatBannerLine}`,
+      ctx.layoutWarnings,
+      'testing_banner_preview',
+    ),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      `Database retreat: ${dbStart} … ${dbEnd}`,
+      ctx.layoutWarnings,
+      'testing_db_retreat',
+    ),
+    volunteerHomeGap(),
+    volunteerTestingPanel([
+      volunteerTestingCheckbox('Testing mode (use dates below)', settings.enabled, 'enabled'),
+      volunteerTestingDateField('Pinned today', formToday, 'pinnedToday'),
+      volunteerTestingDateField('Retreat start', formStart, 'overrideStartDate'),
+      volunteerTestingDateField('Retreat end', formEnd, 'overrideEndDate'),
+    ]),
+    volunteerHomeGap(),
+    volunteerHomeCenteredPill(
+      'Save',
+      '',
+      {},
+      volunteerHomeMaroon,
+      '#FFFFFF',
+      {
+        action: { type: 'volunteerTesting', payload: { op: 'saveFromForm' } },
+      },
+    ),
+    volunteerHomeGap(),
+    volunteerHomeCenteredPill(
+      'Use live calendar',
+      '',
+      {},
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+      {
+        action: { type: 'volunteerTesting', payload: { op: 'saveLive' } },
+      },
+    ),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      'When testing is on, pinned today drives Home yellow pills and search day filters. Start/end override the retreat window in the header and day list (assignments in Postgres are unchanged).',
+      ctx.layoutWarnings,
+      'testing_hint',
+    ),
+    volunteerHomeGap(),
+    ...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings),
+  ];
+
+  return volunteerHomeScreenEnvelope('jewelheart.volunteer.testing', 'JewelHeart', children, ctx.layoutWarnings, {
+    navParams,
+    includeFooterNav: false,
   });
 }
 

@@ -106,6 +106,7 @@ const VOLUNTEER_HOME_SCREENS = new Set([
   'jewelheart.volunteer.account',
   'jewelheart.volunteer.preferences',
   'jewelheart.volunteer.manage',
+  'jewelheart.volunteer.testing',
   'jewelheart.volunteer.userManage',
   'jewelheart.volunteer.admin',
 ]);
@@ -721,6 +722,74 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  async function readTestingFormFields() {
+    const panel = rootEl.querySelector('.jh-sdui-testing-panel');
+    const scope = panel || rootEl;
+    const enabled = scope.querySelector('[data-testing-field="enabled"]')?.checked === true;
+    const pinnedToday = String(scope.querySelector('[data-testing-field="pinnedToday"]')?.value || '').trim();
+    const overrideStartDate = String(
+      scope.querySelector('[data-testing-field="overrideStartDate"]')?.value || '',
+    ).trim();
+    const overrideEndDate = String(
+      scope.querySelector('[data-testing-field="overrideEndDate"]')?.value || '',
+    ).trim();
+    return { enabled, pinnedToday, overrideStartDate, overrideEndDate };
+  }
+
+  async function handleVolunteerTesting(action) {
+    const op = action.payload?.op;
+    let body;
+    if (op === 'saveFromForm' || op === 'saveLive') {
+      body = await readTestingFormFields();
+      if (op === 'saveLive') body.enabled = false;
+    } else if (op === 'save') {
+      body = {
+        enabled: action.payload?.enabled === true,
+        pinnedToday: action.payload?.pinnedToday
+          ? String(action.payload.pinnedToday).trim()
+          : null,
+        overrideStartDate: action.payload?.overrideStartDate
+          ? String(action.payload.overrideStartDate).trim()
+          : null,
+        overrideEndDate: action.payload?.overrideEndDate
+          ? String(action.payload.overrideEndDate).trim()
+          : null,
+      };
+    } else {
+      setMsg('Unknown action.', true);
+      return;
+    }
+    setMsg('Saving…', false);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${apiBase}/volunteer/testing-settings`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      if (j.timeContext?.retreatBannerLine && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('jh-volunteer-time-context', { detail: j.timeContext }),
+        );
+      }
+      setMsg(
+        body.enabled
+          ? `Testing on — today ${j.timeContext?.todayIso || body.pinnedToday || '?'}.`
+          : 'Testing off — using live calendar.',
+        false,
+      );
+      return load();
+    } catch (e) {
+      console.error('volunteerTesting', e);
+      setMsg(e.message || String(e), true);
+    }
+  }
+
   async function handleVolunteerUserManage(action) {
     const op = action.payload?.op;
     const volunteerId = String(action.payload?.volunteerId || params.userManageVolunteerId || '').trim();
@@ -849,6 +918,9 @@ export function createVolunteerSduiController(options) {
       const mode = action.payload?.mode === 'prefs' ? 'prefs' : 'profile';
       return patchVolunteerProfile(mode, action.payload || {});
     }
+    if (action.type === 'volunteerTesting') {
+      return handleVolunteerTesting(action);
+    }
     if (action.type === 'volunteerUserManage') {
       return handleVolunteerUserManage(action);
     }
@@ -916,6 +988,45 @@ export function createVolunteerSduiController(options) {
       el.className = 'jh-sdui-profile-intro';
       el.textContent = component.content || '';
       return el;
+    }
+
+    if (type === 'testingPanel') {
+      const panel = document.createElement('div');
+      panel.className = 'jh-sdui-testing-panel';
+      for (const child of component.children || []) {
+        panel.appendChild(renderComponent(child));
+      }
+      return panel;
+    }
+
+    if (type === 'testingCheckbox') {
+      const wrap = document.createElement('label');
+      wrap.className = 'jh-sdui-testing-checkbox';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = component.checked === true;
+      input.dataset.testingField = component.fieldKey || '';
+      const span = document.createElement('span');
+      span.textContent = component.label || '';
+      wrap.appendChild(input);
+      wrap.appendChild(span);
+      return wrap;
+    }
+
+    if (type === 'testingDateField') {
+      const wrap = document.createElement('div');
+      wrap.className = 'jh-sdui-testing-date-field';
+      const lab = document.createElement('label');
+      lab.className = 'jh-sdui-testing-date-label';
+      lab.textContent = component.label || '';
+      const input = document.createElement('input');
+      input.type = 'date';
+      input.className = 'jh-sdui-testing-date-input';
+      input.value = component.value || '';
+      input.dataset.testingField = component.fieldKey || '';
+      lab.appendChild(input);
+      wrap.appendChild(lab);
+      return wrap;
     }
 
     if (type === 'prefCheckbox') {
