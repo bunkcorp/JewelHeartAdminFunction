@@ -4,26 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <link rel="icon" href="/login/favicon-32.png" type="image/png" sizes="32x32" />
-  <link rel="apple-touch-icon" href="/login/apple-touch-icon.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/login/apple-touch-icon.png" />
-  <link rel="manifest" href="/login/manifest-volunteer.webmanifest" />
+  <link rel="icon" href="__JH_ASSET_PREFIX__favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="__JH_ASSET_PREFIX__apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="__JH_ASSET_PREFIX__apple-touch-icon.png" />
+  <link rel="manifest" href="__JH_ASSET_PREFIX__manifest-volunteer.webmanifest" />
   <meta name="apple-mobile-web-app-title" content="JewelHeart" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#92160e" />
-  <title>Jewel Heart Volunteers (dev)</title>
-  <!-- deploy-marker: dev-volunteer -->
-  <link rel="canonical" href="https://api-dev.karmadots.org/login/volunteer.html" />
-  <link rel="stylesheet" href="jewelheart-admin.css?v=__JH_WEB_BUILD__" />
+  <title>__JH_PAGE_TITLE__</title>
+  <!-- deploy-marker: volunteer-__JH_VOLUNTEER_ENV__ -->
+  <link rel="canonical" href="__JH_CANONICAL_URL__" />
+  <link rel="stylesheet" href="__JH_ASSET_PREFIX__jewelheart-admin.css?v=__JH_WEB_BUILD__" />
   <style>
-    body.jh-volunteer-auth {
-      background: var(--bg);
-    }
-    body.jh-volunteer-auth main {
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 0 0 2rem;
-    }
     .jh-vol-header .jh-bar {
       width: 100%;
       max-width: none;
@@ -34,7 +26,7 @@
     .jh-vol-header .jh-bar-retreat h1 {
       color: var(--jh-gold);
     }
-    /* —— Sign-in screen (sign-in screen spec.docx) —— */
+    /* —— Sign-in screen —— */
     .jh-signin-screen {
       padding: 0;
     }
@@ -43,13 +35,13 @@
     }
     .jh-signin-body {
       padding: var(--jh-gap) var(--jh-page-pad) 0;
-      text-align: left;
+      text-align: center;
     }
     .jh-signin-row {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 0.45rem;
       margin-top: var(--jh-gap);
     }
@@ -68,8 +60,15 @@
       cursor: not-allowed;
       box-shadow: none;
     }
+    .jh-signin-method:not(.jh-signin-method-selected) {
+      background: var(--jh-maroon-light);
+      cursor: pointer;
+    }
+    .jh-signin-method.jh-signin-method-selected {
+      background: var(--jh-maroon);
+    }
     .jh-signin-input {
-      width: 15ch;
+      width: 30ch;
       max-width: 100%;
       box-sizing: content-box;
       background: #e8e8e8;
@@ -94,27 +93,46 @@
       margin: var(--jh-gap) var(--jh-page-pad) 0;
       font-weight: 700;
       line-height: 1.35;
-      text-align: left;
+      text-align: center;
+      white-space: pre-line;
     }
     .jh-signin-msg {
       margin: 0.35rem var(--jh-page-pad) 0;
-      text-align: left;
+      text-align: center;
       white-space: pre-wrap;
     }
-
-    /* —— Onboarding screen (placeholder until separate spec) —— */
-    .jh-vol-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.55rem;
+    .jh-invite-banner {
+      width: 100%;
+      max-width: 24rem;
+      margin: 0 auto 0.35rem;
+      padding: 0.55rem 0.65rem;
+      border-radius: 8px;
+      background: rgba(122, 149, 202, 0.15);
+      border: 1px solid rgba(122, 149, 202, 0.45);
+      font-size: 0.82rem;
       text-align: left;
+    }
+
+    /* —— Onboarding screen —— */
+    .jh-onboard-screen {
+      padding: 0;
+    }
+    .jh-onboard-body {
       padding: var(--jh-gap) var(--jh-page-pad) 0;
     }
-    .jh-vol-screen .jh-bar {
-      width: 100%;
-      max-width: none;
-      align-self: stretch;
+    .jh-onboard-name-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-top: var(--jh-gap);
+    }
+    .jh-onboard-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      margin-top: var(--jh-gap);
     }
     .jh-vol-input {
       background: #e8e8e8;
@@ -131,33 +149,13 @@
     .jh-vol-input::placeholder {
       color: #444;
     }
-    .jh-vol-field {
-      width: auto;
-      min-width: 0;
-      max-width: 20rem;
-    }
     .jh-vol-field-15 {
       width: 15ch;
       max-width: 100%;
       box-sizing: content-box;
     }
-    .jh-vol-name-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 0.45rem;
-      width: 100%;
-    }
-    .jh-vol-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      align-items: center;
-      gap: 0.45rem;
-      width: 100%;
-    }
     .jh-vol-email-display {
+      margin: var(--jh-gap) 0 0;
       font-size: var(--jh-bar-font);
       font-weight: 600;
       word-break: break-all;
@@ -175,26 +173,10 @@
       background: rgba(37, 99, 235, 0.22);
       border: 1px solid rgba(59, 130, 246, 0.45);
     }
-    .jh-invite-banner {
-      width: 100%;
-      max-width: 24rem;
-      margin-bottom: 0.35rem;
-      padding: 0.55rem 0.65rem;
-      border-radius: 8px;
-      background: rgba(122, 149, 202, 0.15);
-      border: 1px solid rgba(122, 149, 202, 0.45);
-      font-size: 0.82rem;
-      text-align: left;
-    }
     .jh-invite-banner.err {
       background: rgba(204, 0, 0, 0.08);
       border-color: rgba(204, 0, 0, 0.35);
       color: var(--jh-error);
-    }
-    #volunteer-sdui-section.panel {
-      max-width: 100%;
-      margin-left: auto;
-      margin-right: auto;
     }
     .jh-dev-tools {
       position: fixed;
@@ -227,76 +209,95 @@
   </style>
 </head>
 <body class="jh-volunteer-clean jh-volunteer-auth">
-  <header id="vol-screen-header" class="jh-top-bars jh-vol-header">
-    <div class="jh-bar jh-bar-blue jh-bar-retreat"><h1>Jewel Heart Volunteers</h1></div>
-    <p class="jh-env-badge" aria-label="Environment">Dev</p>
-  </header>
+  <div class="jh-volunteer-shell">
+    <header id="vol-screen-header" class="jh-top-bars jh-vol-header">
+      <div class="jh-bar jh-bar-blue jh-bar-retreat"><h1 id="vol-retreat-header">JH Retreat</h1></div>
+__JH_ENV_BADGE_HTML__    </header>
 
-  <main>
-    <section id="auth-panel" class="jh-signin-screen">
-      <div class="jh-bar jh-bar-blue jh-signin-bar">Choose sign-in method:</div>
-      <div class="jh-signin-body">
-        <div id="invite-banner" class="jh-invite-banner" hidden aria-live="polite"></div>
+    <main>
+      <section id="auth-panel" class="jh-signin-screen">
+        <div class="jh-bar jh-bar-blue jh-signin-bar">Choose sign-in method:</div>
+        <div class="jh-signin-body">
+          <div id="invite-banner" class="jh-invite-banner" hidden aria-live="polite"></div>
 
-        <div class="jh-signin-row">
-          <button type="button" id="btn-google" class="jh-signin-btn">By Google</button>
+          <div class="jh-signin-row" role="radiogroup" aria-label="Sign-in method">
+            <button
+              type="button"
+              id="method-google"
+              class="jh-signin-btn jh-signin-method jh-signin-method-selected"
+              role="radio"
+              aria-checked="true"
+            >By Google</button>
+            <button
+              type="button"
+              id="method-email"
+              class="jh-signin-btn jh-signin-method"
+              role="radio"
+              aria-checked="false"
+            >By Email</button>
+          </div>
+
+          <div id="email-row" class="jh-signin-row" hidden>
+            <input
+              type="email"
+              id="auth-email"
+              class="jh-signin-input"
+              placeholder="Enter email address here"
+              autocomplete="email"
+              inputmode="email"
+              spellcheck="false"
+              maxlength="254"
+            />
+          </div>
+
+          <div class="jh-signin-row">
+            <button type="button" id="btn-sign-in" class="jh-signin-btn">Sign in</button>
+          </div>
         </div>
 
-        <div class="jh-signin-row">
-          <button type="button" id="btn-email-link" class="jh-signin-btn jh-signin-btn-inactive" disabled>By email</button>
-          <input
-            type="email"
-            id="auth-email"
-            class="jh-signin-input"
-            placeholder="Email address"
-            autocomplete="email"
-            inputmode="email"
-            spellcheck="false"
-          />
+        <p id="email-sent-msg" class="jh-signin-sent" hidden aria-live="polite"></p>
+        <div class="msg jh-signin-msg" id="auth-msg" aria-live="polite"></div>
+      </section>
+
+      <section id="onboarding-panel" class="jh-onboard-screen" hidden>
+        <div class="jh-bar jh-bar-blue">App onboard (NOT retreat registration)</div>
+        <div class="jh-onboard-body">
+          <div class="jh-onboard-name-row">
+            <input type="text" id="ob-first" class="jh-vol-input jh-vol-field-15" placeholder="First name" autocomplete="given-name" maxlength="15" />
+            <input type="text" id="ob-last" class="jh-vol-input jh-vol-field-15" placeholder="Last name" autocomplete="family-name" maxlength="15" />
+          </div>
+          <p class="jh-vol-email-display" id="ob-email-display"></p>
+          <div class="jh-onboard-actions">
+            <button type="button" id="btn-ob-save" class="jh-signin-btn jh-signin-btn-inactive" disabled>Continue to app</button>
+            <button type="button" id="btn-ob-cancel" class="secondary">Cancel</button>
+          </div>
+          <div class="msg" id="onboarding-msg" aria-live="polite"></div>
         </div>
-      </div>
+      </section>
 
-      <p id="email-sent-msg" class="jh-signin-sent" hidden aria-live="polite"></p>
-      <div class="msg jh-signin-msg" id="auth-msg" aria-live="polite"></div>
-    </section>
-
-    <section id="onboarding-panel" class="jh-vol-screen" hidden>
-      <div class="jh-bar jh-bar-blue">App onboard (NOT retreat registration)</div>
-
-      <div class="jh-vol-name-row">
-        <input type="text" id="ob-first" class="jh-vol-input jh-vol-field-15" placeholder="First name…" autocomplete="given-name" maxlength="15" />
-        <input type="text" id="ob-last" class="jh-vol-input jh-vol-field-15" placeholder="Last name…" autocomplete="family-name" maxlength="15" />
-      </div>
-
-      <p class="jh-vol-email-display" id="ob-email-display"></p>
-
-      <button type="button" id="btn-ob-save">Continue</button>
-      <button type="button" id="btn-ob-out" class="secondary small">Sign out</button>
-      <div class="msg" id="onboarding-msg" aria-live="polite"></div>
-    </section>
-
-    <section class="panel" id="volunteer-sdui-section" hidden>
-      <div class="jh-sdui-toolbar">
-        <button type="button" id="sdui-back" class="secondary small" hidden>Back</button>
-        <span id="sdui-title">JewelHeart</span>
-        <div class="jh-sdui-toolbar-actions">
-          <button type="button" id="btn-out" class="secondary">Sign out</button>
+      <section class="panel" id="volunteer-sdui-section" hidden>
+        <div class="jh-sdui-toolbar">
+          <button type="button" id="sdui-back" class="secondary small" hidden>Back</button>
+          <span id="sdui-title">JewelHeart</span>
+          <div class="jh-sdui-toolbar-actions">
+            <button type="button" id="btn-out" class="secondary">Sign out</button>
+          </div>
         </div>
-      </div>
-      <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
-      <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
-      <div class="msg" id="sdui-msg" aria-live="polite"></div>
-    </section>
-  </main>
+        <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
+        <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
+        <div class="msg" id="sdui-msg" aria-live="polite"></div>
+      </section>
+    </main>
+  </div>
 
-  <div class="jh-dev-tools" id="jh-dev-tools" aria-label="Dev testing tools">
+  <div class="jh-dev-tools" id="jh-dev-tools" hidden aria-label="Dev testing tools">
     <button type="button" id="btn-dev-test-new-user" class="secondary small">Test as new user</button>
     <button type="button" id="btn-dev-restore-admin" class="secondary small" hidden>Restore admin (Google)</button>
     <p class="jh-dev-tools-hint" id="jh-dev-tools-hint" hidden></p>
   </div>
 
   <script type="module">
-    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from './jewelheart-sdui.js?v=__JH_WEB_BUILD__';
+    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from '__JH_ASSET_PREFIX__jewelheart-sdui.js?v=__JH_WEB_BUILD__';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import {
       getAuth,
@@ -320,15 +321,34 @@
       appId: '1:120549448949:ios:189513e804833eed5db9bc',
     };
 
-    const API =
-      (location.hostname.indexOf('api') === 0 ? location.origin : 'https://api-dev.karmadots.org') +
-      '/jewelheart';
+    const VOLUNTEER_API_ORIGINS = {
+      dev: 'https://api-dev.karmadots.org',
+      test: 'https://api-test.karmadots.org',
+      retreat: 'https://api.karmadots.org',
+    };
+
+    function detectVolunteerEnv() {
+      const path = String(location.pathname || '').toLowerCase();
+      if (path.includes('/test/') || path.endsWith('/test')) return 'test';
+      if (path.includes('/retreat/') || path.endsWith('/retreat')) return 'retreat';
+      if (path.includes('/dev/') || path.endsWith('/dev')) return 'dev';
+      const host = String(location.hostname || '').toLowerCase();
+      if (host.startsWith('api-test.')) return 'test';
+      if (host === 'api.karmadots.org') return 'retreat';
+      if (host.startsWith('api-dev.')) return 'dev';
+      return '__JH_VOLUNTEER_ENV__';
+    }
+
+    const volunteerEnv = detectVolunteerEnv();
+    const API = (VOLUNTEER_API_ORIGINS[volunteerEnv] || '__JH_API_ORIGIN__') + '/jewelheart';
 
     const INVITE_STORAGE_KEY = 'jh_volunteer_invite_token';
     const VOLUNTEER_SIGNOUT_KEY = 'jh_volunteer_explicit_signout';
     const EMAIL_LINK_STORAGE_KEY = 'jh_volunteer_email_for_link';
     const DEV_ADMIN_HINT_KEY = 'jh_dev_last_admin_email';
     const MAGIC_LINK_TTL_MINUTES = 60;
+    const BUILD_ENV = '__JH_VOLUNTEER_ENV__';
+    const VOLUNTEER_RETREAT = { startDate: '2026-07-20', endDate: '2026-07-26' };
 
     /** @type {{ authEmail?: string, draft?: object } | null} */
     let onboardingState = null;
@@ -336,20 +356,27 @@
     let invitePreview = null;
     let magicLinkHandling = false;
     let authFlowReady = false;
+    /** @type {'google'|'email'} */
+    let signInMethod = 'google';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     setPersistence(auth, browserLocalPersistence).catch(() => {});
 
     const volScreenHeader = document.getElementById('vol-screen-header');
+    const volRetreatHeader = document.getElementById('vol-retreat-header');
     const authPanel = document.getElementById('auth-panel');
     const onboardingPanel = document.getElementById('onboarding-panel');
     const volunteerSduiSection = document.getElementById('volunteer-sdui-section');
     const authMsg = document.getElementById('auth-msg');
     const sduiMsg = document.getElementById('sdui-msg');
     const authEmailInput = document.getElementById('auth-email');
-    const btnEmailLink = document.getElementById('btn-email-link');
+    const btnMethodGoogle = document.getElementById('method-google');
+    const btnMethodEmail = document.getElementById('method-email');
+    const btnSignIn = document.getElementById('btn-sign-in');
+    const emailRow = document.getElementById('email-row');
     const emailSentMsg = document.getElementById('email-sent-msg');
+    const devToolsEl = document.getElementById('jh-dev-tools');
     const btnDevTestNewUser = document.getElementById('btn-dev-test-new-user');
     const btnDevRestoreAdmin = document.getElementById('btn-dev-restore-admin');
     const devToolsHint = document.getElementById('jh-dev-tools-hint');
@@ -362,16 +389,72 @@
       msgEl: sduiMsg,
       backBtn: document.getElementById('sdui-back'),
       buildStampEl: document.getElementById('sdui-build-stamp'),
-      uiChannel: 'testers',
-    });
+__JH_UI_CHANNEL_LINE__    });
     {
       const bs0 = document.getElementById('sdui-build-stamp');
       if (bs0) bs0.textContent = `web ${JH_LOGIN_WEB_BUILD} · api …`;
     }
 
+    function localTodayIso() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function retreatSpanCompact(startIso, endIso) {
+      const [sy, sm, sd] = startIso.split('-').map((x) => parseInt(x, 10));
+      const [, , ed] = endIso.split('-').map((x) => parseInt(x, 10));
+      return `${sy}.${sm}.${sd}-${ed}`;
+    }
+
+    function dayNumberInRetreat(startIso, todayIso) {
+      const [sy, sm, sd] = startIso.split('-').map((x) => parseInt(x, 10));
+      const [ty, tm, td] = todayIso.split('-').map((x) => parseInt(x, 10));
+      const startMs = Date.UTC(sy, sm - 1, sd);
+      const todayMs = Date.UTC(ty, tm - 1, td);
+      const diff = Math.floor((todayMs - startMs) / 86400000);
+      return Math.max(1, diff + 1);
+    }
+
+    function weekdayShortLocal(iso) {
+      const [y, m, d] = iso.split('-').map((x) => parseInt(x, 10));
+      const dt = new Date(y, m - 1, d);
+      return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dt);
+    }
+
+    /** Line 1 — standard retreat header: "JH Retreat 2026.7.20-26 - Day 2 Tue" */
+    function volunteerRetreatHeaderLine() {
+      const today = localTodayIso();
+      const span = retreatSpanCompact(VOLUNTEER_RETREAT.startDate, VOLUNTEER_RETREAT.endDate);
+      const dayNum = dayNumberInRetreat(VOLUNTEER_RETREAT.startDate, today);
+      const weekday = weekdayShortLocal(today);
+      return `JH Retreat ${span} - Day ${dayNum} ${weekday}`;
+    }
+
+    function refreshVolunteerRetreatHeader() {
+      if (!volRetreatHeader) return;
+      volRetreatHeader.textContent = volunteerRetreatHeaderLine();
+    }
+
+    function volunteerAppContinueUrl() {
+      const paths = { dev: '/dev/', test: '/test/', retreat: '/retreat/' };
+      const path = paths[volunteerEnv];
+      if (path) {
+        const origin = VOLUNTEER_API_ORIGINS[volunteerEnv] || window.location.origin;
+        return `${origin}${path}`;
+      }
+      return magicLinkContinueUrl();
+    }
+
     function magicLinkContinueUrl() {
       const params = new URLSearchParams(window.location.search);
       params.delete('invite');
+      params.delete('apiKey');
+      params.delete('oobCode');
+      params.delete('mode');
+      params.delete('lang');
       const qs = params.toString();
       return `${window.location.origin}${window.location.pathname}${qs ? `?${qs}` : ''}`;
     }
@@ -403,10 +486,36 @@
       return 'Error: email address format is invalid, fix & retry.';
     }
 
-    function refreshEmailButtonState() {
-      const valid = isValidEmailFormat(authEmailInput.value);
-      btnEmailLink.disabled = !valid;
-      btnEmailLink.classList.toggle('jh-signin-btn-inactive', !valid);
+    function setSignInMethod(method) {
+      signInMethod = method === 'email' ? 'email' : 'google';
+      if (btnMethodGoogle) {
+        btnMethodGoogle.classList.toggle('jh-signin-method-selected', signInMethod === 'google');
+        btnMethodGoogle.setAttribute('aria-checked', signInMethod === 'google' ? 'true' : 'false');
+      }
+      if (btnMethodEmail) {
+        btnMethodEmail.classList.toggle('jh-signin-method-selected', signInMethod === 'email');
+        btnMethodEmail.setAttribute('aria-checked', signInMethod === 'email' ? 'true' : 'false');
+      }
+      if (emailRow) emailRow.hidden = signInMethod !== 'email';
+      refreshSignInUi();
+    }
+
+    function refreshSignInUi() {
+      const canSignIn =
+        signInMethod === 'google' || isValidEmailFormat(authEmailInput.value);
+      if (btnSignIn) {
+        btnSignIn.disabled = !canSignIn;
+        btnSignIn.classList.toggle('jh-signin-btn-inactive', !canSignIn);
+      }
+    }
+
+    function submitSignIn() {
+      if (btnSignIn?.disabled) return;
+      if (signInMethod === 'google') {
+        startOAuthSignIn(new GoogleAuthProvider());
+        return;
+      }
+      sendMagicLink();
     }
 
     function formatMagicLinkExpiryMinutes() {
@@ -415,9 +524,9 @@
 
     function setEmailSentUi(email) {
       emailSentMsg.hidden = false;
-      emailSentMsg.textContent = `Email sent, click link in it, expires ${formatMagicLinkExpiryMinutes()}`;
+      emailSentMsg.textContent = `Email sent. Click link in it\nCheck spam. Expires in ${formatMagicLinkExpiryMinutes()}`;
       authEmailInput.value = email;
-      refreshEmailButtonState();
+      refreshSignInUi();
     }
 
     function clearEmailSentUi() {
@@ -435,15 +544,6 @@
       if (!el) return;
       el.textContent = text || '';
       el.className = 'msg' + (isErr ? ' err' : text ? ' ok' : '');
-    }
-
-    function normalizePhoneE164(raw) {
-      const digits = String(raw || '').replace(/\D/g, '');
-      if (!digits) return null;
-      if (String(raw).trim().startsWith('+')) return `+${digits}`;
-      if (digits.length === 10) return `+1${digits}`;
-      if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-      return `+${digits}`;
     }
 
     function clearLegacyKeycloakSession() {
@@ -536,19 +636,48 @@
       return { res, data };
     }
 
+    function refreshOnboardContinueState() {
+      const first = document.getElementById('ob-first')?.value.trim() || '';
+      const last = document.getElementById('ob-last')?.value.trim() || '';
+      const canContinue = first.length > 0 && last.length > 0;
+      const btn = document.getElementById('btn-ob-save');
+      if (!btn) return;
+      btn.disabled = !canContinue;
+      btn.classList.toggle('jh-signin-btn-inactive', !canContinue);
+    }
+
     function fillOnboardingForm(draft) {
       document.getElementById('ob-first').value = draft.firstName || '';
       document.getElementById('ob-last').value = draft.lastName || '';
-      document.getElementById('ob-email-display').textContent = draft.authEmail || draft.email || '';
-      onboardingState = { authEmail: draft.authEmail || draft.email || '', draft };
+      const email = draft.authEmail || draft.email || normalizeEmailLocal(auth.currentUser?.email) || '';
+      document.getElementById('ob-email-display').textContent = email;
+      onboardingState = { authEmail: email, draft };
+      refreshOnboardContinueState();
     }
 
     function applyOnboardingUi() {
+      document.body.classList.add('jh-volunteer-auth');
+      refreshVolunteerRetreatHeader();
       if (volScreenHeader) volScreenHeader.hidden = false;
       authPanel.hidden = true;
       onboardingPanel.hidden = false;
       volunteerSduiSection.hidden = true;
       setAuthMsg('');
+      setOnboardingMsg('');
+      refreshOnboardContinueState();
+    }
+
+    async function cancelOnboarding() {
+      setOnboardingMsg('');
+      onboardingState = null;
+      try {
+        await signOut(auth);
+      } catch {
+        /* ignore */
+      }
+      markVolunteerSignedOut();
+      setSignInMethod('google');
+      refreshVolunteerRetreatHeader();
     }
 
     async function showOnboardingFromBootstrap(data) {
@@ -613,6 +742,7 @@
     }
 
     function applySignedInUi() {
+      document.body.classList.remove('jh-volunteer-auth');
       if (volScreenHeader) volScreenHeader.hidden = true;
       authPanel.hidden = true;
       onboardingPanel.hidden = true;
@@ -650,7 +780,11 @@
         applySignedInUi();
       } catch (e) {
         console.error('volunteer access', e);
-        setAuthMsg(String(e.message || e), true);
+        const msg = String(e.message || e);
+        setAuthMsg(msg, true);
+        if (/complete volunteer onboarding|profile not confirmed|needs onboarding/i.test(msg)) {
+          return;
+        }
         try {
           await signOut(auth);
         } catch {
@@ -661,14 +795,18 @@
     }
 
     function applySignedOutUi() {
+      document.body.classList.add('jh-volunteer-auth');
+      refreshVolunteerRetreatHeader();
       if (volScreenHeader) volScreenHeader.hidden = false;
       authPanel.hidden = false;
       onboardingPanel.hidden = true;
       volunteerSduiSection.hidden = true;
       onboardingState = null;
+      refreshDevToolsUi();
     }
 
     function rememberDevAdminEmail() {
+      if (BUILD_ENV !== 'dev') return;
       const em = normalizeEmailLocal(auth.currentUser?.email);
       if (!em) return;
       try {
@@ -688,11 +826,11 @@
     }
 
     function refreshDevToolsUi() {
+      if (BUILD_ENV !== 'dev' || !devToolsEl) return;
+      devToolsEl.hidden = false;
       const hint = devAdminHintEmail();
       const signedOut = Boolean(sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) || !auth.currentUser;
-      if (btnDevRestoreAdmin) {
-        btnDevRestoreAdmin.hidden = !(signedOut && hint);
-      }
+      if (btnDevRestoreAdmin) btnDevRestoreAdmin.hidden = !(signedOut && hint);
       if (devToolsHint) {
         if (signedOut && hint) {
           devToolsHint.hidden = false;
@@ -711,7 +849,7 @@
       onboardingState = null;
       clearEmailSentUi();
       if (authEmailInput) authEmailInput.value = '';
-      refreshEmailButtonState();
+      setSignInMethod('google');
     }
 
     async function devTestAsNewUser() {
@@ -737,7 +875,6 @@
       sessionStorage.setItem(VOLUNTEER_SIGNOUT_KEY, '1');
       clearLegacyKeycloakSession();
       applySignedOutUi();
-      refreshDevToolsUi();
     }
 
     async function startOAuthSignIn(provider) {
@@ -761,19 +898,20 @@
         setAuthMsg(fmtErr, true);
         return;
       }
-      btnEmailLink.disabled = true;
+      btnSignIn.disabled = true;
       try {
         await sendSignInLinkToEmail(auth, email, {
-          url: magicLinkContinueUrl(),
+          url: volunteerAppContinueUrl(),
           handleCodeInApp: true,
         });
         window.localStorage.setItem(EMAIL_LINK_STORAGE_KEY, email);
+        sessionStorage.removeItem(VOLUNTEER_SIGNOUT_KEY);
         setEmailSentUi(email);
         setAuthMsg('');
       } catch (e) {
         setAuthMsg(formatAuthError(e), true);
       } finally {
-        refreshEmailButtonState();
+        refreshSignInUi();
       }
     }
 
@@ -793,9 +931,11 @@
       try {
         await signInWithEmailLink(auth, email, window.location.href);
         window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-        window.history.replaceState({}, document.title, magicLinkContinueUrl());
+        window.history.replaceState({}, document.title, volunteerAppContinueUrl());
         clearEmailSentUi();
         setAuthMsg('');
+        sessionStorage.removeItem(VOLUNTEER_SIGNOUT_KEY);
+        await enterVolunteerApp();
         return true;
       } catch (e) {
         setAuthMsg(formatAuthError(e), true);
@@ -809,9 +949,25 @@
       sduiController.goBack().catch((e) => console.error('sdui back', e));
     });
 
-    document.getElementById('btn-google').addEventListener('click', () => {
-      startOAuthSignIn(new GoogleAuthProvider());
-    });
+    if (btnMethodGoogle) {
+      btnMethodGoogle.addEventListener('click', () => {
+        setSignInMethod('google');
+        setAuthMsg('');
+      });
+    }
+
+    if (btnMethodEmail) {
+      btnMethodEmail.addEventListener('click', () => {
+        setSignInMethod('email');
+        if (authEmailInput) authEmailInput.focus();
+      });
+    }
+
+    if (btnSignIn) {
+      btnSignIn.addEventListener('click', () => {
+        submitSignIn();
+      });
+    }
 
     if (btnDevTestNewUser) {
       btnDevTestNewUser.addEventListener('click', () => {
@@ -823,14 +979,15 @@
       btnDevRestoreAdmin.addEventListener('click', () => {
         const hint = devAdminHintEmail();
         if (hint && authEmailInput) authEmailInput.value = hint;
-        refreshEmailButtonState();
+        setSignInMethod('google');
         startOAuthSignIn(new GoogleAuthProvider());
       });
     }
 
     authEmailInput.addEventListener('input', () => {
       clearEmailSentUi();
-      refreshEmailButtonState();
+      refreshSignInUi();
+      if (signInMethod !== 'email') return;
       const raw = authEmailInput.value;
       if (!raw.trim()) {
         setAuthMsg('');
@@ -840,8 +997,11 @@
       setAuthMsg(err || '', Boolean(err));
     });
 
-    btnEmailLink.addEventListener('click', () => {
-      sendMagicLink();
+    authEmailInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && signInMethod === 'email' && !btnSignIn?.disabled) {
+        e.preventDefault();
+        submitSignIn();
+      }
     });
 
     document.getElementById('btn-out').addEventListener('click', async () => {
@@ -854,10 +1014,16 @@
     });
 
     document.getElementById('btn-ob-save').addEventListener('click', async () => {
+      if (document.getElementById('btn-ob-save')?.disabled) return;
       setOnboardingMsg('');
       const firstName = document.getElementById('ob-first').value.trim();
       const lastName = document.getElementById('ob-last').value.trim();
-      const email = onboardingState?.authEmail || onboardingState?.draft?.authEmail || onboardingState?.draft?.email || '';
+      const email =
+        onboardingState?.authEmail ||
+        onboardingState?.draft?.authEmail ||
+        onboardingState?.draft?.email ||
+        normalizeEmailLocal(auth.currentUser?.email) ||
+        '';
 
       if (!firstName) {
         setOnboardingMsg('Enter your first name.', true);
@@ -895,28 +1061,36 @@
       }
     });
 
-    document.getElementById('btn-ob-out').addEventListener('click', async () => {
-      try {
-        await signOut(auth);
-      } catch {
-        /* ignore */
-      }
-      markVolunteerSignedOut();
+    document.getElementById('btn-ob-cancel').addEventListener('click', () => {
+      cancelOnboarding().catch((e) => console.error('onboarding cancel', e));
     });
+
+    for (const id of ['ob-first', 'ob-last']) {
+      document.getElementById(id)?.addEventListener('input', () => {
+        refreshOnboardContinueState();
+      });
+      document.getElementById(id)?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') e.preventDefault();
+      });
+    }
 
     async function initAuth() {
       clearLegacyKeycloakSession();
+      refreshVolunteerRetreatHeader();
       await initInviteBanner();
-      refreshEmailButtonState();
+      setSignInMethod('google');
       const storedEmail = window.localStorage.getItem(EMAIL_LINK_STORAGE_KEY);
       if (storedEmail && isValidEmailFormat(storedEmail)) {
         authEmailInput.value = storedEmail;
-        refreshEmailButtonState();
+        setSignInMethod('email');
       }
-      await completeMagicLinkIfPresent();
+      const magicLinkCompleted = await completeMagicLinkIfPresent();
       authFlowReady = true;
       rememberDevAdminEmail();
       refreshDevToolsUi();
+      if (!magicLinkCompleted && auth.currentUser && !sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) {
+        await enterVolunteerApp();
+      }
     }
 
     onAuthStateChanged(auth, async (user) => {
@@ -927,7 +1101,6 @@
         await enterVolunteerApp();
       } else if (!sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) {
         applySignedOutUi();
-        refreshDevToolsUi();
       }
     });
 

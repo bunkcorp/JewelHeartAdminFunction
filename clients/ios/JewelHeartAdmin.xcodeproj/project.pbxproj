@@ -31,6 +31,10 @@
 		E082988EA689C4D2F99D9186 /* AdminRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1742576D1B9DC9AFEA6D1E2E /* AdminRootTabView.swift */; };
 		E1C74A14B5DA47A4B55AC129 /* JewelHeartAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24400186A0EE3EACD3C908BE /* JewelHeartAPI.swift */; };
 		F1A2B3C4D5E6F708091A2B3C /* JewelHeartMessagingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* JewelHeartOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5D /* JewelHeartOnboardingView.swift */; };
+		B2C3D4E5F60718293A4B5C6D /* JewelHeartVolunteerAuthEmail.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6E /* JewelHeartVolunteerAuthEmail.swift */; };
+		C3D4E5F60718293A4B5C6D7E /* JewelHeartVolunteerAuthUi.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D7F /* JewelHeartVolunteerAuthUi.swift */; };
+		D4E5F60718293A4B5C6D7E8F /* JewelHeartVolunteerOnboardingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60718293A4B5C6D7E90 /* JewelHeartVolunteerOnboardingModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +61,10 @@
 		DA254DD62D9077915714E370 /* SDUIRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDUIRenderer.swift; sourceTree = "<group>"; };
 		FD30F69F029BF6B0BF9EA54C /* JewelHeartAdminResourceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartAdminResourceViews.swift; sourceTree = "<group>"; };
 		F1A2B3C4D5E6F708091A2B3D /* JewelHeartMessagingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartMessagingViews.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5D /* JewelHeartOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartOnboardingView.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B5C6E /* JewelHeartVolunteerAuthEmail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartVolunteerAuthEmail.swift; sourceTree = "<group>"; };
+		C3D4E5F60718293A4B5C6D7F /* JewelHeartVolunteerAuthUi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartVolunteerAuthUi.swift; sourceTree = "<group>"; };
+		D4E5F60718293A4B5C6D7E90 /* JewelHeartVolunteerOnboardingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JewelHeartVolunteerOnboardingModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,6 +119,10 @@
 				AC67EE5E5D251D5198C4F044 /* JewelHeartRootPresenter.swift */,
 				12C0F6A4C5671FE75EE247EB /* JewelHeartSceneDelegate.swift */,
 				B9D49FFF9CB5ED057F410552 /* JewelHeartSignInView.swift */,
+				A1B2C3D4E5F60718293A4B5D /* JewelHeartOnboardingView.swift */,
+				B2C3D4E5F60718293A4B5C6E /* JewelHeartVolunteerAuthEmail.swift */,
+				C3D4E5F60718293A4B5C6D7F /* JewelHeartVolunteerAuthUi.swift */,
+				D4E5F60718293A4B5C6D7E90 /* JewelHeartVolunteerOnboardingModels.swift */,
 				04D1E1F2F366079542D83BAA /* RootView.swift */,
 				7D032E827A7E776FB693FD8C /* SDUIModels.swift */,
 				DA254DD62D9077915714E370 /* SDUIRenderer.swift */,
@@ -213,6 +225,10 @@
 				9D0A23FFE1C7B0CC8803E4F2 /* JewelHeartRootPresenter.swift in Sources */,
 				B8CFE72FF717027AA3DC52A2 /* JewelHeartSceneDelegate.swift in Sources */,
 				2E040C33EA71A0CEEB9378D0 /* JewelHeartSignInView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* JewelHeartOnboardingView.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* JewelHeartVolunteerAuthEmail.swift in Sources */,
+				C3D4E5F60718293A4B5C6D7E /* JewelHeartVolunteerAuthUi.swift in Sources */,
+				D4E5F60718293A4B5C6D7E8F /* JewelHeartVolunteerOnboardingModels.swift in Sources */,
 				03EB4846FC78F2657859B3C3 /* RootView.swift in Sources */,
 				56AC20D06B3A62DB3CCF37D8 /* SDUIModels.swift in Sources */,
 				84B884AC26BE730BB3DF6B07 /* SDUIRenderer.swift in Sources */,

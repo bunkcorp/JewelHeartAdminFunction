@@ -1092,7 +1092,7 @@ code {
 
 /* Volunteer SDUI (karmadots.org/login — parity with native app) */
 /* Volunteer clean mode: page shows only the phone app; admin chrome hidden. */
-body.jh-volunteer-clean .jh-top-bars,
+body.jh-volunteer-clean .jh-top-bars:not(#vol-screen-header),
 body.jh-volunteer-clean .jh-about,
 body.jh-volunteer-clean #session-panel,
 body.jh-volunteer-clean #volunteer-sdui-section .jh-mode-tabs,
@@ -1101,9 +1101,9 @@ body.jh-volunteer-clean #volunteer-sdui-section > .hint {
   display: none;
 }
 
-body.jh-volunteer-clean main {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+body.jh-volunteer-clean .jh-volunteer-shell > #vol-screen-header:not([hidden]) {
+  display: block;
+  flex: 0 0 auto;
 }
 
 body.jh-volunteer-clean #volunteer-sdui-section.panel {
@@ -1114,17 +1114,104 @@ body.jh-volunteer-clean #volunteer-sdui-section.panel {
   margin: 0 auto;
 }
 
+body.jh-volunteer-clean {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #e2e6ec;
+}
+
+.jh-volunteer-shell {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  box-shadow: 0 0 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+@media (max-width: 440px) {
+  .jh-volunteer-shell {
+    max-width: 100%;
+    box-shadow: none;
+  }
+
+  body.jh-volunteer-clean {
+    background: var(--bg);
+  }
+}
+
+/* Flex rules on panels override [hidden]; keep only one screen visible. */
+body.jh-volunteer-clean .jh-volunteer-shell [hidden] {
+  display: none !important;
+}
+
+body.jh-volunteer-clean .jh-volunteer-shell > main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+body.jh-volunteer-clean main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: 0.35rem;
+}
+
+body.jh-volunteer-clean.jh-volunteer-auth .jh-volunteer-shell > main {
+  padding-bottom: 0.5rem;
+  overflow-y: auto;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar {
+  flex: 0 0 auto;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-build-stamp {
+  flex: 0 0 auto;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section #sdui-msg {
+  flex: 0 0 auto;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-root {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-root.jh-sdui-home-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer {
   max-height: calc(100vh - 4rem);
 }
 
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-header {
   max-height: calc(100vh - 4rem);
-}
-
-body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
-  max-height: calc(100vh - 1rem);
-  height: calc(100vh - 1rem);
 }
 
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split:not(:has(.jh-sdui-today-shift-scroll)) {
@@ -1438,6 +1525,11 @@ body.jh-signed-in .jh-admin-corner {
   overflow: hidden;
 }
 
+body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
+  height: auto;
+  max-height: none;
+}
+
 .jh-sdui-root.jh-sdui-home-split:not(:has(.jh-sdui-today-shift-scroll)) {
   height: auto;
   max-height: none;
@@ -1451,6 +1543,7 @@ body.jh-signed-in .jh-admin-corner {
   min-height: 0;
   width: 100%;
   overflow: hidden;
+  align-items: stretch;
 }
 
 .jh-sdui-root.jh-sdui-home-split:not(:has(.jh-sdui-today-shift-scroll)) .jh-sdui-home-middle {
@@ -1460,13 +1553,20 @@ body.jh-signed-in .jh-admin-corner {
 
 .jh-sdui-today-shift-scroll {
   border: 2px solid #ffca10;
-  flex: 1 1 auto;
-  min-height: 94px;
+  flex: 0 1 auto;
+  align-self: stretch;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   width: 100%;
   box-sizing: border-box;
   padding: 4px 6px;
+}
+
+.jh-sdui-today-shift-scroll.jh-sdui-flex-grow {
+  flex: 0 1 auto;
+  max-height: 100%;
 }
 
 .jh-sdui-today-shift-scroll .jh-sdui-center-wrap {

@@ -1,10 +1,7 @@
 package org.jewelheart.admin
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,13 +41,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,186 +67,81 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.io.File
 
 @Composable
 fun JewelHeartAdminApp() {
     val auth = FirebaseAuth.getInstance()
     var user by remember { mutableStateOf(auth.currentUser) }
+    var onboardingDraft by remember { mutableStateOf<VolunteerBootstrapResponse?>(null) }
+    var bootstrapBusy by remember { mutableStateOf(false) }
+    var bootstrapError by remember { mutableStateOf<String?>(null) }
+    var bootstrapNonce by remember { mutableIntStateOf(0) }
+    val pendingEmailLink = EmailLinkIntentHolder.link
+
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { a -> user = a.currentUser }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
     }
 
-    if (user == null) {
-        SignInScreen(onSignedIn = { user = auth.currentUser })
-    } else {
-        AdminTabShell()
-    }
-}
-
-@Composable
-private fun SignInScreen(onSignedIn: () -> Unit) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
-
-    val webClientId = ctx.getString(R.string.default_web_client_id)
-    val gso = remember(webClientId) {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
-            .requestEmail()
-            .build()
-    }
-    val googleClient = remember(ctx, gso) { GoogleSignIn.getClient(ctx, gso) }
-
-    val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode != Activity.RESULT_OK) {
-            message =
-                if (result.resultCode == Activity.RESULT_CANCELED) {
-                    "Google sign-in canceled."
-                } else {
-                    "Google sign-in failed (result code ${result.resultCode})."
-                }
-            return@rememberLauncherForActivityResult
+    LaunchedEffect(user?.uid, bootstrapNonce) {
+        if (user == null) {
+            onboardingDraft = null
+            bootstrapError = null
+            return@LaunchedEffect
         }
-        scope.launch {
-            busy = true
-            message = null
-            try {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                val account = task.getResult(ApiException::class.java)
-                val token = account.idToken
-                if (token.isNullOrEmpty()) {
-                    message =
-                        "Google returned no ID token for this app. In Firebase Console → Project settings → Your apps, " +
-                            "add Android app \"${ctx.packageName}\" and register your debug/release SHA-1 fingerprints, " +
-                            "then download google-services.json into the jewelheart-admin module (or rebuild after saving)."
-                    return@launch
-                }
-                val cred = GoogleAuthProvider.getCredential(token, null)
-                FirebaseAuth.getInstance().signInWithCredential(cred).await()
-                onSignedIn()
-            } catch (e: ApiException) {
-                message =
-                    when (e.statusCode) {
-                        GoogleSignInStatusCodes.SIGN_IN_CANCELLED -> "Google sign-in canceled."
-                        ConnectionResult.DEVELOPER_ERROR ->
-                            "Google Play services config error (code 10). Add Android app \"${ctx.packageName}\" " +
-                                "in the same Firebase project and register your signing SHA-1/SHA-256, then sync."
-                        else -> "Google sign-in error ${e.statusCode}: ${e.message}"
-                    }
-            } catch (e: Exception) {
-                message = e.message ?: e.toString()
-            } finally {
-                busy = false
+        bootstrapBusy = true
+        bootstrapError = null
+        try {
+            val out = JewelHeartRepository().volunteerBootstrap()
+            onboardingDraft = if (out.profileConfirmed) null else out
+        } catch (e: Exception) {
+            bootstrapError = e.message ?: e.toString()
+            onboardingDraft = null
+        } finally {
+            bootstrapBusy = false
+        }
+    }
+
+    when {
+        user == null -> {
+            VolunteerSignInScreen(
+                pendingEmailLink = pendingEmailLink,
+                onSignedIn = {
+                    EmailLinkIntentHolder.consume()
+                    user = auth.currentUser
+                },
+            )
+        }
+        bootstrapBusy -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
         }
-    }
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text("JewelHeart Admin", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Same Firebase project as KarmaDots. Sign in like the iOS app.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-
-        Button(
-            onClick = {
-                scope.launch {
-                    busy = true
-                    message = null
-                    try {
-                        FirebaseAuth.getInstance().signInWithEmailAndPassword(email.trim(), password).await()
-                        onSignedIn()
-                    } catch (e: Exception) {
-                        message = e.message
-                    } finally {
-                        busy = false
-                    }
-                }
-            },
-            enabled = !busy && email.isNotBlank() && password.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Sign in with email") }
-
-        Button(
-            onClick = {
-                scope.launch {
-                    busy = true
-                    message = null
-                    try {
-                        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email.trim(), password).await()
-                        onSignedIn()
-                    } catch (e: Exception) {
-                        message = e.message
-                    } finally {
-                        busy = false
-                    }
-                }
-            },
-            enabled = !busy && email.isNotBlank() && password.length >= 6,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Create account (email)") }
-
-        Button(
-            onClick = {
-                scope.launch {
-                    busy = true
-                    message = null
-                    try {
-                        FirebaseAuth.getInstance().signInAnonymously().await()
-                        onSignedIn()
-                    } catch (e: Exception) {
-                        message = e.message
-                    } finally {
-                        busy = false
-                    }
-                }
-            },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Continue anonymously") }
-
-        Button(
-            onClick = {
-                scope.launch {
-                    try {
-                        googleClient.signOut().await()
-                    } catch (_: Exception) {
-                    }
-                    googleLauncher.launch(googleClient.signInIntent)
-                }
-            },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Sign in with Google") }
-
-        if (busy) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally))
+        bootstrapError != null -> {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("Could not start volunteer session", style = MaterialTheme.typography.titleMedium)
+                Text(bootstrapError!!, color = MaterialTheme.colorScheme.error)
+                Button(onClick = { bootstrapNonce++ }) { Text("Retry") }
+                TextButton(onClick = { auth.signOut() }) { Text("Sign out") }
+            }
+        }
+        onboardingDraft != null -> {
+            VolunteerOnboardingScreen(
+                draft = onboardingDraft!!,
+                onComplete = { bootstrapNonce++ },
+            )
+        }
+        else -> AdminTabShell()
     }
 }
 
@@ -610,6 +503,8 @@ private fun SduiComponentView(
             val enabled = c.action != null
             val label = c.label ?: c.content ?: "Button"
             val multiline = c.style?.multiline == true || label.contains('\n')
+            val homeActionPill = c.style?.homeActionPill == true
+            val goldFullWidth = c.style?.homeActionPillFullWidth == true
             val maxLines = when {
                 homeActionPill -> 1
                 goldFullWidth -> 1
@@ -634,8 +529,6 @@ private fun SduiComponentView(
                 val minH = c.style?.minHeight?.value?.dp
                 val fixedW = c.style?.width?.value?.dp
                 val raised = c.style?.buttonVariant == "raised"
-                val homeActionPill = c.style?.homeActionPill == true
-            val goldFullWidth = c.style?.homeActionPillFullWidth == true
                 val elevation = (c.style?.elevation ?: if (raised) 9.0 else 0.0).dp
                 val parentCentered = c.style?.parentCentered == true
                 val pillMod = Modifier

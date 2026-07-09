@@ -512,4 +512,64 @@ extension JewelHeartAPI {
         let (_, _) = try await authorizedDataRequest(path: "jewelheart/messages/\(messageId)", method: "DELETE")
         await invalidateReadCaches([JewelHeartReadCacheNamespace.messages, JewelHeartReadCacheNamespace.conversations])
     }
+
+    // MARK: - Volunteer bootstrap + onboarding
+
+    func volunteerBootstrap() async throws -> VolunteerBootstrapResponse {
+        let body = try jsonEncoder().encode([String: String]())
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteer/bootstrap",
+            method: "POST",
+            httpBody: body,
+            contentType: "application/json"
+        )
+        return try jsonDecoder().decode(VolunteerBootstrapResponse.self, from: data)
+    }
+
+    func sendOnboardingPhoneOtp(phone: String) async throws -> String {
+        struct Body: Encodable {
+            let channel = "phone"
+            let phone: String
+        }
+        let enc = try jsonEncoder().encode(Body(phone: phone))
+        let (data, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteer/onboarding/send-otp",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+        let decoded = try jsonDecoder().decode(VolunteerOtpMessageResponse.self, from: data)
+        return decoded.message ?? "Code sent."
+    }
+
+    func verifyOnboardingPhoneOtp(phone: String, code: String) async throws {
+        struct Body: Encodable {
+            let channel = "phone"
+            let phone: String
+            let code: String
+        }
+        let enc = try jsonEncoder().encode(Body(phone: phone, code: code))
+        let (_, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteer/onboarding/verify-otp",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+    }
+
+    func completeOnboarding(firstName: String, lastName: String, email: String, phone: String) async throws {
+        struct Body: Encodable {
+            let firstName: String
+            let lastName: String
+            let email: String
+            let phone: String
+        }
+        let enc = try jsonEncoder().encode(Body(firstName: firstName, lastName: lastName, email: email, phone: phone))
+        let (_, _) = try await authorizedDataRequest(
+            path: "jewelheart/volunteer/onboarding/complete",
+            method: "POST",
+            httpBody: enc,
+            contentType: "application/json"
+        )
+    }
 }

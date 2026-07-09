@@ -3,7 +3,9 @@
  *
  * Env:
  *   JEWELHEART_ACTIVE_RETREAT_ID — retreat linked on first sign-in (required)
- *   SENDGRID_API_KEY, SENDGRID_FROM_EMAIL — email OTP
+ *   SENDGRID_API_KEY, SENDGRID_FROM_EMAIL — email OTP (legacy)
+ *   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER — phone OTP at onboarding
+ *   TWILIO_MESSAGING_SERVICE_SID — optional; use A2P-registered Messaging Service when set
  */
 
 import crypto from 'crypto';
@@ -186,6 +188,90 @@ async function sendgridOtpEmail({ to, code }) {
   }
 }
 
+async function twilioOtpSms({ to, code }) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_FROM_NUMBER;
+  if (!sid || !token || !from) {
+    throw new HttpError(503, 'SMS is not configured on this server.');
+  }
+  const toE164 = normalizePhoneE164(to);
+  if (!toE164) throw new HttpError(400, 'Enter a valid phone number.');
+
+  const body = `Your JewelHeart verification code is: ${code}. It expires in 10 minutes.`;
+  const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+  const params = new URLSearchParams({ To: toE164, From: from, Body: body.slice(0, 1500) });
+  const messagingServiceSid = String(process.env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+  if (messagingServiceSid) {
+    params.delete('From');
+    params.set('MessagingServiceSid', messagingServiceSid);
+  }
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = twilioApiErrorMessage(payload, res.status);
+    throw new HttpError(502, detail);
+  }
+
+  const messageSid = payload.sid;
+  if (messageSid) {
+    await new Promise((r) => setTimeout(r, 1800));
+    const statusRes = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages/${messageSid}.json`,
+      { headers: { Authorization: `Basic ${auth}` } },
+    );
+    const statusPayload = await statusRes.json().catch(() => ({}));
+    const deliveryErr = twilioDeliveryErrorMessage(statusPayload);
+    if (deliveryErr) {
+      console.error('twilio onboarding otp undelivered', {
+        to: toE164,
+        sid: messageSid,
+        status: statusPayload.status,
+        errorCode: statusPayload.error_code,
+      });
+      throw new HttpError(502, deliveryErr);
+    }
+  }
+}
+
+function twilioApiErrorMessage(payload, httpStatus) {
+  const code = payload?.code;
+  const msg = payload?.message || '';
+  if (code === 21211) return 'Error: that phone number is not valid, fix & retry.';
+  if (code === 21608 || code === 21610) {
+    return 'Error: this phone number cannot receive texts from our sender yet. Contact the organizers.';
+  }
+  if (code === 30034) {
+    return 'Error: SMS sender is not registered for US delivery (A2P 10DLC). Contact the organizers.';
+  }
+  return `Could not send verification text (${httpStatus}). ${String(msg).slice(0, 180)}`.trim();
+}
+
+function twilioDeliveryErrorMessage(statusPayload) {
+  const status = String(statusPayload?.status || '').toLowerCase();
+  if (status !== 'undelivered' && status !== 'failed') return null;
+  const code = Number(statusPayload?.error_code);
+  if (code === 30034) {
+    return (
+      'Error: text could not be delivered — our sender number is not registered for US SMS (A2P 10DLC). ' +
+      'Contact the organizers, fix & retry.'
+    );
+  }
+  if (code === 21610) {
+    return 'Error: this number has blocked texts from our sender. Contact the organizers, fix & retry.';
+  }
+  if (code === 21211) return 'Error: that phone number is not valid, fix & retry.';
+  const detail = statusPayload?.error_message ? String(statusPayload.error_message) : `Twilio status ${status}`;
+  return `Error: text could not be delivered (${detail}), fix & retry.`;
+}
+
 async function countRecentOtps(query, volunteerId) {
   const { rows } = await query(
     `SELECT count(*)::int AS n
@@ -195,6 +281,24 @@ async function countRecentOtps(query, volunteerId) {
     [volunteerId],
   );
   return rows[0]?.n || 0;
+}
+
+async function hasVerifiedPhone(query, volunteerId, phone) {
+  const p = normalizePhoneE164(phone);
+  const p10 = phoneDigitsLast10(p);
+  if (!p10) return false;
+  const { rows } = await query(
+    `SELECT 1
+     FROM jewelheart_contact_verifications
+     WHERE volunteer_id = $1
+       AND channel = 'phone'
+       AND right(regexp_replace(destination, '[^0-9]', '', 'g'), 10) = $2
+       AND verified_at IS NOT NULL
+       AND verified_at > now() - interval '30 minutes'
+     LIMIT 1`,
+    [volunteerId, p10],
+  );
+  return Boolean(rows[0]);
 }
 
 async function hasVerifiedEmail(query, volunteerId, email) {
@@ -237,8 +341,8 @@ function buildOnboardingDraft(volunteer, auth, authToken, keycloakPayload) {
   const profileConfirmed = Boolean(volunteer.profileConfirmedAt);
   const reOnboarding = !profileConfirmed && Boolean(firstName || lastName || volunteer.email || volunteer.phone);
 
-  const draftEmail = normalizeEmail(volunteer.email) || authEmail || '';
-  const draftPhone = volunteer.phone ? String(volunteer.phone).trim() : authPhone ? authPhone : '';
+  const draftEmail = authEmail || normalizeEmail(volunteer.email) || '';
+  const draftPhone = volunteer.phone ? String(volunteer.phone).trim() : '';
 
   return {
     volunteerId: volunteer.id,
@@ -250,8 +354,9 @@ function buildOnboardingDraft(volunteer, auth, authToken, keycloakPayload) {
     phone: draftPhone,
     authEmail: authEmail || '',
     authPhone: authPhone || '',
-    emailOtpRequired: emailOtpRequired(authEmail, draftEmail),
-    phoneMustMatchAuth: Boolean(authPhone),
+    emailOtpRequired: false,
+    phoneOtpRequired: false,
+    phoneMustMatchAuth: false,
     meritBoardNote:
       'Names are not inferred from your email address — enter the first and last name you want shown in the app.',
   };
@@ -396,18 +501,7 @@ export function createJewelHeartVolunteerOnboardingHandlers({ query }) {
         if (volunteer.profileConfirmedAt) {
           throw new HttpError(400, 'Profile is already confirmed.');
         }
-        const channel = String(req.body?.channel || 'email').trim().toLowerCase();
-        if (channel !== 'email') {
-          throw new HttpError(400, 'Only email verification is supported.');
-        }
-        const destination = normalizeEmail(req.body?.email || req.body?.destination);
-        if (!destination) throw new HttpError(400, 'Enter a valid email address.');
-
-        const auth = identityFromAuthToken(req.authToken, req.uid, req.keycloakPayload);
-        if (!emailOtpRequired(auth.email, destination)) {
-          res.status(200).json({ ok: true, skipped: true, message: 'Email matches sign-in — no code needed.' });
-          return;
-        }
+        const channel = String(req.body?.channel || 'phone').trim().toLowerCase();
 
         const sent = await countRecentOtps(query, volunteer.id);
         if (sent >= OTP_MAX_ATTEMPTS_PER_HOUR) {
@@ -416,19 +510,49 @@ export function createJewelHeartVolunteerOnboardingHandlers({ query }) {
 
         const code = generateOtpCode();
         const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-        await query(
-          `INSERT INTO jewelheart_contact_verifications
-             (volunteer_id, channel, destination, code_hash, expires_at)
-           VALUES ($1, 'email', $2, $3, $4)`,
-          [volunteer.id, destination, hashOtp(code), expiresAt.toISOString()],
-        );
-        await sendgridOtpEmail({ to: destination, code });
 
-        res.status(200).json({
-          ok: true,
-          message: `Verification code sent to ${destination}.`,
-          expiresAt: expiresAt.toISOString(),
-        });
+        if (channel === 'phone') {
+          const destination = normalizePhoneE164(req.body?.phone || req.body?.destination);
+          if (!destination) throw new HttpError(400, 'Enter a valid phone number.');
+          await query(
+            `INSERT INTO jewelheart_contact_verifications
+               (volunteer_id, channel, destination, code_hash, expires_at)
+             VALUES ($1, 'phone', $2, $3, $4)`,
+            [volunteer.id, destination, hashOtp(code), expiresAt.toISOString()],
+          );
+          await twilioOtpSms({ to: destination, code });
+          res.status(200).json({
+            ok: true,
+            message: `Verification code sent to ${destination}.`,
+            expiresAt: expiresAt.toISOString(),
+          });
+          return;
+        }
+
+        if (channel === 'email') {
+          const destination = normalizeEmail(req.body?.email || req.body?.destination);
+          if (!destination) throw new HttpError(400, 'Enter a valid email address.');
+          const auth = identityFromAuthToken(req.authToken, req.uid, req.keycloakPayload);
+          if (!emailOtpRequired(auth.email, destination)) {
+            res.status(200).json({ ok: true, skipped: true, message: 'Email matches sign-in — no code needed.' });
+            return;
+          }
+          await query(
+            `INSERT INTO jewelheart_contact_verifications
+               (volunteer_id, channel, destination, code_hash, expires_at)
+             VALUES ($1, 'email', $2, $3, $4)`,
+            [volunteer.id, destination, hashOtp(code), expiresAt.toISOString()],
+          );
+          await sendgridOtpEmail({ to: destination, code });
+          res.status(200).json({
+            ok: true,
+            message: `Verification code sent to ${destination}.`,
+            expiresAt: expiresAt.toISOString(),
+          });
+          return;
+        }
+
+        throw new HttpError(400, 'Unsupported verification channel.');
       } catch (e) {
         const status = e instanceof HttpError ? e.status : 500;
         if (status >= 500) console.error('onboarding send otp', e);
@@ -439,37 +563,72 @@ export function createJewelHeartVolunteerOnboardingHandlers({ query }) {
     async postVerifyOtp(req, res) {
       try {
         const volunteer = await requireVolunteer(req);
-        const destination = normalizeEmail(req.body?.email || req.body?.destination);
+        const channel = String(req.body?.channel || 'phone').trim().toLowerCase();
         const code = String(req.body?.code || '').trim();
-        if (!destination) throw new HttpError(400, 'Email required.');
         if (!/^\d{6}$/.test(code)) throw new HttpError(400, 'Enter the 6-digit code.');
 
-        const { rows } = await query(
-          `SELECT id, code_hash AS "codeHash", expires_at AS "expiresAt", verified_at AS "verifiedAt"
-           FROM jewelheart_contact_verifications
-           WHERE volunteer_id = $1
-             AND channel = 'email'
-             AND lower(trim(destination)) = lower(trim($2))
-             AND verified_at IS NULL
-           ORDER BY created_at DESC
-           LIMIT 1`,
-          [volunteer.id, destination],
-        );
-        const row = rows[0];
-        if (!row) throw new HttpError(400, 'No verification pending for this email. Tap Send code.');
-        if (new Date(row.expiresAt).getTime() < Date.now()) {
-          throw new HttpError(400, 'Code expired. Tap Send code for a new one.');
-        }
-        if (row.codeHash !== hashOtp(code)) {
-          throw new HttpError(400, 'Incorrect code.');
+        if (channel === 'phone') {
+          const destination = normalizePhoneE164(req.body?.phone || req.body?.destination);
+          const p10 = phoneDigitsLast10(destination);
+          if (!p10) throw new HttpError(400, 'Phone number required.');
+          const { rows } = await query(
+            `SELECT id, code_hash AS "codeHash", expires_at AS "expiresAt", verified_at AS "verifiedAt"
+             FROM jewelheart_contact_verifications
+             WHERE volunteer_id = $1
+               AND channel = 'phone'
+               AND right(regexp_replace(destination, '[^0-9]', '', 'g'), 10) = $2
+               AND verified_at IS NULL
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [volunteer.id, p10],
+          );
+          const row = rows[0];
+          if (!row) throw new HttpError(400, 'No verification pending for this phone. Tap Send code to phone.');
+          if (new Date(row.expiresAt).getTime() < Date.now()) {
+            throw new HttpError(400, 'Code expired. Tap Send code to phone for a new one.');
+          }
+          if (row.codeHash !== hashOtp(code)) {
+            throw new HttpError(400, 'Incorrect code, retry');
+          }
+          await query(
+            `UPDATE jewelheart_contact_verifications SET verified_at = now() WHERE id = $1`,
+            [row.id],
+          );
+          res.status(200).json({ ok: true, verified: true, phone: destination });
+          return;
         }
 
-        await query(
-          `UPDATE jewelheart_contact_verifications SET verified_at = now() WHERE id = $1`,
-          [row.id],
-        );
+        if (channel === 'email') {
+          const destination = normalizeEmail(req.body?.email || req.body?.destination);
+          if (!destination) throw new HttpError(400, 'Email required.');
+          const { rows } = await query(
+            `SELECT id, code_hash AS "codeHash", expires_at AS "expiresAt", verified_at AS "verifiedAt"
+             FROM jewelheart_contact_verifications
+             WHERE volunteer_id = $1
+               AND channel = 'email'
+               AND lower(trim(destination)) = lower(trim($2))
+               AND verified_at IS NULL
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [volunteer.id, destination],
+          );
+          const row = rows[0];
+          if (!row) throw new HttpError(400, 'No verification pending for this email. Tap Send code.');
+          if (new Date(row.expiresAt).getTime() < Date.now()) {
+            throw new HttpError(400, 'Code expired. Tap Send code for a new one.');
+          }
+          if (row.codeHash !== hashOtp(code)) {
+            throw new HttpError(400, 'Incorrect code, retry');
+          }
+          await query(
+            `UPDATE jewelheart_contact_verifications SET verified_at = now() WHERE id = $1`,
+            [row.id],
+          );
+          res.status(200).json({ ok: true, verified: true, email: destination });
+          return;
+        }
 
-        res.status(200).json({ ok: true, verified: true, email: destination });
+        throw new HttpError(400, 'Unsupported verification channel.');
       } catch (e) {
         const status = e instanceof HttpError ? e.status : 500;
         if (status >= 500) console.error('onboarding verify otp', e);
@@ -493,10 +652,19 @@ export function createJewelHeartVolunteerOnboardingHandlers({ query }) {
 
         if (!firstName) throw new HttpError(400, 'First name is required.');
         if (!lastName) throw new HttpError(400, 'Last name is required.');
+        if (firstName.length > 15) throw new HttpError(400, 'First name must be 15 characters or fewer.');
+        if (lastName.length > 15) throw new HttpError(400, 'Last name must be 15 characters or fewer.');
         if (!email) throw new HttpError(400, 'Email address is required.');
 
         const auth = identityFromAuthToken(req.authToken, req.uid, req.keycloakPayload);
-        if (!phoneAllowed(auth.phone, phone)) {
+        const authEmail = normalizeEmail(auth.email);
+        if (authEmail && email !== authEmail) {
+          throw new HttpError(400, 'Email must match your sign-in address.');
+        }
+        if (phoneRaw && !phone) {
+          throw new HttpError(400, 'Enter a valid phone number, or leave phone blank.');
+        }
+        if (phone && !phoneAllowed(auth.phone, phone)) {
           throw new HttpError(
             400,
             'Phone must match the number you signed in with, or leave phone blank.',

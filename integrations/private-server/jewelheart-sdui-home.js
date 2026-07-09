@@ -2377,7 +2377,6 @@ function volunteerHomeTodayShiftPanel(ctx, checkInPayload) {
       style: {
         borderColor: volunteerHomeGold,
         minHeight: { value: minScrollHeight },
-        flexGrow: true,
       },
       children: volunteerHomeTodayShiftButtons(ctx, checkInPayload),
     },

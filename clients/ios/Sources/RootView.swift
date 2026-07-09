@@ -386,25 +386,76 @@ struct SduiNavigationRootView: View {
 struct AuthGate: View {
 
     @StateObject private var auth = JewelHeartAuthState()
+    @State private var onboardingDraft: VolunteerBootstrapResponse?
+    @State private var bootstrapBusy = false
+    @State private var bootstrapError: String?
+    @State private var bootstrapNonce = 0
 
-
+    private let api = JewelHeartAPI()
 
     var body: some View {
 
         Group {
 
-            if auth.user != nil {
+            if auth.user == nil {
 
-                AdminRootTabView()
+                JewelHeartSignInView()
+
+            } else if bootstrapBusy {
+
+                ProgressView("Loading…")
+
+            } else if let bootstrapError {
+
+                VStack(spacing: 12) {
+                    Text("Could not start volunteer session")
+                        .font(.headline)
+                    Text(bootstrapError)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                    Button("Retry") { bootstrapNonce += 1 }
+                    Button("Sign out", role: .destructive) {
+                        try? Auth.auth().signOut()
+                    }
+                }
+                .padding()
+
+            } else if let draft = onboardingDraft, !draft.profileConfirmed {
+
+                JewelHeartOnboardingView(draft: draft) {
+                    bootstrapNonce += 1
+                }
 
             } else {
 
-                JewelHeartSignInView()
+                AdminRootTabView()
 
             }
 
         }
+        .task(id: "\(auth.user?.uid ?? "signed-out")|\(bootstrapNonce)") {
+            await bootstrapVolunteerSession()
+        }
 
+    }
+
+    @MainActor
+    private func bootstrapVolunteerSession() async {
+        guard auth.user != nil else {
+            onboardingDraft = nil
+            bootstrapError = nil
+            return
+        }
+        bootstrapBusy = true
+        bootstrapError = nil
+        do {
+            let out = try await api.volunteerBootstrap()
+            onboardingDraft = out.profileConfirmed ? nil : out
+        } catch {
+            bootstrapError = error.localizedDescription
+            onboardingDraft = nil
+        }
+        bootstrapBusy = false
     }
 
 }

@@ -61,6 +61,35 @@ enum JewelHeartFirebaseSignIn {
         _ = try await Auth.auth().createUser(withEmail: email, password: password)
     }
 
+    @MainActor
+    static func sendSignInLink(toEmail email: String) async throws {
+        let settings = ActionCodeSettings()
+        settings.url = URL(string: "https://gettingstoned-4aee3.firebaseapp.com/finishSignIn")
+        settings.handleCodeInApp = true
+        if let bundleId = Bundle.main.bundleIdentifier {
+            settings.setIOSBundleID(bundleId)
+        }
+        try await Auth.auth().sendSignInLink(toEmail: email, actionCodeSettings: settings)
+        JewelHeartVolunteerAuthEmail.savePendingEmail(email)
+    }
+
+    @MainActor
+    static func completeSignInWithEmailLink(_ link: String, fallbackEmail: String) async throws {
+        let auth = Auth.auth()
+        guard auth.isSignIn(withEmailLink: link) else { return }
+        let email = JewelHeartVolunteerAuthEmail.loadPendingEmail()
+            ?? JewelHeartVolunteerAuthEmail.normalizeEmail(fallbackEmail)
+        guard !email.isEmpty else {
+            throw NSError(
+                domain: "JewelHeartAuth",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Error: enter the same email address you used for the link, fix & retry."]
+            )
+        }
+        _ = try await auth.signIn(withEmail: email, link: link)
+        JewelHeartVolunteerAuthEmail.clearPendingEmail()
+    }
+
     // MARK: - Apple nonce (Firebase requirement)
 
     static func randomNonceString(length: Int = 32) -> String {

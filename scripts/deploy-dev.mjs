@@ -47,8 +47,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import fs from 'node:fs';
+import os from 'node:os';
 
 import { nyDeployStamp, writeStampedTempCopy } from './deploy/stamp.mjs';
+import { buildVolunteerAppHtml, buildVolunteerRedirectHtml } from './build-volunteer-app.mjs';
 
 
 
@@ -133,6 +135,7 @@ scp('scripts/patch-volunteer-invite-route.mjs', 'scripts-inspect/patch-volunteer
 scp('scripts/patch-volunteer-onboarding-route.mjs', 'scripts-inspect/patch-volunteer-onboarding-route.mjs');
 
 scp('scripts/patch-volunteer-user-manage-route.mjs', 'scripts-inspect/patch-volunteer-user-manage-route.mjs');
+scp('scripts/patch-volunteer-env-static.mjs', 'scripts-inspect/patch-volunteer-env-static.mjs');
 
 scp('integrations/private-server/sduiHandlers.fragment.js', 'src/jewelheart/sduiHandlers.js');
 
@@ -154,7 +157,20 @@ function scpWebAppIcons(remoteRelDir = 'public/login') {
   }
 }
 
-scpStamped('scripts/_dev-volunteer-index.html', 'public/login/volunteer.html', 'web');
+function scpVolunteerWeb() {
+  run('ssh', ['-o', 'BatchMode=yes', SSH, `mkdir -p ~/${DEV_DIR}/public/dev`]);
+  const indexHtml = buildVolunteerAppHtml('dev', { mode: 'api', build: deployStamp });
+  const indexTmp = path.join(os.tmpdir(), `jh-vol-dev-index-${deployStamp}.html`);
+  fs.writeFileSync(indexTmp, indexHtml, 'utf8');
+  run('scp', ['-o', 'BatchMode=yes', indexTmp, `${SSH}:${DEV_DIR}/public/dev/index.html`]);
+
+  const redirectHtml = buildVolunteerRedirectHtml('/dev/');
+  const redirectTmp = path.join(os.tmpdir(), `jh-vol-redirect-${deployStamp}.html`);
+  fs.writeFileSync(redirectTmp, redirectHtml, 'utf8');
+  run('scp', ['-o', 'BatchMode=yes', redirectTmp, `${SSH}:${DEV_DIR}/public/login/volunteer.html`]);
+}
+
+scpVolunteerWeb();
 
 scpWebAppIcons('public/login');
 
@@ -180,7 +196,7 @@ const NODE_BIN = process.env.JH_NODE_BIN || '/Users/kevinwoods/.nvm/versions/nod
 
 const steps = [
 
-  `grep -q '^JEWELHEART_VOLUNTEER_LOGIN_URL=' ~/${DEV_DIR}/.env 2>/dev/null || echo 'JEWELHEART_VOLUNTEER_LOGIN_URL=https://api-dev.karmadots.org/login/volunteer.html' >> ~/${DEV_DIR}/.env`,
+  `grep -q '^JEWELHEART_VOLUNTEER_LOGIN_URL=' ~/${DEV_DIR}/.env 2>/dev/null || echo 'JEWELHEART_VOLUNTEER_LOGIN_URL=https://api-dev.karmadots.org/dev/' >> ~/${DEV_DIR}/.env`,
 
   `grep -q '^JEWELHEART_ACTIVE_RETREAT_ID=' ~/${DEV_DIR}/.env 2>/dev/null || echo 'JEWELHEART_ACTIVE_RETREAT_ID=34d43115-67b3-5fbf-9173-abb051c11ca7' >> ~/${DEV_DIR}/.env`,
 
@@ -189,6 +205,8 @@ const steps = [
   `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-onboarding-route.mjs || true`,
 
   `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-user-manage-route.mjs || true`,
+
+  `cd ~/${DEV_DIR} && JH_INDEX_PATH=~/${DEV_DIR}/src/index.js ${NODE_BIN} scripts-inspect/patch-volunteer-env-static.mjs || true`,
 
   'bash ~/jh-deploy.sh patch-web dev',
 
@@ -202,7 +220,7 @@ run('ssh', ['-o', 'BatchMode=yes', SSH, steps.join(' && ')]);
 
 
 
-process.stdout.write('\ndeploy-dev complete -> https://api-dev.karmadots.org/login\n');
+process.stdout.write('\ndeploy-dev complete -> https://api-dev.karmadots.org/dev/\n');
 
 
 

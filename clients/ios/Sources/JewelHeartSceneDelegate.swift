@@ -1,3 +1,4 @@
+import FirebaseAuth
 import GoogleSignIn
 import SwiftUI
 import UIKit
@@ -20,7 +21,15 @@ final class JewelHeartSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         for ctx in URLContexts {
-            _ = GIDSignIn.sharedInstance.handle(ctx.url)
+            if GIDSignIn.sharedInstance.handle(ctx.url) { continue }
+            JewelHeartEmailLinkHolder.ingest(ctx.url)
+        }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+           let url = userActivity.webpageURL {
+            JewelHeartEmailLinkHolder.ingest(url)
         }
     }
 }

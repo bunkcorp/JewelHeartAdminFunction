@@ -160,6 +160,44 @@ class JewelHeartRepository(
         return gson.fromJson(data.toString(Charsets.UTF_8), HealthResponse::class.java)
     }
 
+    suspend fun volunteerBootstrap(): VolunteerBootstrapResponse {
+        val data = jsonRequest("POST", "jewelheart/volunteer/bootstrap", jsonBody = emptyMap<String, String>())
+        return gson.fromJson(data.toString(Charsets.UTF_8), VolunteerBootstrapResponse::class.java)
+    }
+
+    suspend fun sendOnboardingPhoneOtp(phone: String): String {
+        val data = jsonRequest(
+            "POST",
+            "jewelheart/volunteer/onboarding/send-otp",
+            jsonBody = mapOf("channel" to "phone", "phone" to phone),
+        )
+        return gson.fromJson(data.toString(Charsets.UTF_8), JsonObject::class.java)
+            .get("message")
+            ?.asString
+            ?: "Code sent."
+    }
+
+    suspend fun verifyOnboardingPhoneOtp(phone: String, code: String) {
+        jsonRequest(
+            "POST",
+            "jewelheart/volunteer/onboarding/verify-otp",
+            jsonBody = mapOf("channel" to "phone", "phone" to phone, "code" to code),
+        )
+    }
+
+    suspend fun completeOnboarding(firstName: String, lastName: String, email: String, phone: String) {
+        jsonRequest(
+            "POST",
+            "jewelheart/volunteer/onboarding/complete",
+            jsonBody = mapOf(
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "email" to email,
+                "phone" to phone,
+            ),
+        )
+    }
+
     suspend fun fetchScreen(screenId: String, retreatId: String?, params: Map<String, String>): SduiEnvelope {
         val requestParams = params.filterKeys { it != "filterReset" && it != "allJobsTap" }
         val jo = JsonObject().apply {
