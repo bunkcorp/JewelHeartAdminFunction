@@ -22,10 +22,15 @@ export function nyDeployStamp(date = new Date()) {
 }
 
 export function stampApiHomeSource(content, stamp) {
-  return content.replace(
-    /const VOLUNTEER_SDUI_BUILD_STAMP = '[^']*';/,
-    `const VOLUNTEER_SDUI_BUILD_STAMP = '${stamp}';`,
-  );
+  return content
+    .replace(
+      /export const VOLUNTEER_API_BUILD_STAMP = '[^']*';/,
+      `export const VOLUNTEER_API_BUILD_STAMP = '${stamp}';`,
+    )
+    .replace(
+      /const VOLUNTEER_SDUI_BUILD_STAMP = '[^']*';/,
+      `const VOLUNTEER_SDUI_BUILD_STAMP = '${stamp}';`,
+    );
 }
 
 export function stampWebSduiSource(content, stamp) {

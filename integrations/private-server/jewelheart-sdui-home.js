@@ -20,12 +20,13 @@ import {
   volunteerResolveAssignment,
   volunteerShiftIsFulfilled,
 } from './jewelheart-shift-checkins.js';
-import { buildVolunteerTimeContext, loadVolunteerTestingSettings } from './jewelheart-volunteer-time-context.js';
+import {
+  buildVolunteerTimeContext,
+  loadVolunteerTestingSettings,
+  VOLUNTEER_API_BUILD_STAMP,
+} from './jewelheart-volunteer-time-context.js';
 
-/** Bump on each deploy (America/New_York, minute precision). Overwritten by deploy scripts. */
-const VOLUNTEER_SDUI_BUILD_STAMP = 'pending-deploy';
-
-/** karmadots.org/testerslogin sends uiChannel=testers — frozen before job-type search. */
+/** karmadots.org/testerslogin sends uiChannel=testers for roster access checks. */
 function volunteerHomeUiChannel(params = {}) {
   return String(params?.uiChannel || '').trim().toLowerCase();
 }
@@ -678,7 +679,11 @@ function volunteerHomeHeaderChildren(ctx, screenTitle, contextIso = undefined, o
         ctx.layoutWarnings,
         options.warnCode || 'header_line',
       );
-  return [...volunteerHomeTopBlueBars(ctx, line, { alreadyFitted: true }), volunteerHomeGap()];
+  const barOpts = { alreadyFitted: true };
+  if (options.secondBarColor) barOpts.secondBarColor = options.secondBarColor;
+  if (options.secondBarTextColor) barOpts.secondBarTextColor = options.secondBarTextColor;
+  if (options.warnCode) barOpts.warnCode = options.warnCode;
+  return [...volunteerHomeTopBlueBars(ctx, line, barOpts), volunteerHomeGap()];
 }
 
 /** Retreat days from today through Saturday (inclusive). */
@@ -1212,6 +1217,90 @@ function volunteerSearchByTypeSearchEnabled(typeState) {
   return typeState.jobsAll === '1' || Boolean(typeState.jobType) || Boolean(String(typeState.selectedJobs || '').trim());
 }
 
+/** Find by day — exactly one future/today day selected (radio). */
+function volunteerSearchByDaySelectedIso(params, allDayIsos, todayIso) {
+  let picked = String(params.selectedDay || '').trim();
+  if (!picked && params.daysAll === '0') {
+    picked = String(params.selectedDays || '').split(',')[0].trim();
+  }
+  const searchable = allDayIsos.filter((iso) => iso >= todayIso);
+  if (picked && allDayIsos.includes(picked) && picked >= todayIso) return picked;
+  if (searchable.includes(todayIso)) return todayIso;
+  return searchable[0] || allDayIsos[allDayIsos.length - 1] || todayIso;
+}
+
+function volunteerSearchByDayNavPayload(base, selectedDay, returnTo, extra = {}) {
+  return volunteerHomeWithReturnTo(
+    {
+      ...base,
+      daysAll: '0',
+      selectedDays: selectedDay,
+      selectedDay,
+      jobsAll: '1',
+      selectedJobs: '',
+      ...extra,
+    },
+    returnTo,
+  );
+}
+
+function volunteerSearchByDaySearchParams(selectedDay) {
+  return {
+    daysAll: '0',
+    selectedDays: selectedDay,
+    jobsAll: '1',
+    selectedJobs: '',
+  };
+}
+
+/** Find by type — exactly one job-type code selected (radio). */
+function volunteerSearchByTypeSelectedCode(params) {
+  const t = volunteerSearchJobTypeParam(params);
+  if (t) return t;
+  return VOLUNTEER_JOB_TYPE_CODES[0];
+}
+
+function volunteerSearchByTypeNavPayload(base, jobType, returnTo, extra = {}) {
+  return volunteerHomeWithReturnTo(
+    {
+      ...base,
+      daysAll: '1',
+      selectedDays: '',
+      jobsAll: '0',
+      selectedJobs: '',
+      jobType,
+      typeJobPrefs: '',
+      ...extra,
+    },
+    returnTo,
+  );
+}
+
+function volunteerSearchByTypeSearchParams(jobType) {
+  return {
+    daysAll: '1',
+    selectedDays: '',
+    jobsAll: '0',
+    selectedJobs: '',
+    jobType,
+    typeJobPrefs: '',
+  };
+}
+
+/** Job order (master list), then day within each job. Today+ only. */
+function volunteerSearchByTypeGroupedMatches(matches, ctx, jobType) {
+  const jobOrder = volunteerSearchByTypeTypeJobIds(ctx, jobType);
+  const orderIdx = new Map(jobOrder.map((id, i) => [id, i]));
+  return [...matches]
+    .filter((row) => row.dayIso >= ctx.todayIso)
+    .sort((a, b) => {
+      const oa = orderIdx.get(a.jobId) ?? 9999;
+      const ob = orderIdx.get(b.jobId) ?? 9999;
+      if (oa !== ob) return oa - ob;
+      return a.dayIso.localeCompare(b.dayIso);
+    });
+}
+
 function volunteerSearchOpenShiftsPayload(base, params, returnTo = 'jewelheart.home') {
   return volunteerSearchFilterPayloadFromParams(base, params, returnTo);
 }
@@ -1494,6 +1583,7 @@ const VOLUNTEER_SCREEN_BACK_LABELS = {
   'jewelheart.home': 'Home',
   'jewelheart.volunteer.search': 'Find open shifts',
   'jewelheart.volunteer.searchByType': 'Find open shifts by job type',
+  'jewelheart.volunteer.searchByDay': 'Find open shifts by day',
   'jewelheart.volunteer.assign': 'Open shifts',
   'jewelheart.volunteer.shiftDetail': 'Shift',
   'jewelheart.volunteer.shift': 'Shift',
@@ -1534,13 +1624,16 @@ function volunteerHomeBackPayload(params, backTarget) {
     p.shiftOp = params.shiftOp ? String(params.shiftOp) : 'mine';
     p.returnTo = 'jewelheart.volunteer.mine';
   }
-  if (backTarget === 'jewelheart.volunteer.search' || backTarget === 'jewelheart.volunteer.searchByType' || backTarget === 'jewelheart.volunteer.assign') {
-    if (backTarget === 'jewelheart.volunteer.search' || backTarget === 'jewelheart.volunteer.searchByType') {
+  if (backTarget === 'jewelheart.volunteer.search' || backTarget === 'jewelheart.volunteer.searchByType'
+    || backTarget === 'jewelheart.volunteer.searchByDay' || backTarget === 'jewelheart.volunteer.assign') {
+    if (backTarget === 'jewelheart.volunteer.search' || backTarget === 'jewelheart.volunteer.searchByType'
+      || backTarget === 'jewelheart.volunteer.searchByDay') {
       p.returnTo = 'jewelheart.home';
     }
     if (backTarget === 'jewelheart.volunteer.assign') p.returnTo = 'jewelheart.home';
     if (params.daysAll != null) p.daysAll = String(params.daysAll);
     if (params.selectedDays != null) p.selectedDays = String(params.selectedDays);
+    if (params.selectedDay != null) p.selectedDay = String(params.selectedDay);
     if (params.jobsAll != null) p.jobsAll = String(params.jobsAll);
     if (params.selectedJobs != null) p.selectedJobs = String(params.selectedJobs);
     if (params.jobType != null) p.jobType = String(params.jobType);
@@ -1554,33 +1647,38 @@ function volunteerHomeOnlyHomeNavRow(params = {}) {
   return volunteerHomeStandardFooterNav(params);
 }
 
-function volunteerHomeNavIconButton(icon, actionOrTarget, payload) {
+function volunteerHomeNavIconButton(icon, actionOrTarget, payload, options = {}) {
+  const defaultLabel = icon === 'nav_back' ? '←' : icon === 'nav_home' ? '⌂' : '';
+  const label = options.label != null ? String(options.label) : defaultLabel;
+  const navBackText = icon === 'nav_back' && label !== '←';
   const action =
     typeof actionOrTarget === 'object' && actionOrTarget !== null
       ? actionOrTarget
       : { type: 'navigate', target: actionOrTarget, payload: payload || {} };
+  const style = {
+    backgroundColor: volunteerHomeSummaryBlue,
+    borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
+    buttonVariant: 'raised',
+    elevation: VOLUNTEER_HOME_BUTTON_ELEVATION_DP,
+    height: { value: VOLUNTEER_HOME_BAR_MIN_HEIGHT_DP },
+    width: navBackText ? undefined : { value: 48 },
+    padding: { top: 0, bottom: 0, left: navBackText ? 12 : 8, right: navBackText ? 12 : 8 },
+    navIcon: true,
+    navBackText: navBackText || undefined,
+  };
   return {
     type: 'button',
     icon,
-    label: icon === 'nav_back' ? '←' : icon === 'nav_home' ? '⌂' : '',
-    content: icon === 'nav_back' ? '←' : icon === 'nav_home' ? '⌂' : '',
+    label,
+    content: label,
     action,
     textStyle: {
-      fontSize: 20,
+      fontSize: navBackText ? 16 : 20,
       fontWeight: 'bold',
       textAlign: 'center',
       color: '#FFFFFF',
     },
-    style: {
-      backgroundColor: volunteerHomeSummaryBlue,
-      borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
-      buttonVariant: 'raised',
-      elevation: VOLUNTEER_HOME_BUTTON_ELEVATION_DP,
-      height: { value: VOLUNTEER_HOME_BAR_MIN_HEIGHT_DP },
-      width: { value: 48 },
-      padding: { top: 0, bottom: 0, left: 8, right: 8 },
-      navIcon: true,
-    },
+    style,
   };
 }
 
@@ -1604,6 +1702,8 @@ function volunteerHomeFooterLabeledButtons(params = {}) {
 function volunteerHomeStandardFooterNav(params = {}) {
   const homePayload = params.retreatId ? { retreatId: String(params.retreatId) } : {};
   const simple = params.footerNavSimple === true;
+  const backLabel = params.navBackLabel ? String(params.navBackLabel) : undefined;
+  const backBtnOpts = backLabel ? { label: backLabel } : {};
   return {
     type: 'container',
     layout: 'row',
@@ -1611,7 +1711,7 @@ function volunteerHomeStandardFooterNav(params = {}) {
     textStyle: { textAlign: 'center' },
     style: { padding: { top: 8, bottom: 8, left: 8, right: 8 }, fixedFooter: true },
     children: [
-      volunteerHomeNavIconButton('nav_back', { type: 'navBack' }),
+      volunteerHomeNavIconButton('nav_back', { type: 'navBack' }, undefined, backBtnOpts),
       volunteerHomeNavIconButton('nav_home', 'jewelheart.home', homePayload),
       ...(simple ? [] : volunteerHomeFooterLabeledButtons(params)),
     ],
@@ -1698,6 +1798,123 @@ function volunteerHomeBodyText(content, warnings, code = 'hint') {
     textStyle: { fontSize: 14, textAlign: 'center' },
     style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
   };
+}
+
+function volunteerHomeBoldBodyText(content, warnings, code = 'hint_bold') {
+  const fitted = volunteerHomeFitLine(content, VOLUNTEER_HOME_MAX_HINT_CHARS, warnings, code);
+  return {
+    type: 'text',
+    content: fitted,
+    textStyle: { fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
+    style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
+  };
+}
+
+function volunteerHomeBoldColoredBodyText(content, color, warnings, code = 'hint_bold') {
+  const fitted = volunteerHomeFitLine(content, VOLUNTEER_HOME_MAX_HINT_CHARS, warnings, code);
+  return {
+    type: 'text',
+    content: fitted,
+    textStyle: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: color || '#000000',
+    },
+    style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
+  };
+}
+
+/** Assign-to-me hint line — initial, assigned, or just-released. */
+function volunteerAssignMeHintComponent(ctx, { isMine, isToday, checkinOp }) {
+  const justReleased = checkinOp === 'unassign' && !isMine;
+  if (justReleased) {
+    return volunteerHomeBoldColoredBodyText(
+      'Shift released / not assigned',
+      '#000000',
+      ctx.layoutWarnings,
+      'shift_assign_released',
+    );
+  }
+  if (isMine) {
+    const msg = isToday ? 'Shift assigned for today!' : 'Shift assigned!';
+    const color = isToday ? '#000000' : volunteerHomeMaroon;
+    return volunteerHomeBoldColoredBodyText(
+      msg,
+      color,
+      ctx.layoutWarnings,
+      isToday ? 'shift_assign_today_ok' : 'shift_assign_ok',
+    );
+  }
+  return volunteerHomeBoldColoredBodyText(
+    'Tap to sign up. Again to undo.',
+    '#000000',
+    ctx.layoutWarnings,
+    'shift_assign_hint',
+  );
+}
+
+/** Assign-to-me action button — assign, undo release, or fail retry. */
+function volunteerAssignMeActionButton(ctx, {
+  isMine,
+  isToday,
+  assignAttempted,
+  shiftPayload,
+  lightColor,
+  textColor,
+}) {
+  let assignLabel;
+  let assignColor;
+  let assignOp;
+  if (isMine) {
+    assignLabel = 'Undo - release shift';
+    assignColor = lightColor;
+    assignOp = 'unassign';
+  } else if (assignAttempted) {
+    assignLabel = `Fail${VOLUNTEER_HOME_EN_DASH}just taken by someone`;
+    assignColor = lightColor;
+    assignOp = 'assign';
+  } else {
+    assignLabel = isToday ? 'Assign shift today to me' : 'Assign this shift to me';
+    assignColor = lightColor;
+    assignOp = 'assign';
+  }
+  return volunteerHomeCenteredPill(
+    volunteerHomeFitLine(assignLabel, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'shift_assign_btn'),
+    'jewelheart.volunteer.shift',
+    shiftPayload({ checkinOp: assignOp }),
+    assignColor,
+    textColor,
+    { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+  );
+}
+
+/** Post-release confirmation — no in-app reassignment (privacy). */
+function volunteerShiftReleasedMessageComponents(ctx, dayIso, layoutWarnings) {
+  const items = [
+    volunteerHomeEmphasisText('Shift released!', layoutWarnings, 'shift_edit_released_hdr'),
+    volunteerHomeGap(),
+  ];
+  const todayIso = ctx.todayIso;
+  const isToday = dayIso === todayIso;
+  const isTodayOrTomorrow = isToday || dayIso === addDaysIsoYmd(todayIso, 1);
+  if (isTodayOrTomorrow) {
+    items.push(
+      volunteerHomeBodyText('Please find someone to take it.', layoutWarnings, 'shift_edit_find_someone'),
+      volunteerHomeGap(),
+    );
+  }
+  if (isToday) {
+    items.push(
+      volunteerHomeBoldBodyText(
+        'Especially important since shift is today',
+        layoutWarnings,
+        'shift_edit_today_urgent',
+      ),
+      volunteerHomeGap(),
+    );
+  }
+  return items;
 }
 
 /** Dark maroon bold emphasis — same size as body, stands out on edit-shift screens. */
@@ -1893,7 +2110,11 @@ function volunteerHomeTopBlueBars(ctx, secondLineText = null, options = {}) {
   return [
     volunteerHomeBar(retreatLine, volunteerHomeSummaryBlue, volunteerHomeGold),
     volunteerHomeGap(),
-    volunteerHomeBar(secondLine, volunteerHomeSummaryBlue, '#FFFFFF'),
+    volunteerHomeBar(
+      secondLine,
+      options.secondBarColor || volunteerHomeSummaryBlue,
+      options.secondBarTextColor || '#FFFFFF',
+    ),
   ];
 }
 
@@ -2242,27 +2463,66 @@ function volunteerHomeDisabledMaroonPill(label) {
   };
 }
 
+function volunteerHomeCompactMaroonNavPill(label, target, payload, options = {}) {
+  return volunteerHomePillButton(label, target, payload, volunteerHomeMaroon, '#FFFFFF', {
+    hPad: 10,
+    borderRadius: VOLUNTEER_HOME_PILL_RADIUS,
+    ...options,
+  });
+}
+
+/** Home find row: By day | By type | All at once (wraps "All at once" alone when narrow). */
+function volunteerHomeFindOpenShiftsButtons(dayPayload, typePayload, allPayload) {
+  const allAtOnce = volunteerHomeCompactMaroonNavPill(
+    'All at once',
+    'jewelheart.volunteer.search',
+    allPayload,
+  );
+  allAtOnce.style = { ...(allAtOnce.style || {}), homeFindAllAtOnce: true };
+  return {
+    type: 'container',
+    layout: 'flowRow',
+    spacing: 8,
+    textStyle: { textAlign: 'center' },
+    style: {
+      padding: { top: 0, bottom: 0, left: 6, right: 6 },
+      homeFindShiftRow: true,
+    },
+    children: [
+      volunteerHomeCompactMaroonNavPill('By day', 'jewelheart.volunteer.searchByDay', dayPayload),
+      volunteerHomeCompactMaroonNavPill('By type', 'jewelheart.volunteer.searchByType', typePayload),
+      allAtOnce,
+    ],
+  };
+}
+
 /** Home footer: maroon actions, Acct/Prefs row, Manage/Admin row. */
 function volunteerHomeStationaryActions(ctx, searchPayload, access) {
   const homePayload = volunteerHomeWithReturnTo(searchPayload, 'jewelheart.home');
-  const items = [
-    volunteerHomeCenteredAction(
-      'Find and sign up for open shifts',
-      'jewelheart.volunteer.search',
-      homePayload,
-    ),
-  ];
+  const typeSearchPayload = volunteerSearchByTypeNavPayload(
+    ctx.retreatId ? { retreatId: ctx.retreatId } : {},
+    'f',
+    'jewelheart.home',
+  );
+  const daySearchPayload = volunteerHomeWithReturnTo(
+    ctx.retreatId ? { retreatId: ctx.retreatId } : {},
+    'jewelheart.home',
+  );
+  const items = [];
   if ((ctx.shiftCount || 0) > 0) {
     items.push(
-      volunteerHomeGap(),
       volunteerHomeCenteredAction(
-        'See my assigned shifts',
+        'See all my assigned shifts',
         'jewelheart.volunteer.mine',
         homePayload,
       ),
+      volunteerHomeGap(),
     );
   }
   items.push(
+    volunteerHomeInlineSectionLabel('Find & sign up for open shifts:'),
+    volunteerHomeGap(),
+    volunteerHomeFindOpenShiftsButtons(daySearchPayload, typeSearchPayload, homePayload),
     volunteerHomeGap(),
     volunteerHomeAccountPreferencesRow(ctx),
   );
@@ -2448,6 +2708,21 @@ function volunteerHomeJobListScroll(children) {
   };
 }
 
+/** Find-by-day open-shift list — blue frame bleeding into the blue header bar above. */
+function volunteerHomeDayShiftListScroll(children) {
+  return {
+    type: 'container',
+    layout: 'column',
+    spacing: 0,
+    style: {
+      dayShiftListFrame: true,
+      flexGrow: true,
+      padding: { top: 4, bottom: 4, left: 4, right: 4 },
+    },
+    children,
+  };
+}
+
 function volunteerHomeTypeFilterRow(buttons) {
   return {
     type: 'container',
@@ -2473,6 +2748,7 @@ const VOLUNTEER_SCREEN_TITLES = {
   'jewelheart.home': 'Home',
   'jewelheart.volunteer.search': 'Find open shifts',
   'jewelheart.volunteer.searchByType': 'Find open shifts by job type',
+  'jewelheart.volunteer.searchByDay': 'Find open shifts by day',
   'jewelheart.volunteer.assign': 'Open shifts',
   'jewelheart.volunteer.checkin': 'Check in',
   'jewelheart.volunteer.shiftInfo': 'Shift info',
@@ -2489,6 +2765,10 @@ const VOLUNTEER_SCREEN_TITLES = {
 function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], extraMeta = {}) {
   const isHome = id === 'jewelheart.home';
   const homeSplit = isHome && extraMeta.homeSplitLayout === true;
+  const shiftAssignFlex = extraMeta.shiftAssignFlexLayout === true;
+  const searchByDayFlex = extraMeta.searchByDayFlexLayout === true;
+  const searchByTypeFlex = extraMeta.searchByTypeFlexLayout === true;
+  const findFlexLayout = shiftAssignFlex || searchByDayFlex || searchByTypeFlex;
   const stickyHeaderComponents = extraMeta.stickyHeaderComponents || [];
   let stickyFooterComponents = extraMeta.stickyFooterComponents || [];
   if (!isHome && extraMeta.includeFooterNav !== false && !stickyFooterComponents.length) {
@@ -2506,7 +2786,7 @@ function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], e
       title: VOLUNTEER_SCREEN_TITLES[id] || title || 'JewelHeart',
       metadata: {
         app: 'jewelheart',
-        buildStamp: VOLUNTEER_SDUI_BUILD_STAMP,
+        buildStamp: VOLUNTEER_API_BUILD_STAMP,
         layoutWarnings,
         minWidthDp: VOLUNTEER_HOME_MIN_WIDTH_DP,
         edgeToEdgeBars: true,
@@ -2527,16 +2807,34 @@ function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], e
   }
   const useFlatSticky = layoutFlat && stickyHeaderComponents.length > 0;
   const bodyChildren = useFlatSticky ? [...stickyHeaderComponents, ...children] : children;
+  const bodyWrapStyle = {
+    padding: isHome
+      ? { top: 6, bottom: 6, left: 0, right: 0 }
+      : findFlexLayout
+        ? { top: 0, bottom: 0, left: 0, right: 0 }
+        : { all: 12 },
+  };
+  if (shiftAssignFlex) {
+    bodyWrapStyle.flexGrow = true;
+    bodyWrapStyle.shiftAssignBody = true;
+  }
+  if (searchByDayFlex || searchByTypeFlex) {
+    bodyWrapStyle.flexGrow = true;
+    bodyWrapStyle.searchByDayBody = true;
+  }
   return {
     id,
     title: VOLUNTEER_SCREEN_TITLES[id] || title || 'JewelHeart',
     metadata: {
       app: 'jewelheart',
-      buildStamp: VOLUNTEER_SDUI_BUILD_STAMP,
+      buildStamp: VOLUNTEER_API_BUILD_STAMP,
       layoutWarnings,
       minWidthDp: VOLUNTEER_HOME_MIN_WIDTH_DP,
       edgeToEdgeBars: isHome,
       layoutFlat: useFlatSticky,
+      shiftAssignFlexLayout: shiftAssignFlex,
+      searchByDayFlexLayout: searchByDayFlex,
+      searchByTypeFlexLayout: searchByTypeFlex,
       stickyFooter,
       stickyFooterComponents,
       stickyHeader: useFlatSticky ? false : stickyHeader,
@@ -2552,11 +2850,7 @@ function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], e
         type: 'container',
         layout: 'column',
         spacing: 0,
-        style: {
-          padding: isHome
-            ? { top: 6, bottom: 6, left: 0, right: 0 }
-            : { all: 12 },
-        },
+        style: bodyWrapStyle,
         children: bodyChildren,
       },
     ],
@@ -2693,12 +2987,6 @@ async function volunteerAssignVolunteerToTask(retreatId, taskId, volunteerId) {
     [retreatId, taskId, volunteerId],
   );
   return rows.length > 0;
-}
-
-/** Replace whoever holds the task (reassign semantics — poster + roster stay in sync). */
-async function volunteerReassignTask(retreatId, taskId, volunteerId) {
-  await volunteerClearTaskAssignments(taskId);
-  return volunteerAssignVolunteerToTask(retreatId, taskId, volunteerId);
 }
 
 async function volunteerLoadTaskShiftMeta(retreatId, taskId) {
@@ -3141,13 +3429,6 @@ export async function buildJewelheartHomeScreen(firebaseUid, authToken = undefin
       textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
     });
   }
-  if (ctx.testingEnabled && ctx.testingNote) {
-    footerExtras.push({
-      type: 'text',
-      content: ctx.testingNote,
-      textStyle: { fontSize: 12, textAlign: 'center', color: '#666666' },
-    });
-  }
   if (ctx.usingDemo) {
     footerExtras.push({
       type: 'text',
@@ -3342,162 +3623,110 @@ const VOLUNTEER_JOB_TYPE_BUTTONS = [
 ];
 
 /**
- * Find open shifts by job type — type radio filters + persistent per-job toggles.
- * @param {object} params - selectedDays, selectedJobs, jobType, jobsAll, daysAll, retreatId
+ * Find open shifts by job type — one type selected; open shifts grouped by job then day.
  */
 export async function buildJewelheartVolunteerSearchByTypeScreen(
   firebaseUid,
   authToken = undefined,
   params = {},
 ) {
-  if (volunteerHomeIsTestersChannel(params)) {
-    const homeParams = { ...params };
-    delete homeParams.uiChannel;
-    return buildJewelheartHomeScreen(firebaseUid, authToken, homeParams);
-  }
   const ctx = await volunteerHomeGatherCtx(firebaseUid, authToken, params);
   const retreatId = params.retreatId || ctx.retreatId || '';
-  const retreat = ctx.retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
-  const dayIsos = volunteerHomeSearchDayIsos(retreat, ctx.todayIso);
-  const lastDayOnly = dayIsos.length === 1;
-  const daysState = volunteerSearchNormalizeDaysState(params, dayIsos, ctx.todayIso);
-  const typeState = volunteerSearchByTypeNormalizeState(params);
-  const selectedDaySet = parseCsvParam(daysState.selectedDays);
-
-  const navParams = {
-    retreatId: retreatId || '',
-    returnTo: params.returnTo || 'jewelheart.home',
-    daysAll: daysState.daysAll,
-    selectedDays: daysState.selectedDays,
-    jobsAll: typeState.jobsAll,
-    selectedJobs: typeState.selectedJobs,
-    jobType: typeState.jobType,
-    typeJobPrefs: typeState.typeJobPrefs,
-  };
+  const returnTo = params.returnTo || 'jewelheart.home';
   const basePayload = retreatId ? { retreatId } : {};
   const searchTarget = 'jewelheart.volunteer.searchByType';
-  const assignTarget = 'jewelheart.volunteer.assign';
-  const searchEnabled = volunteerSearchByTypeSearchEnabled(typeState);
+  const selectedType = volunteerSearchByTypeSelectedCode(params);
+  const navParams = {
+    retreatId: retreatId || '',
+    returnTo,
+    daysAll: '1',
+    selectedDays: '',
+    jobsAll: '0',
+    selectedJobs: '',
+    jobType: selectedType,
+    typeJobPrefs: '',
+    navBackLabel: 'Done',
+  };
+
+  const typeButtons = VOLUNTEER_JOB_TYPE_BUTTONS.map(({ code, label }) => {
+    const selected = code === selectedType;
+    const typePayload = volunteerSearchByTypeNavPayload(
+      basePayload,
+      code,
+      returnTo,
+      selected ? { scrollTop: '1' } : {},
+    );
+    return volunteerHomeFilterToggleButton(label, selected, searchTarget, typePayload, {
+      multiline: true,
+      hPad: 5,
+      fontSize: 12,
+    });
+  });
 
   const headerChildren = [
-    ...volunteerHomeHeaderChildren(ctx, 'Find open shifts by job type'),
-    volunteerHomeGap(),
-    volunteerHomeCenteredInlineRow([
-      searchEnabled
-        ? volunteerHomeSearchRunButton(
-            assignTarget,
-            volunteerSearchByTypeFilterPayload(basePayload, daysState, typeState, 'jewelheart.home'),
-          )
-        : volunteerHomeSearchRunButtonDisabled(),
-      volunteerHomeCancelPill('jewelheart.home', basePayload),
-    ]),
-    volunteerHomeGap(),
-  ];
-
-  const dayButtons = [];
-  if (!lastDayOnly) {
-    const allSelected = daysState.daysAll === '1';
-    dayButtons.push(
-      volunteerHomeFilterToggleButton(
-        'All days',
-        allSelected,
-        searchTarget,
-        volunteerSearchByTypeFilterPayload(
-          basePayload,
-          volunteerSearchNextDaysOnAllTap(daysState, ctx.todayIso, dayIsos),
-          typeState,
-          navParams.returnTo,
-        ),
+    ...volunteerHomeRetreatHeaderOnly(ctx),
+    volunteerHomeBar(
+      volunteerHomeFitLine(
+        'Select job type - Open shifts shown below',
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        'search_by_type_select_hdr',
       ),
-    );
-  }
-  const allDayIsos = volunteerHomeRetreatDates(retreat || VOLUNTEER_HOME_DEFAULT_RETREAT);
-  for (const iso of allDayIsos) {
-    const label = volunteerHomeWeekdayShort(iso);
-    if (iso < ctx.todayIso) {
-      dayButtons.push(
-        volunteerHomeFilterToggleButton(label, false, searchTarget, basePayload, { past: true }),
-      );
-      continue;
-    }
-    const selected = lastDayOnly || (daysState.daysAll === '0' && selectedDaySet.has(iso));
-    dayButtons.push(
-      volunteerHomeFilterToggleButton(
-        label,
-        selected,
-        searchTarget,
-        volunteerSearchByTypeFilterPayload(
-          basePayload,
-          volunteerSearchNextDaysOnDayTap(daysState, iso, dayIsos),
-          typeState,
-          navParams.returnTo,
-        ),
-        { disabled: lastDayOnly, noAction: lastDayOnly },
-      ),
-    );
-  }
-  if (dayButtons.length) {
-    headerChildren.push(volunteerHomeWrappedFilterRow(dayButtons), volunteerHomeGap());
-  }
-
-  const allJobsSelected = typeState.jobsAll === '1';
-  const typeButtons = VOLUNTEER_JOB_TYPE_BUTTONS.map(({ code, label }) => {
-    const typeSelected = typeState.jobType === code && typeState.jobsAll === '0';
-    return volunteerHomeFilterToggleButton(
-      label,
-      typeSelected,
-      searchTarget,
-      volunteerSearchByTypeFilterPayload(
-        basePayload,
-        daysState,
-        volunteerSearchByTypeNextOnTypeTap(typeState, code, ctx),
-        navParams.returnTo,
-      ),
-      { multiline: true, hPad: 5, fontSize: 12 },
-    );
-  });
-  const allJobsButton = volunteerHomeFilterToggleButton(
-    'All jobs',
-    allJobsSelected,
-    searchTarget,
-    volunteerSearchByTypeFilterPayload(
-      basePayload,
-      daysState,
-      volunteerSearchByTypeNextOnAllJobsTap(typeState, ctx),
-      navParams.returnTo,
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
     ),
-    { noAction: allJobsSelected && !typeState.jobType && !String(typeState.selectedJobs || '').trim() },
-  );
-  headerChildren.push(
-    volunteerHomeTypeFilterRow([allJobsButton, ...typeButtons]),
     volunteerHomeGap(),
-  );
+    volunteerHomeTypeFilterRow(typeButtons),
+    volunteerHomeSpacer(10),
+  ];
+  const signupBar = volunteerHomeBar('Tap open shift to sign up', volunteerHomeSummaryBlue, '#FFFFFF');
+  signupBar.style = { ...(signupBar.style || {}), instructionBarBleed: true };
+  headerChildren.push(signupBar);
 
-  const scrollChildren = [];
-  const visibleJobs = volunteerSearchByTypeJobsVisible(ctx, typeState);
-  if (visibleJobs.length) {
-    const jobButtons = [];
-    for (const job of visibleJobs) {
-      const selected = volunteerSearchByTypeJobSelected(typeState, job.id);
-      const abbrev = volunteerHomeJobFilterLabel(job, ctx.layoutWarnings, `jobtype_abbrev_${job.id}`);
-      jobButtons.push(
-        volunteerHomeFilterToggleButton(
-          abbrev,
-          selected,
-          searchTarget,
-          volunteerSearchByTypeFilterPayload(
-            basePayload,
-            daysState,
-            volunteerSearchByTypeNextOnJobTap(typeState, job.id, ctx),
-            navParams.returnTo,
-          ),
+  const matches = await volunteerSearchMatchingShifts(
+    ctx,
+    volunteerSearchByTypeSearchParams(selectedType),
+    firebaseUid,
+    authToken,
+  );
+  const typeMatches = volunteerSearchByTypeGroupedMatches(matches, ctx, selectedType);
+  const shiftBase = volunteerSearchByTypeNavPayload(basePayload, selectedType, returnTo);
+
+  const scrollInner = [];
+  if (!typeMatches.length) {
+    scrollInner.push(
+      volunteerHomeBodyText('No open shifts for this job type.', ctx.layoutWarnings, 'search_by_type_empty'),
+    );
+  } else {
+    for (const row of typeMatches) {
+      const rowLabel = volunteerHomeDayJobLabel(
+        row.label,
+        row.dayIso,
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        `search_by_type_${row.jobId}_${row.dayIso}`,
+      );
+      scrollInner.push(
+        volunteerHomeGap(),
+        volunteerHomeCenteredPill(
+          rowLabel,
+          'jewelheart.volunteer.shift',
+          {
+            ...shiftBase,
+            shiftOp: 'assign_me',
+            jobId: row.jobId,
+            dayIso: row.dayIso,
+            taskId: row.taskId || row.jobId,
+          },
+          volunteerHomeLightMaroon,
+          '#FFFFFF',
+          { homeActionPill: true },
         ),
       );
     }
-    scrollChildren.push(
-      volunteerHomeJobListScroll([volunteerHomeWrappedFilterRow(jobButtons)]),
-    );
   }
+
+  const scrollChildren = [volunteerHomeDayShiftListScroll(scrollInner)];
 
   if (ctx.errorNote) {
     headerChildren.push({
@@ -3506,14 +3735,163 @@ export async function buildJewelheartVolunteerSearchByTypeScreen(
       textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
     });
   }
-  headerChildren.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
+
+  const footerComponents = [
+    volunteerHomeStandardFooterNav(navParams),
+    ...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings),
+  ];
 
   return volunteerHomeScreenEnvelope(
     'jewelheart.volunteer.searchByType',
     'JewelHeart',
     scrollChildren,
     ctx.layoutWarnings,
-    { stickyHeader: true, stickyHeaderComponents: headerChildren, navParams },
+    {
+      layoutFlat: true,
+      searchByTypeFlexLayout: true,
+      stickyHeaderComponents: headerChildren,
+      stickyFooterComponents: footerComponents,
+      navParams,
+    },
+  );
+}
+
+/** Find open shifts by day — one day selected; open shifts scroll below blue header. */
+export async function buildJewelheartVolunteerSearchByDayScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const ctx = await volunteerHomeGatherCtx(firebaseUid, authToken, params);
+  const retreatId = params.retreatId || ctx.retreatId || '';
+  const retreat = ctx.retreat || VOLUNTEER_HOME_DEFAULT_RETREAT;
+  const allDayIsos = volunteerHomeRetreatDates(retreat);
+  const selectedDay = volunteerSearchByDaySelectedIso(params, allDayIsos, ctx.todayIso);
+  const returnTo = params.returnTo || 'jewelheart.home';
+  const basePayload = retreatId ? { retreatId } : {};
+  const searchTarget = 'jewelheart.volunteer.searchByDay';
+  const navParams = {
+    retreatId: retreatId || '',
+    returnTo,
+    daysAll: '0',
+    selectedDays: selectedDay,
+    selectedDay,
+    jobsAll: '1',
+    selectedJobs: '',
+    navBackLabel: 'Done',
+  };
+
+  const dayButtons = [];
+  for (const iso of allDayIsos) {
+    const label = volunteerHomeWeekdayShort(iso);
+    if (iso < ctx.todayIso) {
+      dayButtons.push(
+        volunteerHomeFilterToggleButton(label, false, searchTarget, basePayload, { past: true, hPad: 5 }),
+      );
+      continue;
+    }
+    const selected = iso === selectedDay;
+    const dayPayload = volunteerSearchByDayNavPayload(
+      basePayload,
+      iso,
+      returnTo,
+      selected ? { scrollTop: '1' } : {},
+    );
+    dayButtons.push(
+      volunteerHomeFilterToggleButton(label, selected, searchTarget, dayPayload, { hPad: 5 }),
+    );
+  }
+
+  const headerChildren = [
+    ...volunteerHomeRetreatHeaderOnly(ctx),
+    volunteerHomeBar(
+      volunteerHomeFitLine(
+        'Select day - Open shifts shown below',
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        'search_by_day_select_hdr',
+      ),
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+    ),
+    volunteerHomeGap(),
+    volunteerHomeWrappedFilterRow(dayButtons, { spacing: 4, sidePad: 4, compactWrap: true }),
+    volunteerHomeSpacer(10),
+  ];
+  const signupBar = volunteerHomeBar('Tap open shift to sign up', volunteerHomeSummaryBlue, '#FFFFFF');
+  signupBar.style = { ...(signupBar.style || {}), instructionBarBleed: true };
+  headerChildren.push(signupBar);
+
+  const matches = await volunteerSearchMatchingShifts(
+    ctx,
+    volunteerSearchByDaySearchParams(selectedDay),
+    firebaseUid,
+    authToken,
+  );
+  const dayMatches = matches.filter((row) => row.dayIso === selectedDay);
+  const shiftBase = volunteerSearchByDayNavPayload(basePayload, selectedDay, returnTo);
+
+  const scrollInner = [];
+  if (!dayMatches.length) {
+    scrollInner.push(
+      volunteerHomeBodyText('No open shifts for this day.', ctx.layoutWarnings, 'search_by_day_empty'),
+    );
+  } else {
+    for (const row of dayMatches) {
+      const rowLabel = volunteerHomeDayJobLabel(
+        row.label,
+        row.dayIso,
+        VOLUNTEER_HOME_MAX_BAR_CHARS,
+        ctx.layoutWarnings,
+        `search_by_day_${row.jobId}_${row.dayIso}`,
+      );
+      scrollInner.push(
+        volunteerHomeGap(),
+        volunteerHomeCenteredPill(
+          rowLabel,
+          'jewelheart.volunteer.shift',
+          {
+            ...shiftBase,
+            shiftOp: 'assign_me',
+            jobId: row.jobId,
+            dayIso: row.dayIso,
+            taskId: row.taskId || row.jobId,
+          },
+          volunteerHomeLightMaroon,
+          '#FFFFFF',
+          { homeActionPill: true },
+        ),
+      );
+    }
+  }
+
+  const scrollChildren = [volunteerHomeDayShiftListScroll(scrollInner)];
+
+  if (ctx.errorNote) {
+    headerChildren.push({
+      type: 'text',
+      content: ctx.errorNote,
+      textStyle: { fontSize: 12, textAlign: 'center', color: '#CC0000' },
+    });
+  }
+
+  const footerComponents = [
+    volunteerHomeStandardFooterNav(navParams),
+    ...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings),
+  ];
+
+  return volunteerHomeScreenEnvelope(
+    'jewelheart.volunteer.searchByDay',
+    'JewelHeart',
+    scrollChildren,
+    ctx.layoutWarnings,
+    {
+      layoutFlat: true,
+      searchByDayFlexLayout: true,
+      stickyHeaderComponents: headerChildren,
+      stickyFooterComponents: footerComponents,
+      navParams,
+    },
   );
 }
 
@@ -3629,20 +4007,41 @@ function volunteerHomeInstructionText(content) {
   };
 }
 
-/** Blue "How to do • job" bar plus scrollable instruction block (web: framed, bleeds into bar). */
-function volunteerHomeInstructionScrollSection(jobName, lines, warnings, codePrefix = 'instr', options = {}) {
-  const scroll = {
-    type: 'instructionScroll',
+/** Wrap instruction bar + scroll so the scroll region can flex-fill the viewport. */
+function volunteerHomeInstructionFlexWrap(children) {
+  return {
+    type: 'container',
     layout: 'column',
     spacing: 0,
     style: {
-      borderColor: volunteerHomeSummaryBlue,
-      maxHeight: { value: options.maxHeight ?? 168 },
+      instructionFlexWrap: true,
+      flexGrow: true,
     },
+    children,
+  };
+}
+
+/** Blue "How to do • job" bar plus scrollable instruction block (web: framed, bleeds into bar). */
+function volunteerHomeInstructionScrollSection(jobName, lines, warnings, codePrefix = 'instr', options = {}) {
+  const flexFill = options.flexFill === true;
+  const scrollStyle = {
+    borderColor: volunteerHomeSummaryBlue,
+  };
+  if (flexFill) {
+    scrollStyle.instructionScrollFlex = true;
+    scrollStyle.flexGrow = true;
+  } else {
+    scrollStyle.maxHeight = { value: options.maxHeight ?? 168 };
+  }
+  const scrollBlock = {
+    type: 'instructionScroll',
+    layout: 'column',
+    spacing: 0,
+    style: scrollStyle,
     children: (lines || []).map((line) => volunteerHomeInstructionText(line)),
   };
   if (options.titleBar === false) {
-    return [scroll];
+    return flexFill ? [volunteerHomeInstructionFlexWrap([scrollBlock])] : [scrollBlock];
   }
   const bar = volunteerHomeBar(
     volunteerHomeFitLine(
@@ -3655,21 +4054,8 @@ function volunteerHomeInstructionScrollSection(jobName, lines, warnings, codePre
     '#FFFFFF',
   );
   bar.style = { ...(bar.style || {}), instructionBarBleed: true };
-  return [
-    bar,
-    {
-      type: 'instructionScroll',
-      layout: 'column',
-      spacing: 0,
-      style: {
-        borderColor: volunteerHomeSummaryBlue,
-        maxHeight: { value: 168 },
-      },
-      children: (lines || []).map((line, i) =>
-        volunteerHomeInstructionText(line),
-      ),
-    },
-  ];
+  const parts = [bar, scrollBlock];
+  return flexFill ? [volunteerHomeInstructionFlexWrap(parts)] : parts;
 }
 
 /**
@@ -3738,23 +4124,8 @@ export async function buildJewelheartVolunteerShiftScreen(
   const jobName = volunteerHomeShiftJobName(ctx, jobId, taskId);
   const isToday = dayIso === ctx.todayIso;
   const isMine = volunteerHomeIsMyTask(ctx, taskId);
-
-  const signupTitle = volunteerHomeFitLine(
-    `Sign up for: ${volunteerHomeDayJobLabel(
-      jobName,
-      dayIso,
-      VOLUNTEER_HOME_MAX_BAR_CHARS - 'Sign up for: '.length,
-      null,
-      'shift_title_job',
-    )}`,
-    VOLUNTEER_HOME_MAX_BAR_CHARS,
-    ctx.layoutWarnings,
-    'shift_title',
-  );
-  const children = [
-    ...volunteerHomeHeaderChildren(ctx, signupTitle, dayIso, { alreadyFitted: true }),
-    volunteerHomeGap(),
-  ];
+  const isAssignMe = shiftOp === 'assign_me';
+  const instructionLines = volunteerHomeJobInstructionLines(ctx, jobId, taskId);
 
   // Toggle assign button: light (initial/fail) ↔ dark (success); gold family if
   // today, maroon family otherwise. Text color: black on gold, white on maroon.
@@ -3777,24 +4148,61 @@ export async function buildJewelheartVolunteerShiftScreen(
       returnTo,
     );
 
-  const cancelTarget =
-    shiftOp === 'assign_me' ? 'jewelheart.volunteer.assign' : 'jewelheart.volunteer.mine';
-  const cancelPayload =
-    shiftOp === 'assign_me'
-      ? volunteerSearchOpenShiftsPayload(basePayload, params, 'jewelheart.home')
-      : volunteerHomeWithReturnTo({ ...basePayload }, 'jewelheart.home');
-
-  children.push(
-    volunteerHomeCenteredPill(
-      'Cancel',
-      cancelTarget,
-      cancelPayload,
-      volunteerHomeSummaryBlue,
-      '#FFFFFF',
-      { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
-    ),
-    volunteerHomeGap(),
-  );
+  if (isAssignMe) {
+    navParams.navBackLabel = 'Done';
+    const titleLine = volunteerHomeFitLine(
+      volunteerHomeDayJobLabel(jobName, dayIso, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'shift_title_job'),
+      VOLUNTEER_HOME_MAX_BAR_CHARS,
+      ctx.layoutWarnings,
+      'shift_title',
+    );
+    let secondBarColor = volunteerHomeSummaryBlue;
+    let secondBarTextColor = '#FFFFFF';
+    if (isMine) {
+      secondBarColor = isToday ? volunteerHomeGold : volunteerHomeMaroon;
+      secondBarTextColor = isToday ? '#000000' : '#FFFFFF';
+    }
+    const headerChildren = [
+      ...volunteerHomeHeaderChildren(ctx, titleLine, dayIso, {
+        alreadyFitted: true,
+        secondBarColor,
+        secondBarTextColor,
+      }),
+      volunteerAssignMeHintComponent(ctx, { isMine, isToday, checkinOp }),
+      volunteerHomeGap(),
+      volunteerAssignMeActionButton(ctx, {
+        isMine,
+        isToday,
+        assignAttempted,
+        shiftPayload,
+        lightColor,
+        textColor,
+      }),
+    ];
+    const scrollChildren = [
+      volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
+      ...volunteerHomeInstructionScrollSection(jobName, instructionLines, ctx.layoutWarnings, 'shift_instr', {
+        flexFill: true,
+      }),
+    ];
+    const footerComponents = [
+      volunteerHomeStandardFooterNav(navParams),
+      ...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings),
+    ];
+    return volunteerHomeScreenEnvelope(
+      'jewelheart.volunteer.shift',
+      'JewelHeart',
+      scrollChildren,
+      ctx.layoutWarnings,
+      {
+        layoutFlat: true,
+        shiftAssignFlexLayout: true,
+        stickyHeaderComponents: headerChildren,
+        stickyFooterComponents: footerComponents,
+        navParams,
+      },
+    );
+  }
 
   let assignLabel;
   let assignColor;
@@ -3812,26 +4220,49 @@ export async function buildJewelheartVolunteerShiftScreen(
     assignColor = lightColor;
     assignOp = 'assign';
   }
+  const assignButton = volunteerHomeCenteredPill(
+    volunteerHomeFitLine(assignLabel, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'shift_assign_btn'),
+    'jewelheart.volunteer.shift',
+    shiftPayload({ checkinOp: assignOp }),
+    assignColor,
+    textColor,
+    { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
+  );
+
+  const children = [];
+  const signupTitle = volunteerHomeFitLine(
+    `Sign up for: ${volunteerHomeDayJobLabel(
+      jobName,
+      dayIso,
+      VOLUNTEER_HOME_MAX_BAR_CHARS - 'Sign up for: '.length,
+      null,
+      'shift_title_job',
+    )}`,
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    ctx.layoutWarnings,
+    'shift_title',
+  );
+  children.push(...volunteerHomeHeaderChildren(ctx, signupTitle, dayIso, { alreadyFitted: true }), volunteerHomeGap());
+
+  const cancelTarget = 'jewelheart.volunteer.mine';
+  const cancelPayload = volunteerHomeWithReturnTo({ ...basePayload }, 'jewelheart.home');
   children.push(
     volunteerHomeCenteredPill(
-      volunteerHomeFitLine(assignLabel, VOLUNTEER_HOME_MAX_BAR_CHARS, ctx.layoutWarnings, 'shift_assign_btn'),
-      'jewelheart.volunteer.shift',
-      shiftPayload({ checkinOp: assignOp }),
-      assignColor,
-      textColor,
+      'Cancel',
+      cancelTarget,
+      cancelPayload,
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
       { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
     ),
+    volunteerHomeGap(),
   );
+  children.push(assignButton);
 
   // "How to do • job" bar + scrolling instructions.
   children.push(
     volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
-    ...volunteerHomeInstructionScrollSection(
-      jobName,
-      volunteerHomeJobInstructionLines(ctx, jobId, taskId),
-      ctx.layoutWarnings,
-      'shift_instr',
-    ),
+    ...volunteerHomeInstructionScrollSection(jobName, instructionLines, ctx.layoutWarnings, 'shift_instr'),
   );
 
   children.push(volunteerHomeGap());
@@ -4223,7 +4654,7 @@ export async function buildJewelheartVolunteerShiftInfoScreen(
   });
 }
 
-/** Edit shift — release / reassign — docs/sdui/shift-edit.md */
+/** Edit shift — release only (no reassignment) — docs/sdui/shift-edit.md */
 export async function buildJewelheartVolunteerShiftEditScreen(
   firebaseUid,
   authToken = undefined,
@@ -4231,43 +4662,22 @@ export async function buildJewelheartVolunteerShiftEditScreen(
 ) {
   const taskId = params.taskId ? String(params.taskId) : '';
   const shiftEditOp = params.shiftEditOp ? String(params.shiftEditOp) : '';
-  const pickVolunteerId = params.pickVolunteerId ? String(params.pickVolunteerId) : '';
   const returnTo = params.returnTo || 'jewelheart.home';
-  let reassignedName = params.reassignedName ? String(params.reassignedName) : '';
 
   let { ctx, shift, meta, retreatId } = await volunteerResolveShiftContext(firebaseUid, authToken, params, taskId);
   const vol = ctx.volunteerId || (await volunteerResolveSelf(firebaseUid, retreatId))?.id;
 
-  if (shiftEditOp === 'release' && shift && retreatId && vol) {
+  const justReleased = shiftEditOp === 'release';
+  if (justReleased && shift && retreatId && vol) {
     await volunteerSelfUnassign(retreatId, taskId, vol);
     ({ ctx, shift, meta, retreatId } = await volunteerResolveShiftContext(firebaseUid, authToken, params, taskId));
   }
 
-  if (shiftEditOp === 'reassign' && pickVolunteerId && retreatId && taskId) {
-    const ok = await volunteerReassignTask(retreatId, taskId, pickVolunteerId);
-    if (!ok) {
-      return volunteerHomeSimplePlaceholderScreen(
-        ctx,
-        'Edit shift',
-        'Could not reassign — shift may be full or volunteer already assigned.',
-        params,
-        'jewelheart.volunteer.shiftEdit',
-      );
-    }
-    reassignedName = await volunteerResolveVolunteerDisplayName(pickVolunteerId);
-    shift = null;
-  }
-
-  if (shiftEditOp === 'cancelReassign') {
-    shift = null;
-  }
-
   const assigned = Boolean(shift);
   const editOutcomeParam = params.editOutcome ? String(params.editOutcome) : '';
-  const terminalReassigned = editOutcomeParam === 'reassigned' || (shiftEditOp === 'reassign' && pickVolunteerId);
-  const terminalOpen = editOutcomeParam === 'open' || shiftEditOp === 'cancelReassign';
+  const terminalReleased = justReleased || editOutcomeParam === 'open' || (!assigned && meta);
 
-  if (!taskId || (!shift && !meta && !terminalReassigned && !terminalOpen && shiftEditOp !== 'release')) {
+  if (!taskId || (!shift && !meta && !terminalReleased)) {
     return volunteerHomeSimplePlaceholderScreen(
       ctx,
       'Edit shift',
@@ -4287,8 +4697,6 @@ export async function buildJewelheartVolunteerShiftEditScreen(
   const navParams = { ...volunteerHomeWithReturnTo(corePayload, returnTo), returnTo, footerNavSimple: true };
 
   const titleText = `Edit${VOLUNTEER_HOME_EN_DASH}${dayLabel}${VOLUNTEER_HOME_EN_DASH}${jobName}`;
-  const showReassignPicker = !terminalReassigned && !terminalOpen && !assigned;
-  const reassignRoster = showReassignPicker ? await volunteerListRetreatRoster(retreatId, vol) : [];
 
   const children = [
     ...volunteerHomeRetreatHeaderOnly(ctx),
@@ -4296,24 +4704,8 @@ export async function buildJewelheartVolunteerShiftEditScreen(
     volunteerHomeGap(),
   ];
 
-  if (terminalReassigned) {
-    children.push(
-      volunteerHomeEmphasisText('Reassigned to:', ctx.layoutWarnings, 'shift_edit_reassigned_hdr'),
-      volunteerHomeGap(),
-      volunteerHomeEmphasisText(
-        reassignedName || params.reassignedName || pickVolunteerId,
-        ctx.layoutWarnings,
-        'shift_edit_reassigned_name',
-      ),
-      volunteerHomeGap(),
-    );
-  } else if (terminalOpen) {
-    children.push(
-      volunteerHomeEmphasisText('Shift released!', ctx.layoutWarnings, 'shift_edit_open_hdr'),
-      volunteerHomeGap(),
-      volunteerHomeEmphasisText('Not reassigned, still open!', ctx.layoutWarnings, 'shift_edit_open_msg'),
-      volunteerHomeGap(),
-    );
+  if (terminalReleased) {
+    children.push(...volunteerShiftReleasedMessageComponents(ctx, dayIso, ctx.layoutWarnings));
   } else if (assigned) {
     children.push(
       volunteerHomeCenteredInlineRow([
@@ -4333,56 +4725,11 @@ export async function buildJewelheartVolunteerShiftEditScreen(
       ], { spacing: 8 }),
       volunteerHomeGap(),
     );
-  } else {
-    children.push(
-      volunteerHomeEmphasisText('Shift released! Reassign to…', ctx.layoutWarnings, 'shift_edit_release_msg'),
-      volunteerHomeGap(),
-      volunteerHomePersonPickerComponent('reassignPicker', reassignRoster, {
-        searchScope: 'retreat+global',
-        retreatId,
-        excludeVolunteerId: vol,
-      }),
-      volunteerHomeGap(),
-      volunteerHomeCenteredInlineRow([
-        volunteerHomePillButton(
-          'Reassign',
-          editTarget,
-          {
-            ...volunteerHomeWithReturnTo(corePayload, returnTo),
-            shiftEditOp: 'reassign',
-            pickVolunteerFrom: 'reassignPicker',
-          },
-          volunteerHomeMaroon,
-          '#FFFFFF',
-          { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
-        ),
-        volunteerHomePillButton(
-          'Cancel reassignment',
-          editTarget,
-          {
-            ...volunteerHomeWithReturnTo(
-              { ...corePayload, editOutcome: 'open' },
-              returnTo,
-            ),
-            shiftEditOp: 'cancelReassign',
-          },
-          volunteerHomeSummaryBlue,
-          '#FFFFFF',
-          { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
-        ),
-      ], { spacing: 8 }),
-      volunteerHomeGap(),
-    );
   }
 
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
 
-  let shiftEditState = null;
-  if (terminalReassigned) {
-    shiftEditState = { outcome: 'reassigned', reassignedName: reassignedName || pickVolunteerId };
-  } else if (terminalOpen) {
-    shiftEditState = { outcome: 'open' };
-  }
+  const shiftEditState = terminalReleased ? { outcome: 'open' } : null;
 
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.shiftEdit', 'JewelHeart', children, ctx.layoutWarnings, {
     navParams,

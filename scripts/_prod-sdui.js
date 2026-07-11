@@ -4,6 +4,30 @@
  */
 export const JH_LOGIN_WEB_BUILD = 'pending-deploy';
 
+const DEPLOY_STAMP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Human-readable deploy stamp (America/New_York). */
+export function formatDeployStamp(stamp) {
+  const s = String(stamp || '').trim();
+  if (!s || s === '…') return s || '…';
+  if (s === 'pending-deploy') return s;
+  let m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2}):(\d{2})$/.exec(s);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y} ${h}:${mi} ET`;
+  }
+  m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(s);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y} ${h}:${mi} ET`;
+  }
+  return s;
+}
+
+export function formatBuildStampLine(webStamp, apiStamp) {
+  return `web: ${formatDeployStamp(webStamp)} · api: ${formatDeployStamp(apiStamp || '…')}`;
+}
+
 const PERSON_PICKER_MAX = 12;
 
 function filterPersonRoster(roster, query, maxVisible = PERSON_PICKER_MAX) {
@@ -95,6 +119,7 @@ const VOLUNTEER_HOME_SCREENS = new Set([
   'jewelheart.home',
   'jewelheart.volunteer.search',
   'jewelheart.volunteer.searchByType',
+  'jewelheart.volunteer.searchByDay',
   'jewelheart.volunteer.assign',
   'jewelheart.volunteer.shift',
   'jewelheart.volunteer.shiftDetail',
@@ -365,13 +390,34 @@ export function createVolunteerSduiController(options) {
       resetVolunteerSearchFilters(payload);
       return;
     }
-    for (const k of SEARCH_BY_TYPE_FILTER_KEYS) {
-      if (!(k in payload)) continue;
-      const v = payload[k];
-      if (v != null && v !== '') params[k] = String(v);
-      else delete params[k];
+    params.daysAll = '1';
+    params.selectedDays = '';
+    delete params.selectedDay;
+    params.jobsAll = '0';
+    params.selectedJobs = '';
+    params.typeJobPrefs = '';
+    if (payload.jobType) params.jobType = String(payload.jobType);
+    else delete params.jobType;
+    if (payload.scrollTop === '1') params.scrollTop = '1';
+    else delete params.scrollTop;
+  }
+
+  function applySearchByDayFilterPayload(payload = {}) {
+    if (payload.retreatId) retreatId = payload.retreatId;
+    params.daysAll = '0';
+    params.jobsAll = '1';
+    delete params.selectedJobs;
+    delete params.jobType;
+    delete params.typeJobPrefs;
+    if (payload.selectedDay) {
+      params.selectedDay = String(payload.selectedDay);
+      params.selectedDays = params.selectedDay;
+    } else if (payload.selectedDays != null && payload.selectedDays !== '') {
+      params.selectedDays = String(payload.selectedDays);
+      params.selectedDay = params.selectedDays.split(',')[0];
     }
-    syncVolunteerSearchFilterParams();
+    if (payload.scrollTop === '1') params.scrollTop = '1';
+    else delete params.scrollTop;
   }
 
   function applyVolunteerPayload(target, payload = {}) {
@@ -403,6 +449,8 @@ export function createVolunteerSduiController(options) {
         applySearchFilterPayload(payload);
       } else if (target === 'jewelheart.volunteer.searchByType') {
         applySearchByTypeFilterPayload(payload);
+      } else if (target === 'jewelheart.volunteer.searchByDay') {
+        applySearchByDayFilterPayload(payload);
       } else if (payload.filterReset === '1') {
         resetVolunteerFindFilters(payload);
       } else if (payload.daysAll != null && payload.daysAll !== '') {
@@ -411,7 +459,8 @@ export function createVolunteerSduiController(options) {
         delete params.daysAll;
       }
 
-      if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search') {
+      if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search'
+        && target !== 'jewelheart.volunteer.searchByDay') {
         if (payload.selectedDays != null) params.selectedDays = payload.selectedDays;
         else if (target === 'jewelheart.volunteer.search' || target === 'jewelheart.volunteer.assign') {
           delete params.selectedDays;
@@ -533,7 +582,8 @@ export function createVolunteerSduiController(options) {
         delete params.userManagePendingOp;
       }
 
-      if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search') {
+      if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search'
+        && target !== 'jewelheart.volunteer.searchByDay') {
         for (const [k, v] of Object.entries(payload)) {
           if (
             ![
@@ -586,6 +636,7 @@ export function createVolunteerSduiController(options) {
     delete historyParams.checkinOp;
     delete historyParams.shiftEditOp;
     delete historyParams.pickVolunteerId;
+    delete historyParams.scrollTop;
     return { screenId, retreatId, params: historyParams };
   }
 
@@ -650,8 +701,10 @@ export function createVolunteerSduiController(options) {
     if (uiChannel) requestParams.uiChannel = uiChannel;
     delete requestParams.filterReset;
     delete requestParams.allJobsTap;
+    delete requestParams.scrollTop;
     delete params.filterReset;
     delete params.allJobsTap;
+    delete params.scrollTop;
     if (Object.keys(requestParams).length > 0) body.params = requestParams;
 
     const res = await fetch(`${apiBase}/sdui/screen`, {
@@ -893,12 +946,18 @@ export function createVolunteerSduiController(options) {
       // Preserve job-list scroll when toggling filters on Find open shifts.
       if (
         (navAction.target === 'jewelheart.volunteer.search' && screenId === 'jewelheart.volunteer.search') ||
-        (navAction.target === 'jewelheart.volunteer.searchByType' && screenId === 'jewelheart.volunteer.searchByType')
+        (navAction.target === 'jewelheart.volunteer.searchByType' && screenId === 'jewelheart.volunteer.searchByType') ||
+        (navAction.target === 'jewelheart.volunteer.searchByDay' && screenId === 'jewelheart.volunteer.searchByDay')
       ) {
-        const scrollEl =
-          rootEl.querySelector('.jh-sdui-job-list-scroll') ||
-          rootEl.querySelector('.jh-sdui-scroll');
-        if (scrollEl) pendingScrollTop = scrollEl.scrollTop;
+        if (navAction.payload?.scrollTop === '1') {
+          pendingScrollTop = 0;
+        } else {
+          const scrollEl =
+            rootEl.querySelector('.jh-sdui-day-shift-list') ||
+            rootEl.querySelector('.jh-sdui-job-list-scroll') ||
+            rootEl.querySelector('.jh-sdui-scroll');
+          if (scrollEl) pendingScrollTop = scrollEl.scrollTop;
+        }
       }
       applyNavigate(navAction);
       return load();
@@ -938,12 +997,16 @@ export function createVolunteerSduiController(options) {
     if (type === 'instructionScroll') {
       const el = document.createElement('div');
       el.className = 'jh-sdui-instruction-scroll';
+      if (component.style?.instructionScrollFlex) {
+        el.classList.add('jh-sdui-instruction-flex');
+      }
       const borderColor = component.style?.borderColor;
       if (borderColor) el.style.borderColor = borderColor;
       const maxH = component.style?.maxHeight?.value;
       if (maxH) el.style.maxHeight = `${maxH}px`;
       const minH = component.style?.minHeight?.value;
       if (minH) el.style.minHeight = `${minH}px`;
+      if (component.style?.flexGrow) el.classList.add('jh-sdui-flex-grow');
       for (const child of component.children || []) {
         el.appendChild(renderComponent(child));
       }
@@ -1274,10 +1337,23 @@ export function createVolunteerSduiController(options) {
             ? 'jh-sdui-container jh-sdui-row'
             : 'jh-sdui-container jh-sdui-column';
       if (component.style?.typeFilterRow) el.classList.add('jh-sdui-type-filter-row');
+      if (component.style?.homeFindShiftRow) el.classList.add('jh-sdui-home-find-row');
       if (component.style?.jobListFrame) {
         el.classList.add('jh-sdui-job-list-scroll');
         const borderColor = component.style?.borderColor;
         if (borderColor) el.style.borderColor = borderColor;
+      }
+      if (component.style?.dayShiftListFrame) {
+        el.classList.add('jh-sdui-day-shift-list');
+      }
+      if (component.style?.instructionFlexWrap) {
+        el.classList.add('jh-sdui-instruction-flex-wrap');
+      }
+      if (component.style?.shiftAssignBody) {
+        el.classList.add('jh-sdui-shift-assign-body');
+      }
+      if (component.style?.searchByDayBody) {
+        el.classList.add('jh-sdui-search-by-day-body');
       }
       if (component.style?.noWrap) el.classList.add('jh-sdui-row-nowrap');
       if (component.style?.flexGrow) el.classList.add('jh-sdui-flex-grow');
@@ -1302,7 +1378,7 @@ export function createVolunteerSduiController(options) {
       }
 
       const bg = component.style?.backgroundColor;
-      if (bg || component.style?.jobListFrame) {
+      if (bg || component.style?.jobListFrame || component.style?.dayShiftListFrame) {
         const pad = padFromStyle(component.style);
         el.style.padding = `${pad.top}px ${pad.right}px ${pad.bottom}px ${pad.left}px`;
       }
@@ -1347,7 +1423,10 @@ export function createVolunteerSduiController(options) {
     el.className = isButton ? 'jh-sdui-btn' : 'jh-sdui-text';
     if (isButton && isNavIcon) {
       el.classList.add('jh-sdui-nav-icon');
-      if (component.icon === 'nav_back') el.textContent = '←';
+      if (style.navBackText) el.classList.add('jh-sdui-nav-back-text');
+      if (component.icon === 'nav_back' && (style.navBackText || (label && label !== '←'))) {
+        el.textContent = label;
+      } else if (component.icon === 'nav_back') el.textContent = '←';
       else if (component.icon === 'nav_home') el.textContent = '⌂';
       else el.textContent = label;
     } else {
@@ -1412,6 +1491,7 @@ export function createVolunteerSduiController(options) {
           el.style.maxWidth = '100%';
         }
       }
+      if (style.homeFindAllAtOnce) el.classList.add('jh-sdui-find-all-at-once');
       if (multiline && !style.homeActionPill) {
         el.classList.add('jh-sdui-multiline-pill');
         el.style.whiteSpace = 'pre-line';
@@ -1478,7 +1558,7 @@ export function createVolunteerSduiController(options) {
     const isHome = screen?.id === 'jewelheart.home';
     if (isHome) {
       buildStampEl.hidden = false;
-      buildStampEl.textContent = `web: ${JH_LOGIN_WEB_BUILD} · api: ${apiStamp || '…'}`;
+      buildStampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, apiStamp);
       return;
     }
     const showWarnings = screen?.metadata?.layoutWarningsBelowBuildStamp === true;
@@ -1492,6 +1572,28 @@ export function createVolunteerSduiController(options) {
     buildStampEl.textContent = warn;
   }
 
+  function syncInstructionScrollAffordance(scopeEl) {
+    const wrap = scopeEl.querySelector('.jh-sdui-instruction-flex-wrap');
+    const scrollEl = wrap?.querySelector('.jh-sdui-instruction-scroll');
+    if (!wrap || !scrollEl) return;
+    const update = () => {
+      const overflows = scrollEl.scrollHeight > scrollEl.clientHeight + 2;
+      scrollEl.classList.toggle('jh-sdui-instruction-overflow', overflows);
+      scrollEl.classList.toggle('jh-sdui-instruction-fits', !overflows);
+      wrap.classList.toggle('jh-sdui-instruction-wrap-overflow', overflows);
+      wrap.classList.toggle('jh-sdui-instruction-wrap-fits', !overflows);
+    };
+    update();
+    requestAnimationFrame(update);
+    if (scrollEl.dataset.affordanceBound === '1') return;
+    scrollEl.dataset.affordanceBound = '1';
+    scrollEl.addEventListener('scroll', update, { passive: true });
+    if (!scopeEl.dataset.instructionResizeBound) {
+      scopeEl.dataset.instructionResizeBound = '1';
+      window.addEventListener('resize', () => syncInstructionScrollAffordance(scopeEl), { passive: true });
+    }
+  }
+
   function renderScreen(envelope) {
     const screen = envelope?.screen || envelope;
     if (screen.id) screenId = screen.id;
@@ -1502,11 +1604,17 @@ export function createVolunteerSduiController(options) {
 
     const isHome = screen.id === 'jewelheart.home';
     const homeSplit = screen.metadata?.homeSplitLayout === true;
+    const shiftAssignFlex = screen.metadata?.shiftAssignFlexLayout === true;
+    const searchByDayFlex = screen.metadata?.searchByDayFlexLayout === true;
+    const searchByTypeFlex = screen.metadata?.searchByTypeFlexLayout === true;
+    const findOpenFlex = searchByDayFlex || searchByTypeFlex;
     const stickyFooter = screen.metadata?.stickyFooter === true;
     const stickyHeader = screen.metadata?.stickyHeader === true;
     rootEl.classList.toggle('jh-sdui-home', isHome);
     rootEl.classList.toggle('jh-sdui-home-split', homeSplit);
     rootEl.classList.toggle('jh-sdui-sticky-footer', stickyFooter);
+    rootEl.classList.toggle('jh-sdui-shift-assign', shiftAssignFlex);
+    rootEl.classList.toggle('jh-sdui-search-by-day', findOpenFlex);
     const layoutFlat = screen.metadata?.layoutFlat === true;
     rootEl.classList.toggle('jh-sdui-home-flat', homeSplit && layoutFlat);
     rootEl.classList.toggle('jh-sdui-sticky-header', (stickyHeader || homeSplit) && !layoutFlat);
@@ -1533,6 +1641,10 @@ export function createVolunteerSduiController(options) {
     const wrap = document.createElement('div');
     if (homeSplit) {
       wrap.className = layoutFlat ? 'jh-sdui-home-middle jh-sdui-home-flat-scroll' : 'jh-sdui-home-middle';
+    } else if (shiftAssignFlex && layoutFlat) {
+      wrap.className = 'jh-sdui-scroll jh-sdui-shift-assign-scroll';
+    } else if (findOpenFlex && layoutFlat) {
+      wrap.className = 'jh-sdui-scroll jh-sdui-search-by-day-scroll';
     } else {
       wrap.className = stickyFooter || stickyHeader ? 'jh-sdui-scroll' : 'jh-sdui-stack';
     }
@@ -1550,15 +1662,24 @@ export function createVolunteerSduiController(options) {
       rootEl.appendChild(footer);
     }
 
-    if (pendingScrollTop != null && (screen.id === 'jewelheart.volunteer.search' || screen.id === 'jewelheart.volunteer.searchByType')) {
+    if (pendingScrollTop != null && (
+      screen.id === 'jewelheart.volunteer.search' ||
+      screen.id === 'jewelheart.volunteer.searchByType' ||
+      screen.id === 'jewelheart.volunteer.searchByDay'
+    )) {
       const top = pendingScrollTop;
       pendingScrollTop = null;
       requestAnimationFrame(() => {
         const scrollEl =
+          rootEl.querySelector('.jh-sdui-day-shift-list') ||
           rootEl.querySelector('.jh-sdui-job-list-scroll') ||
           rootEl.querySelector('.jh-sdui-scroll');
         if (scrollEl) scrollEl.scrollTop = top;
       });
+    }
+
+    if (shiftAssignFlex) {
+      syncInstructionScrollAffordance(rootEl);
     }
   }
 

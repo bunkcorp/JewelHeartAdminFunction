@@ -18,7 +18,7 @@ import {
   phoneDigitsLast10,
   rosterIdentityMatches,
 } from './jewelheart-auth-identity.js';
-import { buildVolunteerTimeContext } from './jewelheart-volunteer-time-context.js';
+import { buildVolunteerTimeContext, VOLUNTEER_API_BUILD_STAMP } from './jewelheart-volunteer-time-context.js';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS_PER_HOUR = 8;
@@ -463,6 +463,7 @@ export async function bootstrapVolunteerSession(query, uid, authToken, keycloakP
       liveTodayIso: timeContext.liveTodayIso,
       retreatBannerLine: timeContext.retreatBannerLine,
       testingNote: timeContext.testingNote,
+      apiBuildStamp: VOLUNTEER_API_BUILD_STAMP,
       retreat: {
         startDate: timeContext.retreat?.startDate || null,
         endDate: timeContext.retreat?.endDate || null,

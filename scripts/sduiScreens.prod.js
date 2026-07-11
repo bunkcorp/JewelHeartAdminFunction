@@ -7,6 +7,7 @@ import {
   buildJewelheartHomeScreen,
   buildJewelheartVolunteerSearchScreen,
   buildJewelheartVolunteerSearchByTypeScreen,
+  buildJewelheartVolunteerSearchByDayScreen,
   buildJewelheartVolunteerAssignScreen,
   buildJewelheartVolunteerShiftScreen,
   buildJewelheartVolunteerShiftDetailScreen,
@@ -148,6 +149,13 @@ export async function buildSduiResponse(
     case 'jewelheart.volunteer.searchByType':
       return wrap(
         await buildJewelheartVolunteerSearchByTypeScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.searchByDay':
+      return wrap(
+        await buildJewelheartVolunteerSearchByDayScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),

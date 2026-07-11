@@ -68,7 +68,9 @@ export function buildVolunteerAppHtml(env, opts = {}) {
   const envBadgeHtml = cfg.envBadge
     ? `    <p class="jh-env-badge" aria-label="Environment">${cfg.envBadge}</p>\n`
     : '';
-  const magicLinkContinueUrl = cfg.pagesUrl || cfg.loginUrl;
+  // Magic links must land where the volunteer app is actually served (api-* deploy).
+  // pagesUrl is canonical for Pages deploy only; using it for api deploy caused 404 on karmadots.org/dev/.
+  const magicLinkContinueUrl = mode === 'api' ? cfg.loginUrl : (cfg.pagesUrl || cfg.loginUrl);
   const uiChannelLine = cfg.uiChannel
     ? `      uiChannel: '${cfg.uiChannel}',\n`
     : '';

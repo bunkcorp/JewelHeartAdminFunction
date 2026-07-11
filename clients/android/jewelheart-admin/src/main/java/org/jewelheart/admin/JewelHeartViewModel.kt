@@ -200,7 +200,7 @@ class JewelHeartViewModel(
                     extraParams = extraParams + ("returnTo" to rt)
                 }
             }
-            "jewelheart.volunteer.searchByType", "jewelheart.volunteer.shift", "jewelheart.volunteer.shiftDetail", "jewelheart.volunteer.checkin",
+            "jewelheart.volunteer.searchByType", "jewelheart.volunteer.searchByDay", "jewelheart.volunteer.shift", "jewelheart.volunteer.shiftDetail", "jewelheart.volunteer.checkin",
             "jewelheart.volunteer.messages", "jewelheart.volunteer.mine", "jewelheart.volunteer.account",
             "jewelheart.volunteer.preferences", "jewelheart.volunteer.manage", "jewelheart.volunteer.admin" -> {
                 payload?.get("retreatId")?.takeIf { it.isNotBlank() }?.let { retreatId = it }
@@ -213,6 +213,10 @@ class JewelHeartViewModel(
                         ?: run {
                             if (target == "jewelheart.volunteer.searchByType") remove("selectedDays")
                         }
+                    payload?.get("selectedDay")?.takeIf { it.isNotBlank() }?.let { put("selectedDay", it) }
+                        ?: run {
+                            if (target == "jewelheart.volunteer.searchByDay") remove("selectedDay")
+                        }
                     payload?.get("jobsAll")?.takeIf { it.isNotBlank() }?.let { put("jobsAll", it) }
                         ?: run {
                             if (target == "jewelheart.volunteer.searchByType") remove("jobsAll")
@@ -223,11 +227,11 @@ class JewelHeartViewModel(
                         }
                     payload?.get("jobType")?.let { put("jobType", it) }
                         ?: run {
-                            if (target == "jewelheart.volunteer.searchByType" || target == "jewelheart.volunteer.assign") remove("jobType")
+                            if (target == "jewelheart.volunteer.searchByType" || target == "jewelheart.volunteer.searchByDay" || target == "jewelheart.volunteer.assign") remove("jobType")
                         }
                     payload?.get("typeJobPrefs")?.let { put("typeJobPrefs", it) }
                         ?: run {
-                            if (target == "jewelheart.volunteer.searchByType" || target == "jewelheart.volunteer.assign") remove("typeJobPrefs")
+                            if (target == "jewelheart.volunteer.searchByType" || target == "jewelheart.volunteer.searchByDay" || target == "jewelheart.volunteer.assign") remove("typeJobPrefs")
                         }
                     val taskId = payload?.get("taskId")
                     val checkinOp = payload?.get("checkinOp")

@@ -1175,6 +1175,10 @@ body.jh-volunteer-clean.jh-volunteer-auth .jh-volunteer-shell > main {
   overflow-y: auto;
 }
 
+body.jh-volunteer-clean.jh-volunteer-auth .jh-vol-screen-footer {
+  margin-top: auto;
+}
+
 body.jh-volunteer-clean #volunteer-sdui-section {
   flex: 1 1 auto;
   display: flex;
@@ -1186,8 +1190,32 @@ body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar {
   flex: 0 0 auto;
 }
 
-body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-build-stamp {
+body.jh-volunteer-clean .jh-vol-screen-footer {
   flex: 0 0 auto;
+  padding-bottom: 0.25rem;
+}
+
+body.jh-volunteer-clean .jh-vol-screen-footer .jh-sdui-build-stamp {
+  margin-top: 0.15rem;
+}
+
+.jh-vol-testing-note {
+  margin: 0.15rem auto 0;
+  max-width: min(100%, 420px);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #666;
+  text-align: center;
+  padding: 0 0.5rem;
+  line-height: 1.35;
+}
+
+.jh-vol-testing-note[hidden] {
+  display: none;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-build-stamp {
+  display: none;
 }
 
 body.jh-volunteer-clean #volunteer-sdui-section #sdui-msg {
@@ -1923,6 +1951,25 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   gap: 4px;
 }
 
+.jh-sdui-home-find-row {
+  gap: 8px;
+}
+
+.jh-sdui-home-find-row > .jh-sdui-btn {
+  min-height: 40px;
+  font-size: var(--jh-bar-font, 0.95rem);
+  font-weight: 600;
+}
+
+/* Prefer one row; on narrow screens drop "All at once" to its own line. */
+@media (max-width: 400px) {
+  .jh-sdui-home-find-row > .jh-sdui-btn.jh-sdui-find-all-at-once {
+    flex-basis: 100%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 .jh-sdui-type-filter-row {
   gap: 4px;
 }
@@ -1955,6 +2002,14 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   line-height: 1;
 }
 
+.jh-sdui-nav-back-text {
+  min-width: 0;
+  width: auto !important;
+  font-size: 16px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
 .jh-sdui-multiline-pill {
   white-space: pre-line;
   line-height: 1.2;
@@ -1974,6 +2029,22 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   flex-direction: column;
 }
 
+.jh-sdui-scroll:has(.jh-sdui-day-shift-list) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-scroll:has(.jh-sdui-day-shift-list) > .jh-sdui-column,
+.jh-sdui-scroll:has(.jh-sdui-day-shift-list) > .jh-sdui-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .jh-sdui-job-list-scroll {
   border: 1px solid #92160e;
   flex: 1 1 auto;
@@ -1983,6 +2054,123 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   width: 100%;
   box-sizing: border-box;
   padding: 4px;
+}
+
+.jh-sdui-day-shift-list {
+  border: 2px solid #7a95ca;
+  border-top: none;
+  margin-top: -2px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(122, 149, 202, 0.7) rgba(122, 149, 202, 0.15);
+}
+
+.jh-sdui-day-shift-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.jh-sdui-day-shift-list::-webkit-scrollbar-track {
+  background: rgba(122, 149, 202, 0.12);
+}
+
+.jh-sdui-day-shift-list::-webkit-scrollbar-thumb {
+  background: rgba(122, 149, 202, 0.55);
+  border-radius: 4px;
+}
+
+body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-shift-assign,
+body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-search-by-day {
+  height: calc(100dvh - 4rem);
+  max-height: calc(100dvh - 4rem);
+  min-height: 0;
+}
+
+.jh-sdui-shift-assign-scroll {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-search-by-day-scroll {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-search-by-day-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-search-by-day-body > .jh-sdui-day-shift-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-shift-assign-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-instruction-flex-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+}
+
+.jh-sdui-instruction-flex-wrap.jh-sdui-instruction-wrap-fits {
+  flex: 0 1 auto;
+}
+
+.jh-sdui-instruction-flex-wrap.jh-sdui-instruction-wrap-overflow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
+}
+
+.jh-sdui-instruction-scroll.jh-sdui-instruction-flex {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(122, 149, 202, 0.65) transparent;
+}
+
+.jh-sdui-instruction-scroll.jh-sdui-instruction-flex.jh-sdui-instruction-fits {
+  flex: 0 1 auto;
+  overflow-y: visible;
+}
+
+.jh-sdui-instruction-scroll.jh-sdui-instruction-flex.jh-sdui-instruction-overflow::-webkit-scrollbar {
+  width: 6px;
+}
+
+.jh-sdui-instruction-scroll.jh-sdui-instruction-flex.jh-sdui-instruction-overflow::-webkit-scrollbar-thumb {
+  background: rgba(122, 149, 202, 0.55);
+  border-radius: 3px;
 }
 
 .jh-sdui-instruction-scroll {

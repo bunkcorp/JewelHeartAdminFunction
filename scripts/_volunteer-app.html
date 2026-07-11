@@ -30,8 +30,9 @@
     .jh-signin-screen {
       padding: 0;
     }
-    .jh-signin-bar {
-      width: 100%;
+    .jh-signin-bar,
+    .jh-onboard-screen > .jh-bar:first-child {
+      margin-top: 6px;
     }
     .jh-signin-body {
       padding: var(--jh-gap) var(--jh-page-pad) 0;
@@ -223,7 +224,7 @@
 __JH_ENV_BADGE_HTML__
     <main>
       <section id="auth-panel" class="jh-signin-screen">
-        <div class="jh-bar jh-bar-blue jh-signin-bar">Choose sign-in method:</div>
+        <div class="jh-bar jh-bar-blue jh-signin-bar">Pick method &amp; complete sign-in</div>
         <div class="jh-signin-body">
           <div id="invite-banner" class="jh-invite-banner" hidden aria-live="polite"></div>
 
@@ -234,14 +235,14 @@ __JH_ENV_BADGE_HTML__
               class="jh-signin-btn jh-signin-method jh-signin-method-selected"
               role="radio"
               aria-checked="true"
-            >By Google</button>
+            >Use Google</button>
             <button
               type="button"
               id="method-email"
               class="jh-signin-btn jh-signin-method"
               role="radio"
               aria-checked="false"
-            >By Email</button>
+            >Use Email</button>
           </div>
 
           <div id="email-row" class="jh-signin-row" hidden>
@@ -258,7 +259,7 @@ __JH_ENV_BADGE_HTML__
           </div>
 
           <div class="jh-signin-row">
-            <button type="button" id="btn-sign-in" class="jh-signin-btn">Sign in</button>
+            <button type="button" id="btn-sign-in" class="jh-signin-btn">Complete sign-in</button>
           </div>
         </div>
 
@@ -291,9 +292,12 @@ __JH_ENV_BADGE_HTML__
           </div>
         </div>
         <div id="sdui-root" class="jh-sdui-root" aria-live="polite"></div>
-        <p id="sdui-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version">web … · api …</p>
         <div class="msg" id="sdui-msg" aria-live="polite"></div>
       </section>
+      <footer id="vol-screen-footer" class="jh-vol-screen-footer">
+        <p id="vol-testing-note" class="jh-vol-testing-note" hidden aria-live="polite"></p>
+        <p id="vol-build-stamp" class="jh-sdui-build-stamp" aria-label="Build version"></p>
+      </footer>
     </main>
   </div>
 
@@ -304,7 +308,7 @@ __JH_ENV_BADGE_HTML__
   </div>
 
   <script type="module">
-    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD } from '__JH_ASSET_PREFIX__jewelheart-sdui.js?v=__JH_WEB_BUILD__';
+    import { createVolunteerSduiController, JH_LOGIN_WEB_BUILD, formatBuildStampLine } from '__JH_ASSET_PREFIX__jewelheart-sdui.js?v=__JH_WEB_BUILD__';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
     import {
       getAuth,
@@ -363,13 +367,40 @@ __JH_ENV_BADGE_HTML__
     /** Matches server VOLUNTEER_HOME_DEMO_DAY_ISO when demo pin is on (testers / dev). */
     const VOLUNTEER_DEMO_DAY_ISO = '2026-07-21';
 
-    /** @type {{ retreatBannerLine?: string, todayIso?: string, testingEnabled?: boolean } | null} */
+    /** @type {{ retreatBannerLine?: string, todayIso?: string, testingEnabled?: boolean, testingNote?: string, apiBuildStamp?: string } | null} */
     let volunteerTimeContext = null;
+    let volunteerApiBuildStamp = null;
+    let volunteerSduiScreenId = null;
 
     function applyVolunteerTimeContext(ctx) {
       if (!ctx || typeof ctx !== 'object') return;
       volunteerTimeContext = ctx;
+      if (ctx.apiBuildStamp) volunteerApiBuildStamp = ctx.apiBuildStamp;
       refreshVolunteerRetreatHeader();
+      refreshVolunteerScreenFooter();
+    }
+
+    function refreshVolunteerScreenFooter() {
+      const stampEl = document.getElementById('vol-build-stamp');
+      const testEl = document.getElementById('vol-testing-note');
+      const onAuth = document.body.classList.contains('jh-volunteer-auth');
+      const sduiVisible = volunteerSduiSection && !volunteerSduiSection.hidden;
+      const onHome = sduiVisible && volunteerSduiScreenId === 'jewelheart.home';
+
+      if (stampEl && onAuth) {
+        stampEl.hidden = false;
+        stampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, volunteerApiBuildStamp);
+      }
+
+      if (testEl) {
+        if (onHome && volunteerTimeContext?.testingNote) {
+          testEl.textContent = volunteerTimeContext.testingNote;
+          testEl.hidden = false;
+        } else {
+          testEl.textContent = '';
+          testEl.hidden = true;
+        }
+      }
     }
 
     async function fetchVolunteerTimeContext() {
@@ -378,6 +409,9 @@ __JH_ENV_BADGE_HTML__
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.retreatBannerLine) {
           applyVolunteerTimeContext(data);
+        } else if (res.ok && data.apiBuildStamp) {
+          volunteerApiBuildStamp = data.apiBuildStamp;
+          refreshVolunteerScreenFooter();
         }
       } catch {
         /* offline / pre-deploy */
@@ -422,12 +456,14 @@ __JH_ENV_BADGE_HTML__
       titleEl: document.getElementById('sdui-title'),
       msgEl: sduiMsg,
       backBtn: document.getElementById('sdui-back'),
-      buildStampEl: document.getElementById('sdui-build-stamp'),
+      buildStampEl: document.getElementById('vol-build-stamp'),
+      onScreenChange: (screen) => {
+        volunteerSduiScreenId = screen?.id || null;
+        if (screen?.metadata?.buildStamp) volunteerApiBuildStamp = screen.metadata.buildStamp;
+        refreshVolunteerScreenFooter();
+      },
 __JH_UI_CHANNEL_LINE__    });
-    {
-      const bs0 = document.getElementById('sdui-build-stamp');
-      if (bs0) bs0.textContent = `web ${JH_LOGIN_WEB_BUILD} · api …`;
-    }
+    refreshVolunteerScreenFooter();
 
     function localTodayIso() {
       const d = new Date();
@@ -557,7 +593,7 @@ __JH_UI_CHANNEL_LINE__    });
         const methods = await fetchSignInMethodsForEmail(auth, email);
         if (methods.includes('google.com') && !methods.includes('emailLink')) {
           setAuthMsg(
-            'This address has signed in with Google before. For the smoothest sign-in, select By Google. You can still use email if you prefer.',
+            'This address has signed in with Google before. For the smoothest sign-in, select Use Google. You can still use email if you prefer.',
             false,
           );
         }
@@ -753,6 +789,7 @@ __JH_UI_CHANNEL_LINE__    });
       setAuthMsg('');
       setOnboardingMsg('');
       refreshOnboardContinueState();
+      refreshVolunteerScreenFooter();
     }
 
     async function cancelOnboarding() {
@@ -820,7 +857,7 @@ __JH_UI_CHANNEL_LINE__    });
         return 'Error: sign-in link expired or already used. Request a new link, fix & retry.';
       }
       if (code === 'auth/account-exists-with-different-credential') {
-        return 'Error: this email is registered with a different sign-in method. Select By Google or use the same method as before, fix & retry.';
+        return 'Error: this email is registered with a different sign-in method. Select Use Google or use the same method as before, fix & retry.';
       }
       return e && e.message != null ? `Error: ${String(e.message)}, fix & retry` : String(e);
     }
@@ -852,6 +889,7 @@ __JH_UI_CHANNEL_LINE__    });
       clearEmailSentUi();
       rememberDevAdminEmail();
       refreshDevToolsUi();
+      refreshVolunteerScreenFooter();
       sduiController.resetHome().catch(async (e) => {
         console.error('sdui home (auth)', e);
         const msg = String(e?.message || e);
@@ -905,6 +943,7 @@ __JH_UI_CHANNEL_LINE__    });
       volunteerSduiSection.hidden = true;
       onboardingState = null;
       refreshDevToolsUi();
+      refreshVolunteerScreenFooter();
     }
 
     function rememberDevAdminEmail() {

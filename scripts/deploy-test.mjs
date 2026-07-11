@@ -52,7 +52,7 @@ scpStamped(
 scp('integrations/private-server/jewelheart-shift-checkins.js', 'src/jewelheart/jewelheart-shift-checkins.js');
 scp('integrations/private-server/jewelheart-poster-xlsx.js', 'src/jewelheart/jewelheart-poster-xlsx.js');
 scp('integrations/private-server/jewelheart-volunteer-invite.fragment.js', 'src/jewelheart/jewelheart-volunteer-invite.js');
-scp('integrations/private-server/jewelheart-volunteer-time-context.js', 'src/jewelheart/jewelheart-volunteer-time-context.js');
+scpStamped('integrations/private-server/jewelheart-volunteer-time-context.js', 'src/jewelheart/jewelheart-volunteer-time-context.js', 'api');
 scp('integrations/private-server/jewelheart-volunteer-onboarding.fragment.js', 'src/jewelheart/jewelheart-volunteer-onboarding.js');
 scp('integrations/private-server/jewelheart-volunteer-user-manage.fragment.js', 'src/jewelheart/jewelheart-volunteer-user-manage.js');
 scp('shared/jewelheart-auth-identity.js', 'src/jewelheart/jewelheart-auth-identity.js');

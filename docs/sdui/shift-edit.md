@@ -1,19 +1,16 @@
 # Edit shift — Master Spec (`jewelheart.volunteer.shiftEdit`)
 
-> **Status:** Approved (2026-06-24). **Replace existing screen** — implement from scratch.
-> **Scope:** Release shift, optional reassign via person picker, or leave open.
+> **Status:** Approved (2026-07-09). **Release only** — no in-app reassignment.
+> **Scope:** Release shift (unassign self), then show confirmation message.
 > **Authority:** Edit this document first, then change code to match.
-> **Related:** Person picker → `person-picker.md`. Check-in → `shift-check-in.md`.
+> **Related:** Check-in → `shift-check-in.md`.
 
 ---
 
 ## 1. Purpose
 
-Let the assigned volunteer **release** a shift (unassign self), then optionally **reassign**
-to another retreat volunteer, or leave the shift **open**.
-
-Author note: line-by-line UI replacements are a starting point; expect iteration after using
-in dev. Do not layer on the prior `shiftDetail` spec — reimplement from this doc.
+Let the assigned volunteer **release** a shift (unassign self). After release, show a
+confirmation message only — **no reassignment** in the app (privacy / complexity).
 
 ---
 
@@ -27,35 +24,15 @@ in dev. Do not layer on the prior `shiftDetail` spec — reimplement from this d
    - **`Release shift`** — dark maroon.
    - **`Cancel (keep shift)`** — blue → immediate return to prior screen (same as `<-`).
 
-### Phase B — After **Release shift**
+### Phase B — After **Release shift** (terminal)
 
-Replace line 3 with text:
+Replace line 3 with confirmation text only (no person picker, no buttons).
 
-**`Shift released! Reassign to…`**
-
-4. **Person picker** — full-width line; see `person-picker.md`.
-5. **Button row (line 5):**
-   - **`Reassign`** — enabled only when a person is selected.
-   - **`Cancel reassignment`** — always enabled; does **not** require a selection.
-
-### Phase C — Terminal outcomes
+- Line 3: **`Shift released!`** — dark maroon, bold.
+- If shift day is **today or tomorrow:** add **`Please find someone to take it.`**
+- If shift day is **today:** add **`Especially important since shift is today`** — bold.
 
 User exits only via footer **`<-`** or **Home** (no auto-navigate).
-
-#### C1 — Successful reassign
-
-- Replace line 3 with: **`Reassigned to:`**
-- Perform assignment transfer to selected `volunteerId`.
-- Line 4: show chosen name **read-only** (plain text preferred over locked input).
-- Hide line 5 buttons.
-- Person picker: no further typing/search.
-
-#### C2 — Cancel reassignment (or abandon reassign)
-
-- Line 3: **`Shift released!`**
-- Line 4 text: **`Not reassigned, still open!`**
-- Hide person picker and line 5 buttons.
-- Shift remains **unassigned** (open).
 
 ---
 
@@ -65,20 +42,14 @@ User exits only via footer **`<-`** or **Home** (no auto-navigate).
 |--------|------|--------|
 | **Release shift** | Phase A | Unassign me; go to Phase B |
 | **Cancel (keep shift)** | Phase A | No API change; navigate back |
-| **Reassign** | Phase B, person selected | Assign shift to selected person; Phase C1 |
-| **Cancel reassignment** | Phase B | Do not assign; shift stays open; Phase C2 |
-
-**Cancel reassignment** ignores any typed/selected name.
 
 ---
 
 ## 4. API (conceptual)
 
 1. **Release:** delete my assignment (or unassign API).
-2. **Reassign:** create assignment for selected volunteer on same task (atomic transfer preferred).
-3. **Cancel reassignment:** no new assignment; release stands.
 
-Idempotent navigation after terminal state.
+Idempotent navigation after terminal state (`editOutcome: open`).
 
 ---
 
@@ -92,11 +63,3 @@ Idempotent navigation after terminal state.
 Main pill tap on todo rows goes to **check-in** (today) or **info** (future), not here.
 
 Payload: `taskId`, `retreatId`, `returnTo`.
-
----
-
-## 6. Person picker on this screen
-
-- Roster: **retreat** linked volunteers.
-- Exclude: self.
-- After C1 or C2: picker removed or read-only; footer nav only.

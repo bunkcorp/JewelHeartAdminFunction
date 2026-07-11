@@ -8,6 +8,9 @@ import { assertUuid } from './service.js';
 export const JEWELHEART_DEFAULT_TIMEZONE = 'America/New_York';
 export const JEWELHEART_DEFAULT_PINNED_TODAY = '2026-07-21';
 
+/** Bump on each deploy (America/New_York, minute precision). Overwritten by deploy scripts. */
+export const VOLUNTEER_API_BUILD_STAMP = 'pending-deploy';
+
 const EN_DASH = ' • ';
 
 export function isIsoDate(d) {
@@ -367,6 +370,7 @@ export function createJewelHeartVolunteerTestingHandlers({ query }) {
           retreatDateOverride: timeCtx.retreatDateOverride,
           retreatBannerLine: timeCtx.retreatBannerLine,
           testingNote: timeCtx.testingNote,
+          apiBuildStamp: VOLUNTEER_API_BUILD_STAMP,
           retreat: {
             startDate: timeCtx.retreat?.startDate || null,
             endDate: timeCtx.retreat?.endDate || null,

@@ -553,12 +553,24 @@ private fun SduiComponentView(
                 Box(modifier = outerMod, contentAlignment = Alignment.Center) {
                     Box(modifier = pillMod, contentAlignment = Alignment.Center) {
                         when (c.icon) {
-                            "nav_back" -> Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = fg,
-                                modifier = Modifier.size(22.dp),
-                            )
+                            "nav_back" -> if (label.isNotBlank() && label != "←") {
+                                Text(
+                                    label,
+                                    color = fg,
+                                    fontSize = (c.textStyle?.fontSize ?: 16.0).sp,
+                                    fontWeight = textWeight,
+                                    textAlign = textAlign,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = fg,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
                             "nav_home" -> Icon(
                                 Icons.Filled.Home,
                                 contentDescription = "Home",
