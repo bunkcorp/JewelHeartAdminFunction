@@ -1355,6 +1355,15 @@ export function createVolunteerSduiController(options) {
       if (component.style?.searchByDayBody) {
         el.classList.add('jh-sdui-search-by-day-body');
       }
+      if (component.style?.openShiftDayArrowRow) {
+        el.classList.add('jh-sdui-open-shift-day-arrow-row');
+      }
+      if (component.style?.openShiftDayPillWrap) {
+        el.classList.add('jh-sdui-open-shift-day-pill-wrap');
+      }
+      if (component.style?.openShiftDayArrow) {
+        el.classList.add('jh-sdui-open-shift-day-arrow');
+      }
       if (component.style?.noWrap) el.classList.add('jh-sdui-row-nowrap');
       if (component.style?.flexGrow) el.classList.add('jh-sdui-flex-grow');
       const spacing = component.spacing ?? 16;
