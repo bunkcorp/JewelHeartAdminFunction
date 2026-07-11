@@ -1343,40 +1343,10 @@ function volunteerHomeOpenShiftDayPill(dayIso, row, shiftBase) {
 }
 
 const OPEN_SHIFT_JOB_TO_DAYS_SPACER = 2;
-const OPEN_SHIFT_JOB_GROUP_SPACER = 12;
+const OPEN_SHIFT_JOB_GROUP_SPACER = 18;
 
-function volunteerHomeOpenShiftDayArrowIcon() {
-  return {
-    type: 'text',
-    content: '↑',
-    textStyle: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      textAlign: 'center',
-      color: volunteerHomeMaroon,
-    },
-    style: {
-      padding: { top: 2, bottom: 2, left: 2, right: 2 },
-      openShiftDayArrow: true,
-    },
-  };
-}
-
-/** Day pills for one job, flanked by ↑ cues linking them to the job bar above. */
-function volunteerHomeOpenShiftDayButtonsWithArrows(dayButtons) {
-  const pills = volunteerHomeWrappedFilterRow(dayButtons, { spacing: 4, sidePad: 2, compactWrap: true });
-  pills.style = { ...(pills.style || {}), openShiftDayPillWrap: true, flexGrow: true };
-  return {
-    type: 'container',
-    layout: 'row',
-    spacing: 4,
-    textStyle: { textAlign: 'center' },
-    style: {
-      padding: { top: 0, bottom: 0, left: 4, right: 4 },
-      openShiftDayArrowRow: true,
-    },
-    children: [volunteerHomeOpenShiftDayArrowIcon(), pills, volunteerHomeOpenShiftDayArrowIcon()],
-  };
+function volunteerHomeOpenShiftDayButtonsRow(dayButtons) {
+  return volunteerHomeWrappedFilterRow(dayButtons, { spacing: 4, sidePad: 4, compactWrap: true });
 }
 
 function volunteerSearchOpenShiftsPayload(base, params, returnTo = 'jewelheart.home') {
@@ -3787,7 +3757,7 @@ export async function buildJewelheartVolunteerSearchByTypeScreen(
           `search_by_type_job_${job.jobId}`,
         ),
         volunteerHomeSpacer(OPEN_SHIFT_JOB_TO_DAYS_SPACER),
-        volunteerHomeOpenShiftDayButtonsWithArrows(
+        volunteerHomeOpenShiftDayButtonsRow(
           job.days.map((row) => volunteerHomeOpenShiftDayPill(row.dayIso, row, shiftBase)),
         ),
       );

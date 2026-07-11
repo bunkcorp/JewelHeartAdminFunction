@@ -2084,25 +2084,6 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   border-radius: 4px;
 }
 
-.jh-sdui-open-shift-day-arrow-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.jh-sdui-open-shift-day-arrow-row > .jh-sdui-open-shift-day-pill-wrap {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.jh-sdui-open-shift-day-arrow {
-  flex: 0 0 auto;
-  line-height: 1;
-  user-select: none;
-}
-
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-shift-assign,
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-search-by-day {
   height: calc(100dvh - 4rem);
