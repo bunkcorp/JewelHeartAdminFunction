@@ -1301,6 +1301,47 @@ function volunteerSearchByTypeGroupedMatches(matches, ctx, jobType) {
     });
 }
 
+/** Open shifts grouped by job (master order); each job lists day rows sorted by day. */
+function volunteerSearchByTypeMatchesByJob(matches, ctx, jobType) {
+  const sorted = volunteerSearchByTypeGroupedMatches(matches, ctx, jobType);
+  const buckets = new Map();
+  for (const row of sorted) {
+    if (!buckets.has(row.jobId)) buckets.set(row.jobId, []);
+    buckets.get(row.jobId).push(row);
+  }
+  return volunteerSearchByTypeTypeJobIds(ctx, jobType)
+    .filter((id) => buckets.has(id))
+    .map((jobId) => ({
+      jobId,
+      jobName: volunteerHomeShiftJobName(ctx, jobId, buckets.get(jobId)[0]?.taskId),
+      days: buckets.get(jobId),
+    }));
+}
+
+function volunteerHomeOpenShiftJobHeaderBar(jobName, warnings, code) {
+  return volunteerHomeBar(
+    volunteerHomeFitLine(jobName, VOLUNTEER_HOME_MAX_BAR_CHARS, warnings, code),
+    volunteerHomeMaroon,
+    '#FFFFFF',
+  );
+}
+
+function volunteerHomeOpenShiftDayPill(dayIso, row, shiftBase) {
+  return volunteerHomeFilterToggleButton(
+    volunteerHomeWeekdayShort(dayIso),
+    false,
+    'jewelheart.volunteer.shift',
+    {
+      ...shiftBase,
+      shiftOp: 'assign_me',
+      jobId: row.jobId,
+      dayIso: row.dayIso,
+      taskId: row.taskId || row.jobId,
+    },
+    { hPad: 5 },
+  );
+}
+
 function volunteerSearchOpenShiftsPayload(base, params, returnTo = 'jewelheart.home') {
   return volunteerSearchFilterPayloadFromParams(base, params, returnTo);
 }
@@ -3690,6 +3731,7 @@ export async function buildJewelheartVolunteerSearchByTypeScreen(
     authToken,
   );
   const typeMatches = volunteerSearchByTypeGroupedMatches(matches, ctx, selectedType);
+  const jobsWithDays = volunteerSearchByTypeMatchesByJob(matches, ctx, selectedType);
   const shiftBase = volunteerSearchByTypeNavPayload(basePayload, selectedType, returnTo);
 
   const scrollInner = [];
@@ -3698,29 +3740,17 @@ export async function buildJewelheartVolunteerSearchByTypeScreen(
       volunteerHomeBodyText('No open shifts for this job type.', ctx.layoutWarnings, 'search_by_type_empty'),
     );
   } else {
-    for (const row of typeMatches) {
-      const rowLabel = volunteerHomeDayJobLabel(
-        row.label,
-        row.dayIso,
-        VOLUNTEER_HOME_MAX_BAR_CHARS,
-        ctx.layoutWarnings,
-        `search_by_type_${row.jobId}_${row.dayIso}`,
-      );
+    for (const job of jobsWithDays) {
       scrollInner.push(
         volunteerHomeGap(),
-        volunteerHomeCenteredPill(
-          rowLabel,
-          'jewelheart.volunteer.shift',
-          {
-            ...shiftBase,
-            shiftOp: 'assign_me',
-            jobId: row.jobId,
-            dayIso: row.dayIso,
-            taskId: row.taskId || row.jobId,
-          },
-          volunteerHomeLightMaroon,
-          '#FFFFFF',
-          { homeActionPill: true },
+        volunteerHomeOpenShiftJobHeaderBar(
+          job.jobName,
+          ctx.layoutWarnings,
+          `search_by_type_job_${job.jobId}`,
+        ),
+        volunteerHomeWrappedFilterRow(
+          job.days.map((row) => volunteerHomeOpenShiftDayPill(row.dayIso, row, shiftBase)),
+          { spacing: 4, sidePad: 4, compactWrap: true },
         ),
       );
     }
