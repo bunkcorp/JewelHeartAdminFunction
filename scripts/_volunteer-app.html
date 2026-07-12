@@ -387,9 +387,14 @@ __JH_ENV_BADGE_HTML__
       const sduiVisible = volunteerSduiSection && !volunteerSduiSection.hidden;
       const onHome = sduiVisible && volunteerSduiScreenId === 'jewelheart.home';
 
-      if (stampEl && onAuth) {
-        stampEl.hidden = false;
-        stampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, volunteerApiBuildStamp);
+      if (stampEl) {
+        if (onAuth && sduiVisible) {
+          stampEl.hidden = false;
+          stampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, volunteerApiBuildStamp);
+        } else {
+          stampEl.textContent = '';
+          stampEl.hidden = true;
+        }
       }
 
       if (testEl) {

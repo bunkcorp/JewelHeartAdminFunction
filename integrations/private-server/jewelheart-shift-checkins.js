@@ -172,28 +172,52 @@ export async function volunteerApplyCheckinOpDb(assignment, todayIso, op) {
     }
   }
   if (op === 'undo') {
-    return volunteerUndoLastCheckinDb(assignment);
+    return volunteerClearAssignmentCheckinsDb(assignment);
   }
   return { ok: false, error: 'unknown_op' };
 }
 
-/** Remove the most recent check-in row for an assignment (Undo on check-in screen). */
-export async function volunteerUndoLastCheckinDb(assignment) {
+/**
+ * Done on check-in screen: drop incomplete sessions created during this visit.
+ * Keeps completed rows (including new Start+End pairs) and baseline rows that were
+ * already finished when the screen opened.
+ */
+export async function volunteerCheckinDoneDb(assignment, baselineIds = []) {
+  if (!assignment?.assignmentId) return { ok: false, error: 'missing' };
+  const base = (baselineIds || []).map(String).filter(Boolean);
+  try {
+    if (!base.length) {
+      await query(
+        `DELETE FROM jewelheart_shift_checkins
+         WHERE assignment_id = $1 AND finished_at IS NULL`,
+        [assignment.assignmentId],
+      );
+    } else {
+      await query(
+        `DELETE FROM jewelheart_shift_checkins
+         WHERE assignment_id = $1
+           AND finished_at IS NULL
+           AND NOT (id = ANY($2::uuid[]))`,
+        [assignment.assignmentId, base],
+      );
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'done_failed' };
+  }
+}
+
+/** Remove all check-in rows for an assignment (Undo on check-in screen). */
+export async function volunteerClearAssignmentCheckinsDb(assignment) {
   if (!assignment?.assignmentId) return { ok: false, error: 'missing' };
   try {
-    const { rowCount } = await query(
-      `DELETE FROM jewelheart_shift_checkins
-       WHERE id = (
-         SELECT id FROM jewelheart_shift_checkins
-         WHERE assignment_id = $1
-         ORDER BY started_at DESC
-         LIMIT 1
-       )`,
+    await query(
+      `DELETE FROM jewelheart_shift_checkins WHERE assignment_id = $1`,
       [assignment.assignmentId],
     );
-    return { ok: rowCount > 0 };
+    return { ok: true };
   } catch (err) {
-    return { ok: false, error: err?.message || 'undo_failed' };
+    return { ok: false, error: err?.message || 'clear_failed' };
   }
 }
 

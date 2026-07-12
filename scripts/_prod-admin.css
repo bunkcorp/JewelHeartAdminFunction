@@ -1192,7 +1192,7 @@ body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar {
 
 body.jh-volunteer-clean .jh-vol-screen-footer {
   flex: 0 0 auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: calc(0.35rem + env(safe-area-inset-bottom, 0px));
 }
 
 body.jh-volunteer-clean .jh-vol-screen-footer .jh-sdui-build-stamp {
@@ -1970,15 +1970,55 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   }
 }
 
+.jh-sdui-manage-checkins-scroll {
+  border: 1px solid #92160e;
+  border-radius: 8px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: min(50vh, 420px);
+}
+
+.jh-sdui-scroll:has(.jh-sdui-manage-checkins-scroll) {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jh-sdui-manage-checkins-scroll > .jh-sdui-text {
+  font-size: 13px;
+  line-height: 1.35;
+  padding: 4px 0;
+}
+
 .jh-sdui-type-filter-row {
-  gap: 4px;
+  gap: 10px;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+.jh-sdui-type-filter-row-spread {
+  justify-content: space-evenly;
 }
 
 .jh-sdui-type-filter-row > .jh-sdui-btn {
   font-size: 12px !important;
-  padding-left: 5px !important;
-  padding-right: 5px !important;
+  padding-left: 10px !important;
+  padding-right: 10px !important;
   line-height: 1.15;
+  min-width: 4.75rem;
+  margin: 2px 4px;
+  position: relative;
+  z-index: 1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.jh-sdui-type-filter-row > .jh-sdui-btn:active,
+.jh-sdui-type-filter-row > .jh-sdui-btn.jh-sdui-filter-selected {
+  z-index: 2;
 }
 
 .jh-sdui-flow-row > .jh-sdui-btn[data-sdui-action-id],
@@ -2069,6 +2109,16 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: rgba(122, 149, 202, 0.7) rgba(122, 149, 202, 0.15);
+  /* Gap below day-pill rows — height on real gap element (see .jh-sdui-open-shift-job-group-gap). */
+  --jh-open-shift-group-gap: 12px;
+}
+
+.jh-sdui-root.jh-sdui-ios-chrome .jh-sdui-day-shift-list {
+  --jh-open-shift-group-gap: 22px;
+}
+
+.jh-sdui-root.jh-sdui-ios-safari .jh-sdui-day-shift-list {
+  --jh-open-shift-group-gap: 29px;
 }
 
 .jh-sdui-day-shift-list::-webkit-scrollbar {
@@ -2084,11 +2134,49 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split {
   border-radius: 4px;
 }
 
+.jh-sdui-day-shift-list > .jh-sdui-spacer {
+  flex-shrink: 0;
+}
+
+.jh-sdui-day-shift-list > .jh-sdui-bar {
+  margin-bottom: 0 !important;
+}
+
+.jh-sdui-day-shift-list > .jh-sdui-bar + .jh-sdui-container.jh-sdui-flow-row {
+  margin-top: 0 !important;
+}
+
+.jh-sdui-day-shift-list > .jh-sdui-text.jh-sdui-open-shift-job-group-gap {
+  display: block;
+  flex: 0 0 var(--jh-open-shift-group-gap);
+  flex-shrink: 0;
+  width: 100%;
+  height: var(--jh-open-shift-group-gap);
+  min-height: var(--jh-open-shift-group-gap);
+  max-height: var(--jh-open-shift-group-gap);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  line-height: var(--jh-open-shift-group-gap);
+  box-sizing: border-box;
+  pointer-events: none;
+  user-select: none;
+}
+
+.jh-sdui-home-build-stamp {
+  margin-top: 0.15rem;
+}
+
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-shift-assign,
 body.jh-volunteer-clean .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-search-by-day {
-  height: calc(100dvh - 4rem);
-  max-height: calc(100dvh - 4rem);
+  flex: 1 1 auto;
   min-height: 0;
+  height: auto;
+  max-height: none;
+}
+
+body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-root.jh-sdui-sticky-footer.jh-sdui-search-by-day {
+  max-height: calc(100dvh - 5.5rem - env(safe-area-inset-bottom, 0px));
 }
 
 .jh-sdui-shift-assign-scroll {

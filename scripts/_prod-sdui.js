@@ -131,6 +131,7 @@ const VOLUNTEER_HOME_SCREENS = new Set([
   'jewelheart.volunteer.account',
   'jewelheart.volunteer.preferences',
   'jewelheart.volunteer.manage',
+  'jewelheart.volunteer.manageCheckins',
   'jewelheart.volunteer.testing',
   'jewelheart.volunteer.userManage',
   'jewelheart.volunteer.admin',
@@ -366,6 +367,10 @@ export function createVolunteerSduiController(options) {
 
   function syncVolunteerSearchFilterParams() {
     if (screenId === 'jewelheart.volunteer.search') return;
+    if (params.jobType === 'all') {
+      params.jobsAll = '1';
+      return;
+    }
     if (params.jobType) {
       params.jobsAll = '0';
       return;
@@ -393,11 +398,20 @@ export function createVolunteerSduiController(options) {
     params.daysAll = '1';
     params.selectedDays = '';
     delete params.selectedDay;
-    params.jobsAll = '0';
     params.selectedJobs = '';
     params.typeJobPrefs = '';
-    if (payload.jobType) params.jobType = String(payload.jobType);
-    else delete params.jobType;
+    if (
+      payload.jobType === 'all'
+      || payload.jobsAll === '1'
+      || payload.jobsAll === 1
+    ) {
+      params.jobsAll = '1';
+      params.jobType = 'all';
+    } else {
+      params.jobsAll = '0';
+      if (payload.jobType) params.jobType = String(payload.jobType);
+      else delete params.jobType;
+    }
     if (payload.scrollTop === '1') params.scrollTop = '1';
     else delete params.scrollTop;
   }
@@ -518,6 +532,18 @@ export function createVolunteerSduiController(options) {
         delete params.checkinOp;
       }
 
+      if (payload.checkinBaselineIds != null) {
+        const rawBaseline = String(payload.checkinBaselineIds);
+        if (rawBaseline) params.checkinBaselineIds = rawBaseline;
+        else delete params.checkinBaselineIds;
+      } else if (
+        target !== 'jewelheart.volunteer.checkin' &&
+        target !== 'jewelheart.volunteer.shiftDetail' &&
+        target !== 'jewelheart.volunteer.shift'
+      ) {
+        delete params.checkinBaselineIds;
+      }
+
       if (payload.shiftOp) params.shiftOp = payload.shiftOp;
       else if (target !== 'jewelheart.volunteer.shift') delete params.shiftOp;
 
@@ -555,6 +581,12 @@ export function createVolunteerSduiController(options) {
 
       if (payload.returnTo) params.returnTo = payload.returnTo;
       else if (target === 'jewelheart.home') delete params.returnTo;
+
+      if (payload.checkinsShow != null && payload.checkinsShow !== '') {
+        params.checkinsShow = String(payload.checkinsShow);
+      } else if (target !== 'jewelheart.volunteer.manageCheckins') {
+        delete params.checkinsShow;
+      }
 
       if (payload.userManageClear === '1') {
         delete params.userManageVolunteerId;
@@ -598,6 +630,7 @@ export function createVolunteerSduiController(options) {
               'typeJobPrefs',
               'taskId',
               'checkinOp',
+              'checkinBaselineIds',
               'shiftOp',
               'shiftEditOp',
               'pickVolunteerId',
@@ -611,6 +644,7 @@ export function createVolunteerSduiController(options) {
               'allJobsTap',
               'filterReset',
               'returnTo',
+              'checkinsShow',
               'userManageConfirm',
               'userManageClear',
               'userManageVolunteerId',
@@ -634,6 +668,7 @@ export function createVolunteerSduiController(options) {
   function snapshotForStack() {
     const historyParams = { ...params };
     delete historyParams.checkinOp;
+    delete historyParams.checkinBaselineIds;
     delete historyParams.shiftEditOp;
     delete historyParams.pickVolunteerId;
     delete historyParams.scrollTop;
@@ -1337,9 +1372,15 @@ export function createVolunteerSduiController(options) {
             ? 'jh-sdui-container jh-sdui-row'
             : 'jh-sdui-container jh-sdui-column';
       if (component.style?.typeFilterRow) el.classList.add('jh-sdui-type-filter-row');
+      if (component.style?.typeFilterRowSpread) el.classList.add('jh-sdui-type-filter-row-spread');
       if (component.style?.homeFindShiftRow) el.classList.add('jh-sdui-home-find-row');
       if (component.style?.jobListFrame) {
         el.classList.add('jh-sdui-job-list-scroll');
+        const borderColor = component.style?.borderColor;
+        if (borderColor) el.style.borderColor = borderColor;
+      }
+      if (component.style?.manageCheckinsScroll) {
+        el.classList.add('jh-sdui-manage-checkins-scroll');
         const borderColor = component.style?.borderColor;
         if (borderColor) el.style.borderColor = borderColor;
       }
@@ -1525,6 +1566,9 @@ export function createVolunteerSduiController(options) {
       el.classList.add('jh-sdui-label-centered');
     }
 
+    if (style.homeBuildStamp) el.classList.add('jh-sdui-home-build-stamp');
+    if (style.openShiftJobGroupGap) el.classList.add('jh-sdui-open-shift-job-group-gap');
+
     if (style.flexGrow) el.classList.add('jh-sdui-flex-child');
 
     if (component.action) {
@@ -1555,8 +1599,8 @@ export function createVolunteerSduiController(options) {
 
   function updateBuildStamp(apiStamp, screen) {
     if (!buildStampEl) return;
-    const isHome = screen?.id === 'jewelheart.home';
-    if (isHome) {
+    const isJewelheart = String(screen?.id || '').startsWith('jewelheart.');
+    if (isJewelheart) {
       buildStampEl.hidden = false;
       buildStampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, apiStamp);
       return;
@@ -1594,6 +1638,16 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  function syncPlatformClasses() {
+    const ua = navigator.userAgent || '';
+    const ios = /iPad|iPhone|iPod/.test(ua)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const iosChrome = /CriOS/.test(ua);
+    const iosSafari = ios && !iosChrome && !/FxiOS|EdgiOS/.test(ua);
+    rootEl.classList.toggle('jh-sdui-ios-safari', iosSafari);
+    rootEl.classList.toggle('jh-sdui-ios-chrome', iosChrome);
+  }
+
   function renderScreen(envelope) {
     const screen = envelope?.screen || envelope;
     if (screen.id) screenId = screen.id;
@@ -1607,7 +1661,8 @@ export function createVolunteerSduiController(options) {
     const shiftAssignFlex = screen.metadata?.shiftAssignFlexLayout === true;
     const searchByDayFlex = screen.metadata?.searchByDayFlexLayout === true;
     const searchByTypeFlex = screen.metadata?.searchByTypeFlexLayout === true;
-    const findOpenFlex = searchByDayFlex || searchByTypeFlex;
+    const manageCheckinsFlex = screen.metadata?.manageCheckinsFlexLayout === true;
+    const findOpenFlex = searchByDayFlex || searchByTypeFlex || manageCheckinsFlex;
     const stickyFooter = screen.metadata?.stickyFooter === true;
     const stickyHeader = screen.metadata?.stickyHeader === true;
     rootEl.classList.toggle('jh-sdui-home', isHome);
@@ -1618,6 +1673,7 @@ export function createVolunteerSduiController(options) {
     const layoutFlat = screen.metadata?.layoutFlat === true;
     rootEl.classList.toggle('jh-sdui-home-flat', homeSplit && layoutFlat);
     rootEl.classList.toggle('jh-sdui-sticky-header', (stickyHeader || homeSplit) && !layoutFlat);
+    syncPlatformClasses();
 
     if (titleEl) titleEl.textContent = screen.title || 'JewelHeart';
     profileVolunteerMeta = screen.metadata?.volunteerProfile || null;
@@ -1716,6 +1772,9 @@ export function createVolunteerSduiController(options) {
         delete params.checkinOp;
         delete params.shiftEditOp;
         delete params.pickVolunteerId;
+      }
+      if (screenId !== 'jewelheart.volunteer.checkin') {
+        delete params.checkinBaselineIds;
       }
     }
   }
