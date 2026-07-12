@@ -39,6 +39,10 @@ console.log('  B8 (Tara Mon unsched):', cell('B', 8));
 console.log('  J2 (should be missing):', cell('J', 2));
 const calcChain = path.join(tmp, 'xl', 'calcChain.xml');
 console.log('  calcChain.xml present:', fs.existsSync(calcChain) ? 'YES (bad)' : 'no (good)');
+const relsRaw = fs.readFileSync(path.join(tmp, 'xl', '_rels', 'workbook.xml.rels'), 'utf8');
+console.log('  workbook.xml.rels calcChain ref:', /calcChain/.test(relsRaw) ? 'YES (bad)' : 'no (good)');
+const formulaTags = (sheet.match(/<f[\s>]/g) || []).length;
+console.log('  formula tags in Master sheet:', formulaTags, formulaTags ? '(bad)' : '(good)');
 const b2xml = sheet.match(/<c r="B2"[^>]*\/>|<c r="B2"[^>]*>[\s\S]*?<\/c>/);
 const a1xml = sheet.match(/<c r="A1"[^>]*\/>|<c r="A1"[^>]*>[\s\S]*?<\/c>/);
 if (b2xml) {

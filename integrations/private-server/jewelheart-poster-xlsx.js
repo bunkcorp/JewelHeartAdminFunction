@@ -214,6 +214,24 @@ function stripColsFromRow(rowInner, rowNum) {
   return out;
 }
 
+/** Poster output is static — drop template layout formulas (H/M/L refs, LEN, etc.). */
+function flattenFormulasInSheetXml(sheetXml) {
+  return sheetXml.replace(
+    /<c r="([^"]+)"([^>]*)>([\s\S]*?)<\/c>/g,
+    (full, ref, attrs, inner) => {
+      if (!/<f[\s>]/.test(inner)) return full;
+      let body = inner.replace(/<f[\s\S]*?<\/f>/g, '').replace(/<f[^/]*\/>/g, '').trim();
+      if (!body) return `<c r="${ref}"${attrs}/>`;
+      return `<c r="${ref}"${attrs}>${body}</c>`;
+    },
+  );
+}
+
+function flattenFormulasInMasterSheet(sheetPath) {
+  const sheet = fs.readFileSync(sheetPath, 'utf8');
+  fs.writeFileSync(sheetPath, flattenFormulasInSheetXml(sheet), 'utf8');
+}
+
 async function loadAssigneeMap(retreatId) {
   const { rows } = await query(
     `SELECT DISTINCT ON (t.id)
@@ -283,7 +301,7 @@ function populateMasterSheet(sheetPath, assigneesByJobTitle, strings, stringCach
   fs.writeFileSync(sheetPath, sheet, 'utf8');
 }
 
-/** Drop stale calcChain (template formulas in removed J–M cols trigger Excel repair). */
+/** Drop stale calcChain + strip package refs (removed J–M formula cells break calcChain). */
 function sanitizeXlsxPackage(workDir) {
   const xlDir = path.join(workDir, 'xl');
   const calcPath = path.join(xlDir, 'calcChain.xml');
@@ -292,6 +310,7 @@ function sanitizeXlsxPackage(workDir) {
   const relsPath = path.join(xlDir, '_rels', 'workbook.xml.rels');
   if (fs.existsSync(relsPath)) {
     let rels = fs.readFileSync(relsPath, 'utf8');
+    rels = rels.replace(/<Relationship[^>]*Target="[^"]*calcChain\.xml"[^>]*\/>/g, '');
     rels = rels.replace(/<Relationship[^>]*calcChain[^>]*\/>/g, '');
     fs.writeFileSync(relsPath, rels, 'utf8');
   }
@@ -299,6 +318,7 @@ function sanitizeXlsxPackage(workDir) {
   const ctPath = path.join(workDir, '[Content_Types].xml');
   if (fs.existsSync(ctPath)) {
     let ct = fs.readFileSync(ctPath, 'utf8');
+    ct = ct.replace(/<Override[^>]*\/xl\/calcChain\.xml"[^>]*\/>/g, '');
     ct = ct.replace(/<Override[^>]*calcChain[^>]*\/>/g, '');
     fs.writeFileSync(ctPath, ct, 'utf8');
   }
@@ -327,6 +347,7 @@ export async function buildPosterMasterXlsxBuffer(retreatId) {
     const stringCache = new Map();
     const assignees = await loadAssigneeMap(retreatId);
     populateMasterSheet(sheetPath, assignees, strings, stringCache);
+    flattenFormulasInMasterSheet(sheetPath);
     fs.writeFileSync(ssPath, buildSharedStringsXml(strings), 'utf8');
     sanitizeXlsxPackage(workDir);
     zipXlsx(workDir, outPath);
