@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Wire volunteer testing / time-context routes into private-server routes/jewelheart.js.
+ * time-context must be registered before requireAuthDual (public, no Bearer token).
  */
 import fs from 'fs';
 import path from 'path';
@@ -57,22 +58,24 @@ const publicRoute =
 const authRoutes = `router.get('/volunteer/testing-settings', volunteerTestingHandlers.getSettings);
 router.put('/volunteer/testing-settings', volunteerTestingHandlers.putSettings);
 `;
+const authAnchor = 'router.use(requireAuthDual);';
+const timeContextRouteRe =
+  /router\.get\('\/volunteer\/time-context', volunteerTestingHandlers\.getTimeContext\);\n?/;
 
-if (!src.includes("router.get('/volunteer/time-context'")) {
-  const publicAnchor = "router.post('/volunteer/bootstrap', volunteerOnboardingHandlers.postBootstrap);";
-  if (src.includes(publicAnchor)) {
-    src = src.replace(publicAnchor, `${publicRoute}\n${publicAnchor}`);
-  } else {
-    const sessionAnchor = "router.get('/volunteer/session', volunteerInviteHandlers.getVolunteerSession);";
-    if (src.includes(sessionAnchor)) {
-      src = src.replace(sessionAnchor, `${publicRoute}\n${sessionAnchor}`);
-    }
-  }
-  console.log('added public time-context route');
+if (timeContextRouteRe.test(src)) {
+  src = src.replace(timeContextRouteRe, '');
+  console.log('removed existing time-context route');
+}
+
+const authIdx = src.indexOf(authAnchor);
+if (authIdx === -1) throw new Error('requireAuthDual anchor not found');
+
+if (!src.slice(0, authIdx).includes(publicRoute)) {
+  src = src.replace(authAnchor, `${publicRoute}\n\n${authAnchor}`);
+  console.log('placed public time-context route before requireAuthDual');
 }
 
 if (!src.includes("router.get('/volunteer/testing-settings'")) {
-  const authAnchor = 'router.use(requireAuthDual);';
   if (!src.includes(authAnchor)) throw new Error('requireAuthDual anchor not found');
   src = src.replace(authAnchor, `${authAnchor}\n\n${authRoutes}`);
   console.log('added auth testing-settings routes');

@@ -524,8 +524,6 @@ __JH_ENV_BADGE_HTML__
     /** Firebase authorized domain for email magic links (often karmadots.org, not api-*). */
     const VOLUNTEER_MAGIC_LINK_CONTINUE = '__JH_MAGIC_LINK_URL__';
     const VOLUNTEER_RETREAT = { startDate: '2026-07-20', endDate: '2026-07-26' };
-    /** Matches server VOLUNTEER_HOME_DEMO_DAY_ISO when demo pin is on (testers / dev). */
-    const VOLUNTEER_DEMO_DAY_ISO = '2026-07-21';
 
     /** @type {{ retreatBannerLine?: string, todayIso?: string, testingEnabled?: boolean, testingNote?: string, apiBuildStamp?: string } | null} */
     let volunteerTimeContext = null;
@@ -658,14 +656,8 @@ __JH_UI_CHANNEL_LINE__    });
       return new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dt);
     }
 
-    /** Dev/test testers channel pins retreat "today" to demo day (server JEWELHEART_VOLUNTEER_HOME_DEMO). */
-    function volunteerHeaderPinDemoDay() {
-      return VOLUNTEER_UI_CHANNEL === 'testers';
-    }
-
     /** One ISO for both day number and weekday — never mix real calendar day with retreat day index. */
     function volunteerHeaderContextIso(realTodayIso) {
-      if (volunteerHeaderPinDemoDay()) return VOLUNTEER_DEMO_DAY_ISO;
       const { startDate, endDate } = VOLUNTEER_RETREAT;
       if (realTodayIso < startDate) return startDate;
       if (realTodayIso > endDate) return endDate;
