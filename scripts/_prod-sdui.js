@@ -271,6 +271,7 @@ const VOLUNTEER_HOME_SCREENS = new Set([
   'jewelheart.volunteer.testing',
   'jewelheart.volunteer.userManage',
   'jewelheart.volunteer.admin',
+  'jewelheart.volunteer.adminPrivileges',
 ]);
 
 export function createVolunteerSduiController(options) {
@@ -753,6 +754,35 @@ export function createVolunteerSduiController(options) {
         delete params.userManagePendingOp;
       }
 
+      if (payload.adminPrivClear === '1') {
+        delete params.adminPrivVolunteerId;
+        delete params.adminPrivVolunteerName;
+        delete params.adminPrivStatusNote;
+      } else {
+        if (payload.adminPrivVolunteerId) params.adminPrivVolunteerId = String(payload.adminPrivVolunteerId);
+        if (payload.adminPrivVolunteerName) params.adminPrivVolunteerName = String(payload.adminPrivVolunteerName);
+        if (payload.adminPrivStatusNote != null && payload.adminPrivStatusNote !== '') {
+          params.adminPrivStatusNote = String(payload.adminPrivStatusNote);
+        }
+      }
+
+      if (target !== 'jewelheart.volunteer.adminPrivileges') {
+        delete params.adminPrivVolunteerId;
+        delete params.adminPrivVolunteerName;
+        delete params.adminPrivStatusNote;
+        delete params.adminPrivClear;
+      }
+
+      if (target === 'jewelheart.volunteer.admin') {
+        if (payload.adminClearStep != null && payload.adminClearStep !== '') {
+          params.adminClearStep = String(payload.adminClearStep);
+        } else if (Object.prototype.hasOwnProperty.call(payload, 'adminClearStep')) {
+          delete params.adminClearStep;
+        }
+      } else {
+        delete params.adminClearStep;
+      }
+
       if (target !== 'jewelheart.volunteer.searchByType' && target !== 'jewelheart.volunteer.search'
         && target !== 'jewelheart.volunteer.searchByDay') {
         for (const [k, v] of Object.entries(payload)) {
@@ -791,6 +821,12 @@ export function createVolunteerSduiController(options) {
               'userManageStatusNote',
               'userManagePendingOp',
               'userManagePendingClear',
+              'adminPrivConfirm',
+              'adminPrivClear',
+              'adminPrivVolunteerId',
+              'adminPrivVolunteerName',
+              'adminPrivStatusNote',
+              'adminClearStep',
             ].includes(k) &&
             v != null &&
             v !== ''
@@ -1084,6 +1120,95 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  async function handleVolunteerAdminTools(action) {
+    const op = action.payload?.op;
+    const volunteerId = String(action.payload?.volunteerId || params.adminPrivVolunteerId || '').trim();
+    const rid = retreatId || params.retreatId;
+    if (!rid) {
+      setMsg('No retreat selected.', true);
+      return;
+    }
+    const token = await getIdToken();
+
+    try {
+      if (op === 'loadPrivileges') {
+        if (!volunteerId) {
+          setMsg('No volunteer selected.', true);
+          return;
+        }
+        setMsg('Loading…', false);
+        const res = await fetch(
+          `${apiBase}/retreats/${encodeURIComponent(rid)}/volunteers/${encodeURIComponent(volunteerId)}/privileges`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        params.adminPrivVolunteerId = volunteerId;
+        params.adminPrivStatusNote = (j.lines || []).join('\n');
+        setMsg('', false);
+        return load();
+      }
+      if (op === 'setPrivileges') {
+        if (!volunteerId) {
+          setMsg('No volunteer selected.', true);
+          return;
+        }
+        const body = {};
+        if (Object.prototype.hasOwnProperty.call(action.payload || {}, 'admin')) {
+          body.admin = action.payload.admin === true;
+        }
+        if (Object.prototype.hasOwnProperty.call(action.payload || {}, 'manage')) {
+          body.manage = action.payload.manage === true;
+        }
+        setMsg('Saving…', false);
+        const res = await fetch(
+          `${apiBase}/retreats/${encodeURIComponent(rid)}/volunteers/${encodeURIComponent(volunteerId)}/privileges`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+          },
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        params.adminPrivVolunteerId = volunteerId;
+        params.adminPrivStatusNote = (j.lines || []).join('\n');
+        setMsg(j.message || 'Saved.', false);
+        return load();
+      }
+      if (op === 'clearAssignments') {
+        if (!action.payload?.confirmed) {
+          setMsg('Confirm on the Admin screen first.', true);
+          return;
+        }
+        setMsg('Clearing assignments…', false);
+        const res = await fetch(
+          `${apiBase}/retreats/${encodeURIComponent(rid)}/admin/clear-assignments`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ confirm: 'CLEAR' }),
+          },
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        delete params.adminClearStep;
+        setMsg(j.message || 'Assignments cleared.', false);
+        return load();
+      }
+      setMsg('Unknown action.', true);
+    } catch (e) {
+      console.error('volunteerAdminTools', e);
+      setMsg(e.message || String(e), true);
+    }
+  }
+
   function handleAction(action) {
     if (!action) return;
     if (action.type === 'navBack') {
@@ -1105,6 +1230,20 @@ export function createVolunteerSduiController(options) {
         delete payload.userManageConfirm;
         delete payload.pickVolunteerFrom;
         delete payload.userManageStatusNote;
+        navAction = { ...navAction, payload };
+      } else if (navAction.payload?.adminPrivConfirm) {
+        const pickerId = navAction.payload.pickVolunteerFrom || 'adminPrivPicker';
+        const st = personPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload };
+        payload.adminPrivVolunteerId = st.selectedId;
+        payload.adminPrivVolunteerName = st.selectedName || '';
+        delete payload.adminPrivConfirm;
+        delete payload.pickVolunteerFrom;
+        delete payload.adminPrivStatusNote;
         navAction = { ...navAction, payload };
       } else if (navAction.payload?.pickVolunteerFrom) {
         const pickerId = navAction.payload.pickVolunteerFrom;
@@ -1146,7 +1285,16 @@ export function createVolunteerSduiController(options) {
       return load();
     }
     if (action.type === 'adminWorkspace') {
-      if (onAdminWorkspace) onAdminWorkspace();
+      if (onAdminWorkspace) {
+        onAdminWorkspace();
+      } else {
+        applyNavigate({
+          type: 'navigate',
+          target: 'jewelheart.volunteer.admin',
+          payload: retreatId ? { retreatId } : {},
+        });
+        return load();
+      }
       return Promise.resolve();
     }
     if (action.type === 'download') {
@@ -1165,6 +1313,9 @@ export function createVolunteerSduiController(options) {
     }
     if (action.type === 'volunteerUserManage') {
       return handleVolunteerUserManage(action);
+    }
+    if (action.type === 'volunteerAdminTools') {
+      return handleVolunteerAdminTools(action);
     }
   }
 

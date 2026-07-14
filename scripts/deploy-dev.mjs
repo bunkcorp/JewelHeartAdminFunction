@@ -130,6 +130,8 @@ scp('integrations/private-server/jewelheart-volunteer-onboarding.fragment.js', '
 
 scp('integrations/private-server/jewelheart-volunteer-user-manage.fragment.js', 'src/jewelheart/jewelheart-volunteer-user-manage.js');
 
+scp('integrations/private-server/jewelheart-volunteer-admin-tools.fragment.js', 'src/jewelheart/jewelheart-volunteer-admin-tools.js');
+
 scp('shared/jewelheart-auth-identity.js', 'src/jewelheart/jewelheart-auth-identity.js');
 
 scp('scripts/patch-volunteer-invite-route.mjs', 'scripts-inspect/patch-volunteer-invite-route.mjs');
@@ -137,7 +139,9 @@ scp('scripts/patch-volunteer-invite-route.mjs', 'scripts-inspect/patch-volunteer
 scp('scripts/patch-volunteer-onboarding-route.mjs', 'scripts-inspect/patch-volunteer-onboarding-route.mjs');
 
 scp('scripts/patch-volunteer-user-manage-route.mjs', 'scripts-inspect/patch-volunteer-user-manage-route.mjs');
+scp('scripts/patch-volunteer-admin-tools-route.mjs', 'scripts-inspect/patch-volunteer-admin-tools-route.mjs');
 scp('scripts/patch-volunteer-testing-route.mjs', 'scripts-inspect/patch-volunteer-testing-route.mjs');
+scp('scripts/clear-assignments.mjs', 'scripts-inspect/clear-assignments.mjs');
 scp('scripts/patch-volunteer-env-static.mjs', 'scripts-inspect/patch-volunteer-env-static.mjs');
 
 scp('integrations/private-server/sduiHandlers.fragment.js', 'src/jewelheart/sduiHandlers.js');
@@ -208,6 +212,8 @@ const steps = [
   `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-onboarding-route.mjs || true`,
 
   `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-user-manage-route.mjs || true`,
+
+  `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-admin-tools-route.mjs || true`,
 
   `cd ~/${DEV_DIR} && JEWELHEART_ROUTES_PATH=~/${DEV_DIR}/src/routes/jewelheart.js ${NODE_BIN} scripts-inspect/patch-volunteer-testing-route.mjs || true`,
 

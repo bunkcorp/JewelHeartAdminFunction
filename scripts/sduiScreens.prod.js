@@ -19,6 +19,7 @@ import {
   buildJewelheartVolunteerAccountScreen,
   buildJewelheartVolunteerPreferencesScreen,
   buildJewelheartVolunteerAdminScreen,
+  buildJewelheartVolunteerAdminPrivilegesScreen,
   buildJewelheartVolunteerManageScreen,
   buildJewelheartVolunteerManageCheckinsScreen,
   buildJewelheartVolunteerTestingScreen,
@@ -288,6 +289,13 @@ export async function buildSduiResponse(
     case 'jewelheart.volunteer.admin':
       return wrap(
         await buildJewelheartVolunteerAdminScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.adminPrivileges':
+      return wrap(
+        await buildJewelheartVolunteerAdminPrivilegesScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),

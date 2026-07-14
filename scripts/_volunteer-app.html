@@ -546,7 +546,7 @@ __JH_ENV_BADGE_HTML__
       const onHome = sduiVisible && volunteerSduiScreenId === 'jewelheart.home';
 
       if (stampEl) {
-        if (onAuth && sduiVisible) {
+        if (sduiVisible) {
           stampEl.hidden = false;
           stampEl.textContent = formatBuildStampLine(JH_LOGIN_WEB_BUILD, volunteerApiBuildStamp);
         } else {
@@ -570,11 +570,8 @@ __JH_ENV_BADGE_HTML__
       try {
         const res = await fetch(`${API}/volunteer/time-context`);
         const data = await res.json().catch(() => ({}));
-        if (res.ok && data.retreatBannerLine) {
+        if (res.ok && (data.retreatBannerLine || data.apiBuildStamp)) {
           applyVolunteerTimeContext(data);
-        } else if (res.ok && data.apiBuildStamp) {
-          volunteerApiBuildStamp = data.apiBuildStamp;
-          refreshVolunteerScreenFooter();
         }
       } catch {
         /* offline / pre-deploy */

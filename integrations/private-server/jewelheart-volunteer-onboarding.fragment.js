@@ -19,6 +19,7 @@ import {
   rosterIdentityMatches,
 } from './jewelheart-auth-identity.js';
 import { buildVolunteerTimeContext, VOLUNTEER_API_BUILD_STAMP } from './jewelheart-volunteer-time-context.js';
+import { syncVolunteerAclFromRosterFlags } from './jewelheart-volunteer-admin-tools.js';
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS_PER_HOUR = 8;
@@ -449,6 +450,19 @@ export async function bootstrapVolunteerSession(query, uid, authToken, keycloakP
 
   await ensureRetreatVolunteerLink(query, retreatId, volunteer.id);
 
+  const { rows: rosterRows } = await query(
+    `SELECT firebase_uid AS "firebaseUid",
+            roster_admin AS "rosterAdmin",
+            roster_manage AS "rosterManage"
+     FROM jewelheart_volunteers
+     WHERE id = $1
+     LIMIT 1`,
+    [volunteer.id],
+  );
+  if (rosterRows[0]?.firebaseUid) {
+    await syncVolunteerAclFromRosterFlags(query, rosterRows[0]);
+  }
+
   const draft = buildOnboardingDraft(volunteer, auth, authToken, keycloakPayload);
   const timeContext = await buildVolunteerTimeContext(query);
   return {
@@ -463,6 +477,7 @@ export async function bootstrapVolunteerSession(query, uid, authToken, keycloakP
       liveTodayIso: timeContext.liveTodayIso,
       retreatBannerLine: timeContext.retreatBannerLine,
       testingNote: timeContext.testingNote,
+      apiBuildStamp: VOLUNTEER_API_BUILD_STAMP,
       apiBuildStamp: VOLUNTEER_API_BUILD_STAMP,
       retreat: {
         startDate: timeContext.retreat?.startDate || null,

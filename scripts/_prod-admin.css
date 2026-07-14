@@ -1470,8 +1470,14 @@ body.jh-volunteer-clean main {
 }
 
 body.jh-volunteer-clean.jh-volunteer-auth .jh-volunteer-shell > main {
-  padding-bottom: 0.5rem;
-  overflow-y: auto;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+body.jh-volunteer-clean.jh-volunteer-auth #volunteer-sdui-section:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 body.jh-volunteer-clean.jh-volunteer-auth .jh-vol-screen-footer {

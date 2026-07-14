@@ -26,6 +26,7 @@ import {
   loadVolunteerTestingSettings,
   VOLUNTEER_API_BUILD_STAMP,
 } from './jewelheart-volunteer-time-context.js';
+import { countRetreatAssignments } from './jewelheart-volunteer-admin-tools.js';
 
 /** karmadots.org/testerslogin sends uiChannel=testers for roster access checks. */
 function volunteerHomeUiChannel(params = {}) {
@@ -1759,6 +1760,7 @@ const VOLUNTEER_SCREEN_BACK_LABELS = {
   'jewelheart.volunteer.userManage': 'User management',
   'jewelheart.volunteer.testing': 'Testing',
   'jewelheart.volunteer.admin': 'Admin',
+  'jewelheart.volunteer.adminPrivileges': 'Privileges',
 };
 
 function volunteerHomeScreenBackLabel(screenId) {
@@ -2265,17 +2267,18 @@ function volunteerHomeCenteredGoldAction(label, target, payload = {}, options = 
   });
 }
 
-function volunteerHomeAdminWorkspaceButton() {
+function volunteerHomeAdminWorkspaceButton(ctx) {
+  const basePayload = volunteerHomeWithReturnTo(
+    ctx?.retreatId ? { retreatId: ctx.retreatId } : {},
+    'jewelheart.home',
+  );
   return volunteerHomeCenteredPill(
     'Admin',
-    'jewelheart.home',
-    {},
+    'jewelheart.volunteer.admin',
+    basePayload,
     volunteerHomeSummaryBlue,
     '#FFFFFF',
-    {
-      hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
-      action: { type: 'adminWorkspace' },
-    },
+    { hPad: VOLUNTEER_HOME_BUTTON_H_PAD },
   );
 }
 
@@ -2810,16 +2813,10 @@ function volunteerHomeManageAdminRow(ctx, access) {
   }
   if (access.isAdmin) {
     buttons.push(
-      volunteerHomePillButton(
+      volunteerHomeSmallBlueButton(
         'Admin',
-        'jewelheart.home',
-        {},
-        volunteerHomeSummaryBlue,
-        '#FFFFFF',
-        {
-          hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
-          action: { type: 'adminWorkspace' },
-        },
+        'jewelheart.volunteer.admin',
+        basePayload,
       ),
     );
   }
@@ -3028,6 +3025,7 @@ const VOLUNTEER_SCREEN_TITLES = {
   'jewelheart.volunteer.userManage': 'User management',
   'jewelheart.volunteer.testing': 'Testing',
   'jewelheart.volunteer.admin': 'Admin',
+  'jewelheart.volunteer.adminPrivileges': 'Privileges',
 };
 
 function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], extraMeta = {}) {
@@ -5508,6 +5506,21 @@ export async function buildJewelheartVolunteerManageScreen(
       '#FFFFFF',
     ),
     volunteerHomeGap(),
+    ...(isAdmin
+      ? [
+          volunteerHomeCenteredPill(
+            'Roster privileges',
+            'jewelheart.volunteer.adminPrivileges',
+            volunteerHomeWithReturnTo(
+              navParams.retreatId ? { retreatId: navParams.retreatId } : {},
+              'jewelheart.volunteer.manage',
+            ),
+            volunteerHomeSummaryBlue,
+            '#FFFFFF',
+          ),
+          volunteerHomeGap(),
+        ]
+      : []),
     volunteerHomeCenteredPill(
       'Testing (today pin)',
       'jewelheart.volunteer.testing',
@@ -5729,6 +5742,184 @@ export async function buildJewelheartVolunteerTestingScreen(
   });
 }
 
+async function volunteerLoadAdminPrivilegeTarget(retreatId, volunteerId) {
+  if (!retreatId || !volunteerId) return null;
+  try {
+    const { rows } = await query(
+      `SELECT v.id, v.display_name AS "displayName", v.email, v.phone,
+              v.firebase_uid AS "firebaseUid",
+              v.roster_admin AS "rosterAdmin",
+              v.roster_manage AS "rosterManage"
+       FROM jewelheart_volunteers v
+       JOIN jewelheart_retreat_volunteers rv ON rv.volunteer_id = v.id
+       WHERE rv.retreat_id = $1 AND v.id = $2
+       LIMIT 1`,
+      [retreatId, volunteerId],
+    );
+    return rows[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Admin → Privileges — grant/revoke roster Admin and Manage flags (syncs ACL when linked).
+ */
+export async function buildJewelheartVolunteerAdminPrivilegesScreen(
+  firebaseUid,
+  authToken = undefined,
+  params = {},
+) {
+  const ctx = await volunteerHomeGatherCtx(firebaseUid, authToken, params);
+  const isAdmin = await volunteerHomeIsAdmin(firebaseUid);
+  const retreatId = ctx.retreatId || params.retreatId || '';
+  const navParams = {
+    retreatId,
+    returnTo: params.returnTo || 'jewelheart.volunteer.admin',
+    footerNavSimple: true,
+  };
+  const adminTarget = 'jewelheart.volunteer.adminPrivileges';
+  const corePayload = volunteerHomeWithReturnTo(
+    retreatId ? { retreatId } : {},
+    'jewelheart.volunteer.admin',
+  );
+
+  if (!isAdmin) {
+    return volunteerHomeSimplePlaceholderScreen(
+      ctx,
+      'Privileges',
+      'Admin access required.',
+      params,
+      adminTarget,
+    );
+  }
+
+  const cleared = String(params.adminPrivClear || '') === '1';
+  const confirmedId = cleared ? '' : String(params.adminPrivVolunteerId || '').trim();
+  const statusNote = cleared ? '' : String(params.adminPrivStatusNote || '').trim();
+  const targetVolunteer = confirmedId && retreatId
+    ? await volunteerLoadAdminPrivilegeTarget(retreatId, confirmedId)
+    : null;
+  const headerName = targetVolunteer?.displayName || '(tbd)';
+  const headerLine = volunteerHomeFitLine(
+    `Privileges - ${headerName}`,
+    VOLUNTEER_HOME_MAX_BAR_CHARS,
+    ctx.layoutWarnings,
+    'admin_priv_header',
+  );
+
+  const children = [
+    ...volunteerHomeBlueHeaderChildren(ctx, headerLine, undefined, { alreadyFitted: true }),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      'Grant or revoke Admin and Manage for roster members. Flags sync to live access when they are signed in.',
+      ctx.layoutWarnings,
+      'admin_priv_intro',
+    ),
+    volunteerHomeGap(),
+  ];
+
+  if (!confirmedId || !targetVolunteer) {
+    const roster = retreatId ? await volunteerListRetreatRoster(retreatId) : [];
+    children.push(
+      volunteerHomePersonPickerComponent('adminPrivPicker', roster, {
+        searchScope: 'retreat+global',
+        retreatId,
+        selectedHint: 'Selected — tap Confirm',
+      }),
+      volunteerHomeGap(),
+      volunteerHomeCenteredPill(
+        'Confirm',
+        adminTarget,
+        {
+          ...corePayload,
+          adminPrivConfirm: '1',
+          pickVolunteerFrom: 'adminPrivPicker',
+        },
+        volunteerHomeMaroon,
+        '#FFFFFF',
+      ),
+      volunteerHomeGap(),
+    );
+  } else {
+    const actionBase = {
+      volunteerId: confirmedId,
+      displayName: targetVolunteer.displayName,
+      rosterAdmin: targetVolunteer.rosterAdmin === true,
+      rosterManage: targetVolunteer.rosterManage === true,
+    };
+    if (statusNote) {
+      for (const [i, line] of statusNote.split('\n').entries()) {
+        if (!line.trim()) continue;
+        children.push(volunteerHomeBodyText(line, ctx.layoutWarnings, `admin_priv_status_${i}`));
+      }
+      children.push(volunteerHomeGap());
+    }
+    const adminOn = targetVolunteer.rosterAdmin === true;
+    const manageOn = targetVolunteer.rosterManage === true;
+    children.push(
+      volunteerHomeCenteredInlineRow([
+        volunteerHomePillButton(
+          adminOn ? 'Revoke Admin' : 'Grant Admin',
+          adminTarget,
+          {},
+          adminOn ? volunteerHomeMaroon : volunteerHomeSummaryBlue,
+          '#FFFFFF',
+          {
+            action: {
+              type: 'volunteerAdminTools',
+              payload: { op: 'setPrivileges', admin: !adminOn, ...actionBase },
+            },
+            hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+          },
+        ),
+        volunteerHomePillButton(
+          manageOn ? 'Revoke Manage' : 'Grant Manage',
+          adminTarget,
+          {},
+          manageOn ? volunteerHomeMaroon : volunteerHomeSummaryBlue,
+          '#FFFFFF',
+          {
+            action: {
+              type: 'volunteerAdminTools',
+              payload: { op: 'setPrivileges', manage: !manageOn, ...actionBase },
+            },
+            hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+          },
+        ),
+      ], { spacing: 8, noWrap: true }),
+      volunteerHomeGap(),
+      volunteerHomeCenteredPill(
+        'Refresh status',
+        adminTarget,
+        { ...corePayload, adminPrivVolunteerId: confirmedId },
+        volunteerHomeSummaryBlue,
+        '#FFFFFF',
+        {
+          action: {
+            type: 'volunteerAdminTools',
+            payload: { op: 'loadPrivileges', volunteerId: confirmedId },
+          },
+        },
+      ),
+      volunteerHomeGap(),
+      volunteerHomeCenteredPill(
+        'Choose someone else',
+        adminTarget,
+        { ...corePayload, adminPrivClear: '1' },
+        volunteerHomeSummaryBlue,
+        '#FFFFFF',
+      ),
+      volunteerHomeGap(),
+    );
+  }
+
+  children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
+  return volunteerHomeScreenEnvelope(adminTarget, 'JewelHeart', children, ctx.layoutWarnings, {
+    navParams,
+  });
+}
+
 /**
  * Admin home (gated on jewelheart_admins). Generate Poster is a dark-maroon
  * button; the web client turns posterOp=generate into an .xlsx download via the
@@ -5756,9 +5947,32 @@ export async function buildJewelheartVolunteerAdminScreen(
     );
   }
 
+  const retreatId = navParams.retreatId || ctx.retreatId || '';
+  const adminTarget = 'jewelheart.volunteer.admin';
+  const corePayload = volunteerHomeWithReturnTo(
+    retreatId ? { retreatId } : {},
+    'jewelheart.home',
+  );
+  const clearStep = String(params.adminClearStep || '').trim();
+  const assignmentCounts = retreatId ? await countRetreatAssignments(query, retreatId) : { assignments: 0, checkins: 0 };
+
   const children = [
     ...volunteerHomeBlueHeaderChildren(ctx, 'Admin'),
     ...volunteerHomeGoldPageTitleBar('Admin', ctx.layoutWarnings),
+    volunteerHomeGap(),
+    volunteerHomeCenteredPill(
+      'Roster privileges',
+      'jewelheart.volunteer.adminPrivileges',
+      corePayload,
+      volunteerHomeSummaryBlue,
+      '#FFFFFF',
+    ),
+    volunteerHomeGap(),
+    volunteerHomeBodyText(
+      'Grant or revoke Admin and Manage for anyone on the roster.',
+      ctx.layoutWarnings,
+      'admin_priv_hint',
+    ),
     volunteerHomeGap(),
     volunteerHomeCenteredPill(
       'Generate Poster',
@@ -5769,7 +5983,7 @@ export async function buildJewelheartVolunteerAdminScreen(
       {
         action: {
           type: 'download',
-          target: `jewelheart/retreats/${navParams.retreatId || ctx.retreatId}/reports/poster-master`,
+          target: `jewelheart/retreats/${retreatId}/reports/poster-master`,
           payload: {},
         },
       },
@@ -5781,7 +5995,83 @@ export async function buildJewelheartVolunteerAdminScreen(
       'admin_poster_hint',
     ),
     volunteerHomeGap(),
+    volunteerHomeBodyText(
+      `Assignments on this retreat: ${assignmentCounts.assignments} (${assignmentCounts.checkins} check-in row(s)).`,
+      ctx.layoutWarnings,
+      'admin_assign_count',
+    ),
+    volunteerHomeGap(),
   ];
+
+  if (clearStep === '2') {
+    children.push(
+      volunteerHomeEmphasisText(
+        'Final confirmation — clear ALL assignments?',
+        ctx.layoutWarnings,
+        'admin_clear_step2_title',
+      ),
+      volunteerHomeBodyText(
+        `This permanently deletes ${assignmentCounts.assignments} assignment(s) and ${assignmentCounts.checkins} check-in record(s). Testers start fresh.`,
+        ctx.layoutWarnings,
+        'admin_clear_step2_note',
+      ),
+      volunteerHomeGap(),
+      volunteerHomeCenteredInlineRow([
+        volunteerHomePillButton('Confirm CLEAR', adminTarget, {}, volunteerHomeMaroon, '#FFFFFF', {
+          action: {
+            type: 'volunteerAdminTools',
+            payload: { op: 'clearAssignments', confirmed: true },
+          },
+          hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+        }),
+        volunteerHomePillButton('Cancel', adminTarget, { adminClearStep: '' }, volunteerHomeSummaryBlue, '#FFFFFF', {
+          hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+        }),
+      ], { spacing: 8, noWrap: true }),
+      volunteerHomeGap(),
+    );
+  } else if (clearStep === '1') {
+    children.push(
+      volunteerHomeEmphasisText(
+        `Clear ${assignmentCounts.assignments} assignment(s)?`,
+        ctx.layoutWarnings,
+        'admin_clear_step1_title',
+      ),
+      volunteerHomeBodyText(
+        'Volunteers keep their accounts; only shift sign-ups and check-ins are removed.',
+        ctx.layoutWarnings,
+        'admin_clear_step1_note',
+      ),
+      volunteerHomeGap(),
+      volunteerHomeCenteredInlineRow([
+        volunteerHomePillButton('Continue', adminTarget, { adminClearStep: '2' }, volunteerHomeMaroon, '#FFFFFF', {
+          hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+        }),
+        volunteerHomePillButton('Cancel', adminTarget, { adminClearStep: '' }, volunteerHomeSummaryBlue, '#FFFFFF', {
+          hPad: VOLUNTEER_HOME_BUTTON_H_PAD,
+        }),
+      ], { spacing: 8, noWrap: true }),
+      volunteerHomeGap(),
+    );
+  } else {
+    children.push(
+      volunteerHomeCenteredPill(
+        'Clear all assignments',
+        adminTarget,
+        { ...corePayload, adminClearStep: '1' },
+        volunteerHomeMaroon,
+        '#FFFFFF',
+      ),
+      volunteerHomeGap(),
+      volunteerHomeBodyText(
+        'Use before a fresh test run. Does not remove volunteers or roster data. Take a backup first on production.',
+        ctx.layoutWarnings,
+        'admin_clear_hint',
+      ),
+      volunteerHomeGap(),
+    );
+  }
+
   children.push(...volunteerHomeLayoutWarningComponents(ctx.layoutWarnings));
   return volunteerHomeScreenEnvelope('jewelheart.volunteer.admin', 'JewelHeart', children, ctx.layoutWarnings, {
     navParams,
