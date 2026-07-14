@@ -290,7 +290,6 @@
   </main>
 
   <div class="jh-dev-tools" id="jh-dev-tools" aria-label="Dev testing tools">
-    <button type="button" id="btn-dev-test-new-user" class="secondary small">Test as new user</button>
     <button type="button" id="btn-dev-restore-admin" class="secondary small" hidden>Restore admin (Google)</button>
     <p class="jh-dev-tools-hint" id="jh-dev-tools-hint" hidden></p>
   </div>
@@ -350,7 +349,6 @@
     const authEmailInput = document.getElementById('auth-email');
     const btnEmailLink = document.getElementById('btn-email-link');
     const emailSentMsg = document.getElementById('email-sent-msg');
-    const btnDevTestNewUser = document.getElementById('btn-dev-test-new-user');
     const btnDevRestoreAdmin = document.getElementById('btn-dev-restore-admin');
     const devToolsHint = document.getElementById('jh-dev-tools-hint');
 
@@ -688,6 +686,7 @@
     }
 
     function refreshDevToolsUi() {
+      const devToolsEl = document.getElementById('jh-dev-tools');
       const hint = devAdminHintEmail();
       const signedOut = Boolean(sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) || !auth.currentUser;
       if (btnDevRestoreAdmin) {
@@ -702,6 +701,7 @@
           devToolsHint.textContent = '';
         }
       }
+      if (devToolsEl) devToolsEl.hidden = !(signedOut && hint);
     }
 
     function clearVolunteerClientState() {
@@ -712,25 +712,6 @@
       clearEmailSentUi();
       if (authEmailInput) authEmailInput.value = '';
       refreshEmailButtonState();
-    }
-
-    async function devTestAsNewUser() {
-      rememberDevAdminEmail();
-      clearVolunteerClientState();
-      try {
-        await signOut(auth);
-      } catch {
-        /* ignore */
-      }
-      markVolunteerSignedOut();
-      const hint = devAdminHintEmail();
-      setAuthMsg(
-        hint
-          ? `Signed out for login/onboarding testing. Sign in with ${hint} (Google or email) to restore Manage and Admin. Use a different address to test a brand-new volunteer.`
-          : 'Signed out for testing. Sign in with your usual admin Google account to restore Manage and Admin.',
-        false,
-      );
-      refreshDevToolsUi();
     }
 
     function markVolunteerSignedOut() {
@@ -812,12 +793,6 @@
     document.getElementById('btn-google').addEventListener('click', () => {
       startOAuthSignIn(new GoogleAuthProvider());
     });
-
-    if (btnDevTestNewUser) {
-      btnDevTestNewUser.addEventListener('click', () => {
-        devTestAsNewUser().catch((e) => console.error('dev test new user', e));
-      });
-    }
 
     if (btnDevRestoreAdmin) {
       btnDevRestoreAdmin.addEventListener('click', () => {

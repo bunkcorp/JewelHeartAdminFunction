@@ -6,26 +6,162 @@ export const JH_LOGIN_WEB_BUILD = 'pending-deploy';
 
 const DEPLOY_STAMP_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** Human-readable deploy stamp (America/New_York). */
+/** Human-readable deploy stamp (America/New_York). Time always shown when present. */
 export function formatDeployStamp(stamp) {
   const s = String(stamp || '').trim();
   if (!s || s === '…') return s || '…';
   if (s === 'pending-deploy') return s;
-  let m = /^(\d{4})-(\d{2})-(\d{2})-(\d{2}):(\d{2})$/.exec(s);
+  let m = /^(\d{4})-(\d{2})-(\d{2})-(\d{1,2}):(\d{2})$/.exec(s);
   if (m) {
     const [, y, mo, d, h, mi] = m;
-    return `${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y} ${h}:${mi} ET`;
+    const hh = String(h).padStart(2, '0');
+    return `${hh}:${mi} ET · ${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y}`;
   }
   m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(s);
   if (m) {
     const [, y, mo, d, h, mi] = m;
-    return `${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y} ${h}:${mi} ET`;
+    return `${h}:${mi} ET · ${DEPLOY_STAMP_MONTHS[+mo - 1]} ${+d}, ${y}`;
   }
   return s;
 }
 
 export function formatBuildStampLine(webStamp, apiStamp) {
-  return `web: ${formatDeployStamp(webStamp)} · api: ${formatDeployStamp(apiStamp || '…')}`;
+  const web = formatDeployStamp(webStamp);
+  const api = formatDeployStamp(apiStamp || '…');
+  return `web  ${web}\napi  ${api}`;
+}
+
+/** Dev-only: ?debug=layout on volunteer app URL. */
+function volunteerLayoutDebugEnabled() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('debug') || '';
+    return raw.split(',').map((s) => s.trim()).includes('layout');
+  } catch {
+    return false;
+  }
+}
+
+let volunteerLayoutDebugPanel = null;
+const volunteerLayoutDebugSnapshot = {
+  screenId: '',
+  apiStamp: '',
+  at: '',
+};
+
+function volunteerLayoutDebugRefresh() {
+  ensureVolunteerIosHtmlClasses();
+  if (!volunteerLayoutDebugPanel) return;
+  const pre = volunteerLayoutDebugPanel.querySelector('.jh-vol-layout-debug-body');
+  if (!pre) return;
+  pre.textContent = volunteerLayoutDebugFormat();
+}
+
+function volunteerLayoutDebugFormat() {
+  const snap = volunteerLayoutDebugSnapshot;
+  const html = document.documentElement;
+  const shell = document.querySelector('.jh-volunteer-shell');
+  const root = document.querySelector('#volunteer-sdui-section .jh-sdui-sticky-footer');
+  const middle = root?.querySelector(
+    ':scope > .jh-sdui-home-middle, :scope > .jh-sdui-shift-assign-scroll, :scope > .jh-sdui-search-by-day-scroll, :scope > .jh-sdui-scroll',
+  );
+  const scrollPane = middle?.querySelector(
+    '.jh-sdui-today-shift-scroll, .jh-sdui-day-shift-list, .jh-sdui-job-list-scroll, .jh-sdui-manage-checkins-scroll',
+  ) || null;
+  const scrollTarget = scrollPane || middle;
+  const footer = root?.querySelector(':scope > .jh-sdui-footer');
+  const vv = window.visualViewport;
+  const shellRect = shell?.getBoundingClientRect();
+  const lines = [
+    `screen: ${snap.screenId || '—'}`,
+    `api: ${snap.apiStamp || '—'} · web: ${JH_LOGIN_WEB_BUILD}`,
+    `sync: ${snap.at || '—'}`,
+    '',
+    `html: ${Array.from(html.classList).filter((c) => c.startsWith('jh-html')).join(' ') || html.className || '—'}`,
+    `iosSafari: ${detectVolunteerIosSafari() ? 'yes' : 'no'} · touchPts: ${navigator.maxTouchPoints ?? '—'} · pad: ${document.documentElement.classList.contains('jh-html-ios-safari-pad') ? 'yes' : 'no'}`,
+    `root: ${root ? [...root.classList].filter((c) => c.includes('layout') || c.includes('sticky') || c.includes('search')).join(' ') : '—'}`,
+    `scroll: ${scrollTarget?.className || '—'}`,
+    `capped: ${scrollTarget?.classList.contains('jh-sdui-vol-scroll-capped') ? 'yes' : 'no'}`,
+    `max-h inline: ${scrollTarget?.style?.maxHeight || '—'}`,
+    '',
+    `paneBudget: ${snap.paneBudget ?? '—'}`,
+    `list scrollH: ${snap.listScrollH ?? scrollTarget?.scrollHeight ?? '—'}`,
+    `list contentH: ${snap.listContentH ?? '—'} (offset:${scrollTarget?.offsetHeight ?? '—'} client:${scrollTarget?.clientHeight ?? '—'})`,
+    `stackedH: ${snap.stackedH ?? '—'} · rootBudget: ${snap.rootBudget ?? '—'}`,
+    `needsCap: ${snap.needsCap ?? '—'} (list:${snap.listOverflows ?? '—'} root:${snap.overflowsRoot ?? '—'} geom:${snap.footerOverShell ?? '—'})`,
+    `capPx: ${snap.capPx ?? '—'}`,
+    '',
+    `vv offTop: ${vv ? Math.round(vv.offsetTop) : '—'} h: ${vv ? Math.round(vv.height) : '—'}`,
+    `shell top: ${shell?.style?.top || '—'} h: ${shell?.style?.height || '—'}`,
+    `shell rect: ${shellRect ? `${Math.round(shellRect.top)}→${Math.round(shellRect.bottom)} (${Math.round(shellRect.height)})` : '—'}`,
+    `shell scrollTop: ${shell?.scrollTop ?? '—'}`,
+    `doc scroll: ${window.scrollY ?? 0}`,
+    `scroll pane top: ${scrollPane ? Math.round(scrollPane.getBoundingClientRect().top) : '—'}`,
+    `footer top: ${footer ? Math.round(footer.getBoundingClientRect().top) : '—'}`,
+    `footer bottom: ${footer ? Math.round(footer.getBoundingClientRect().bottom) : '—'} / shell ${shellRect ? Math.round(shellRect.bottom) : '—'}`,
+  ];
+  return lines.join('\n');
+}
+
+function initVolunteerLayoutDebug() {
+  if (!volunteerLayoutDebugEnabled() || volunteerLayoutDebugPanel) return;
+  ensureVolunteerIosHtmlClasses();
+  document.body.classList.add('jh-vol-layout-debug-on');
+  const panel = document.createElement('div');
+  panel.className = 'jh-vol-layout-debug';
+  panel.innerHTML =
+    '<button type="button" class="jh-vol-layout-debug-toggle" aria-expanded="true">Layout debug ▾</button>'
+    + '<pre class="jh-vol-layout-debug-body" aria-live="polite"></pre>';
+  document.body.appendChild(panel);
+  volunteerLayoutDebugPanel = panel;
+  const toggle = panel.querySelector('.jh-vol-layout-debug-toggle');
+  toggle?.addEventListener('click', () => {
+    const collapsed = panel.classList.toggle('jh-vol-layout-debug-collapsed');
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    toggle.textContent = collapsed ? 'Layout debug ▸' : 'Layout debug ▾';
+  });
+  window.__jhVolunteerLayoutDebugRefresh = volunteerLayoutDebugRefresh;
+  volunteerLayoutDebugRefresh();
+  setInterval(volunteerLayoutDebugRefresh, 2000);
+  window.addEventListener('resize', volunteerLayoutDebugRefresh, { passive: true });
+  window.visualViewport?.addEventListener('resize', volunteerLayoutDebugRefresh, { passive: true });
+  window.visualViewport?.addEventListener('scroll', volunteerLayoutDebugRefresh, { passive: true });
+}
+
+function volunteerLayoutDebugReport(extra) {
+  if (!volunteerLayoutDebugEnabled()) return;
+  Object.assign(volunteerLayoutDebugSnapshot, extra, {
+    at: new Date().toLocaleTimeString('en-US', { hour12: false }),
+  });
+  volunteerLayoutDebugRefresh();
+}
+
+/** Touch iPad/iPhone Safari — also catches iPad desktop UA (MacIntel + touch). */
+function detectVolunteerIosSafari() {
+  const ua = navigator.userAgent || '';
+  const touchMac = navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || '');
+  const ios = /iPad|iPhone|iPod/.test(ua) || touchMac;
+  const iosChrome = /CriOS/.test(ua);
+  return ios && !iosChrome && !/FxiOS|EdgiOS/.test(ua);
+}
+
+function ensureVolunteerIosHtmlClasses() {
+  if (!detectVolunteerIosSafari()) return;
+  const ua = navigator.userAgent || '';
+  const touchMac = navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || '');
+  const isPad = /iPad/.test(ua) || touchMac
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  document.documentElement.classList.add('jh-html-ios-safari');
+  document.documentElement.classList.toggle('jh-html-ios-safari-pad', isPad);
+  document.documentElement.classList.toggle('jh-html-ios-safari-phone', !isPad);
+  document.documentElement.classList.toggle(
+    'jh-html-ios-safari-landscape',
+    window.innerWidth > window.innerHeight,
+  );
+  if (typeof window.jhSyncSafariVvTopDebounced === 'function') {
+    window.jhSyncSafariVvTopDebounced();
+  } else if (typeof window.jhSyncSafariVvTop === 'function') {
+    window.jhSyncSafariVvTop();
+  }
 }
 
 const PERSON_PICKER_MAX = 12;
@@ -140,6 +276,8 @@ const VOLUNTEER_HOME_SCREENS = new Set([
 export function createVolunteerSduiController(options) {
   const { apiBase, getIdToken, rootEl, titleEl, msgEl, backBtn, buildStampEl, onAdminWorkspace, onScreenChange, uiChannel } = options;
 
+  initVolunteerLayoutDebug();
+  ensureVolunteerIosHtmlClasses();
   let screenId = 'jewelheart.home';
   let retreatId = null;
   let params = {};
@@ -148,6 +286,7 @@ export function createVolunteerSduiController(options) {
   let pendingScrollTop = null;
   let suppressBrowserPop = false;
   let loadAbort = null;
+  let checkinOpChain = Promise.resolve();
   let rootActionsBound = false;
   const actionStore = new Map();
   let actionSeq = 0;
@@ -994,6 +1133,15 @@ export function createVolunteerSduiController(options) {
           if (scrollEl) pendingScrollTop = scrollEl.scrollTop;
         }
       }
+      const checkinWriteOp = navAction.payload?.checkinOp
+        ? String(navAction.payload.checkinOp)
+        : '';
+      const isCheckinWrite =
+        navAction.target === 'jewelheart.volunteer.checkin' &&
+        ['start', 'finish', 'undo', 'done'].includes(checkinWriteOp);
+      if (isCheckinWrite && rootEl.classList.contains('jh-sdui-checkin-busy')) {
+        return Promise.resolve();
+      }
       applyNavigate(navAction);
       return load();
     }
@@ -1638,19 +1786,361 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  function volunteerElementVisibleHeight(el) {
+    if (!el) return 0;
+    const h = el.getBoundingClientRect?.().height;
+    if (h && h > 0) return Math.ceil(h);
+    return el.offsetHeight || el.clientHeight || 0;
+  }
+
+  /** Natural stacked height for compact-vs-fill decision (not flex-expanded). */
+  function volunteerStickyNaturalHeight(header, middle, footer) {
+    return (header?.offsetHeight || 0) + (middle?.scrollHeight || 0) + (footer?.offsetHeight || 0);
+  }
+
+  /** Max scroll-pane height: pane top → shell bottom minus footer + stamp. */
+  function volunteerStickyMiddleBudget(header, middle, scrollPane, footer, main) {
+    if (!middle) return 0;
+    const shell = main?.closest('.jh-volunteer-shell');
+    const shellRect = shell?.getBoundingClientRect();
+    if (!shellRect) return 0;
+    const stampEl = main?.querySelector('.jh-vol-screen-footer');
+    const stampH = stampEl?.offsetHeight || 0;
+    const footerH = footer?.offsetHeight || 0;
+    const pad = 4;
+    const ceilingTop = shellRect.bottom - stampH - footerH - pad;
+    let floorTop;
+    if (scrollPane) {
+      const middleTop = middle.getBoundingClientRect().top;
+      floorTop = middleTop + scrollPane.offsetTop;
+    } else if (header) {
+      floorTop = header.getBoundingClientRect().bottom;
+    } else {
+      floorTop = middle.getBoundingClientRect().top;
+    }
+    return Math.max(0, Math.floor(ceilingTop - floorTop));
+  }
+
+  /** Safari flex often reports scrollHeight 0 on overflow:visible panes — measure content. */
+  function volunteerScrollContentHeight(el) {
+    if (!el) return 0;
+    const rawScroll = el.scrollHeight || 0;
+    if (rawScroll > 1) return rawScroll;
+    let childSum = 0;
+    for (const child of el.children) {
+      const h = child.offsetHeight || Math.ceil(child.getBoundingClientRect().height) || 0;
+      childSum += h;
+    }
+    if (childSum > 0) {
+      const cs = getComputedStyle(el);
+      const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
+        + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+      return Math.ceil(childSum + pad);
+    }
+    return Math.max(
+      Math.ceil(el.getBoundingClientRect().height) || 0,
+      el.offsetHeight || 0,
+      rawScroll,
+    );
+  }
+
+  /** Stacked T + chrome + list + B using scroll metrics (Safari-safe vs middle.scrollHeight). */
+  function volunteerStickyStackHeight(header, middle, scrollPane, footer) {
+    const headerH = header?.offsetHeight || 0;
+    const footerH = footer?.offsetHeight || 0;
+    if (scrollPane && middle) {
+      const listH = volunteerScrollContentHeight(scrollPane);
+      const fromMiddle = Math.max(0, (middle.scrollHeight || 0) - scrollPane.offsetTop);
+      return headerH + scrollPane.offsetTop + Math.max(listH, fromMiddle) + footerH;
+    }
+    return headerH + volunteerScrollContentHeight(middle) + footerH;
+  }
+
+  /** Vertical budget: shell bottom − root top (fallback when footer not laid out yet). */
+  function volunteerRootBudget(rootEl, main) {
+    if (!rootEl) return 0;
+    const shell = rootEl.closest('.jh-volunteer-shell');
+    if (!shell) return 0;
+    const stampH = main?.querySelector('.jh-vol-screen-footer')?.offsetHeight || 0;
+    const msgEl = main?.querySelector('#sdui-msg');
+    const msgH = msgEl && !msgEl.hidden && msgEl.textContent?.trim() ? msgEl.offsetHeight : 0;
+    const pad = 4;
+    const shellRect = shell.getBoundingClientRect();
+    const rootTop = rootEl.getBoundingClientRect().top;
+    return Math.max(0, Math.floor(shellRect.bottom - rootTop - stampH - msgH - pad));
+  }
+
+  function volunteerSectionBudget(section, main) {
+    const root = section?.querySelector('.jh-sdui-root');
+    if (root) return volunteerRootBudget(root, main);
+    if (!section) return 0;
+    const shellFooter = main?.querySelector('.jh-vol-screen-footer');
+    const stampH = shellFooter?.offsetHeight || 0;
+    const msgEl = section.querySelector('#sdui-msg');
+    const msgH = msgEl && !msgEl.hidden && msgEl.textContent?.trim() ? msgEl.offsetHeight : 0;
+    const pad = 4;
+    if (main?.clientHeight > 0) {
+      const mainRect = main.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      return Math.max(0, Math.floor(mainRect.bottom - sectionRect.top - stampH - msgH - pad));
+    }
+    const vv = window.visualViewport;
+    const top = section.getBoundingClientRect().top;
+    const vh = vv?.height || window.innerHeight;
+    return Math.max(0, Math.floor(vh - top - stampH - msgH - pad));
+  }
+
+  function isIosSafariBrowser() {
+    return detectVolunteerIosSafari();
+  }
+
+  /** Clear inline viewport sizing; sync Safari tab-bar inset (no layout re-entry). */
+  function syncVolunteerShellViewport() {
+    const shell = document.querySelector('.jh-volunteer-shell');
+    if (!shell || !document.body.classList.contains('jh-volunteer-clean')) return;
+    ensureVolunteerIosHtmlClasses();
+    shell.style.maxHeight = '';
+    shell.style.height = '';
+    shell.style.minHeight = '';
+    document.body.style.height = '';
+    document.body.style.maxHeight = '';
+    document.body.style.minHeight = '';
+    if (isIosSafariBrowser() && typeof window.jhSyncSafariVvTop === 'function') {
+      window.jhSyncSafariVvTop();
+    }
+  }
+
+  function volunteerScrollPaneFixedHeight(middle, scrollPane) {
+    if (!middle || !scrollPane) return 0;
+    const paneLayoutH = scrollPane.clientHeight || volunteerElementVisibleHeight(scrollPane);
+    return Math.max(0, middle.scrollHeight - paneLayoutH);
+  }
+
+  function volunteerStickyScrollPane(middle) {
+    if (!middle) return null;
+    return (
+      middle.querySelector('.jh-sdui-today-shift-scroll') ||
+      middle.querySelector('.jh-sdui-day-shift-list') ||
+      middle.querySelector('.jh-sdui-job-list-scroll') ||
+      middle.querySelector('.jh-sdui-manage-checkins-scroll') ||
+      middle.querySelector('.jh-sdui-instruction-scroll.jh-sdui-instruction-flex') ||
+      middle.querySelector('.jh-sdui-instruction-scroll') ||
+      null
+    );
+  }
+
+  function syncVolunteerInstructionAffordance(rootEl) {
+    for (const scrollEl of rootEl.querySelectorAll('.jh-sdui-instruction-scroll')) {
+      scrollEl.classList.remove('jh-sdui-instruction-capped');
+      scrollEl.style.maxHeight = '';
+      scrollEl.style.overflowY = '';
+    }
+    if (
+      rootEl.classList.contains('jh-sdui-shift-assign') ||
+      rootEl.querySelector('.jh-sdui-instruction-flex-wrap') ||
+      rootEl.querySelector('.jh-sdui-instruction-scroll')
+    ) {
+      syncInstructionScrollAffordance(rootEl);
+    }
+  }
+
+  function capInstructionScrolls(rootEl, maxPx) {
+    if (!maxPx || maxPx < MIN_SCROLL_PANE_PX) return;
+    for (const scrollEl of rootEl.querySelectorAll('.jh-sdui-instruction-scroll')) {
+      if (scrollEl.scrollHeight <= maxPx + 1) continue;
+      scrollEl.style.maxHeight = `${maxPx}px`;
+      scrollEl.style.overflowY = 'auto';
+      scrollEl.style.webkitOverflowScrolling = 'touch';
+      scrollEl.classList.add('jh-sdui-instruction-capped');
+    }
+  }
+
+  function clearVolunteerStickyInline(rootEl, middle, scrollPane) {
+    if (rootEl) {
+      rootEl.style.maxHeight = '';
+      rootEl.style.overflow = '';
+    }
+    if (middle) {
+      middle.style.maxHeight = '';
+      middle.style.height = '';
+      middle.style.overflowY = '';
+    }
+    if (scrollPane) {
+      scrollPane.style.removeProperty('max-height');
+      scrollPane.style.removeProperty('overflow-y');
+      scrollPane.style.height = '';
+      scrollPane.classList.remove('jh-sdui-vol-scroll-capped');
+    }
+    for (const pane of rootEl.querySelectorAll(
+      '.jh-sdui-today-shift-scroll, .jh-sdui-day-shift-list, .jh-sdui-job-list-scroll, .jh-sdui-manage-checkins-scroll, .jh-sdui-instruction-scroll',
+    )) {
+      pane.style.removeProperty('max-height');
+      pane.style.removeProperty('overflow-y');
+      pane.style.height = '';
+      pane.classList.remove('jh-sdui-vol-scroll-capped');
+    }
+    if (middle) {
+      middle.classList.remove('jh-sdui-vol-scroll-capped');
+    }
+    for (const wrap of rootEl.querySelectorAll('.jh-sdui-instruction-flex-wrap')) {
+      wrap.style.maxHeight = '';
+      wrap.style.height = '';
+    }
+  }
+
+  const MIN_SCROLL_PANE_PX = 56;
+  let volunteerStickyLayoutBound = false;
+
+  /** Content-sized card; footer snuggles below. Inner scroll only when a pane overflows. */
+  function syncVolunteerStickyLayout(rootEl) {
+    if (!rootEl?.classList.contains('jh-sdui-sticky-footer')) return;
+
+    const section = rootEl.closest('#volunteer-sdui-section');
+    const main = rootEl.closest('main');
+    const header = rootEl.querySelector(':scope > .jh-sdui-header');
+    const middle = rootEl.querySelector(
+      ':scope > .jh-sdui-home-middle, :scope > .jh-sdui-shift-assign-scroll, :scope > .jh-sdui-search-by-day-scroll, :scope > .jh-sdui-scroll',
+    );
+    const footer = rootEl.querySelector(':scope > .jh-sdui-footer');
+    if (!section || !footer || !middle) return;
+
+    const scrollPane = volunteerStickyScrollPane(middle);
+
+    const apply = () => {
+      ensureVolunteerIosHtmlClasses();
+      const scrollTarget = scrollPane || middle;
+      const rootBudget = volunteerRootBudget(rootEl, main);
+      const stackedH = volunteerStickyStackHeight(header, middle, scrollPane, footer);
+      const listContentH = volunteerScrollContentHeight(scrollTarget);
+      const shell = main?.closest('.jh-volunteer-shell');
+      const shellRect = shell?.getBoundingClientRect();
+      const stampH = main?.querySelector('.jh-vol-screen-footer')?.offsetHeight || 0;
+      const footerRect = footer.getBoundingClientRect();
+      const footerOverShell = !!(shellRect && footerRect.bottom > shellRect.bottom - stampH - 2);
+      const overflowsRoot = stackedH > rootBudget + 2 || footerOverShell;
+
+      let paneBudget = volunteerStickyMiddleBudget(header, middle, scrollPane, footer, main);
+      if (paneBudget < MIN_SCROLL_PANE_PX && overflowsRoot) {
+        const headerH = header?.offsetHeight || 0;
+        const aboveList = scrollPane ? scrollPane.offsetTop : 0;
+        paneBudget = Math.max(
+          MIN_SCROLL_PANE_PX,
+          rootBudget - (footer.offsetHeight || 0) - headerH - aboveList - 4,
+        );
+      }
+
+      const listOverflows = paneBudget >= MIN_SCROLL_PANE_PX
+        && listContentH > paneBudget + 1;
+      const needsCap = listOverflows || overflowsRoot;
+
+      if (needsCap) {
+        rootEl.classList.remove('jh-sdui-layout-compact');
+        rootEl.classList.add('jh-sdui-layout-fill');
+        rootEl.style.maxHeight = '';
+        rootEl.style.overflow = 'hidden';
+
+        const capPx = Math.max(MIN_SCROLL_PANE_PX, paneBudget);
+        scrollTarget.style.setProperty('max-height', `${capPx}px`, 'important');
+        scrollTarget.style.setProperty('overflow-y', 'auto', 'important');
+        scrollTarget.style.webkitOverflowScrolling = 'touch';
+        scrollTarget.classList.add('jh-sdui-vol-scroll-capped');
+        if (!scrollPane) {
+          capInstructionScrolls(rootEl, capPx);
+        }
+      } else {
+        clearVolunteerStickyInline(rootEl, middle, scrollPane);
+        if (middle) middle.scrollTop = 0;
+        rootEl.classList.remove('jh-sdui-layout-fill');
+        rootEl.classList.add('jh-sdui-layout-compact');
+        rootEl.style.maxHeight = '';
+        rootEl.style.overflow = '';
+      }
+
+      syncVolunteerInstructionAffordance(rootEl);
+
+      volunteerLayoutDebugReport({
+        paneBudget,
+        listScrollH: scrollTarget.scrollHeight,
+        listContentH,
+        stackedH,
+        rootBudget,
+        needsCap,
+        listOverflows,
+        overflowsRoot,
+        footerOverShell,
+        capPx: needsCap ? Math.max(MIN_SCROLL_PANE_PX, paneBudget) : null,
+      });
+    };
+
+    apply();
+    requestAnimationFrame(apply);
+    requestAnimationFrame(() => requestAnimationFrame(apply));
+
+    if (!rootEl._jhStickyLayoutRo) {
+      rootEl._jhStickyLayoutRo = new ResizeObserver(() => {
+        if (rootEl._jhStickyLayoutRaf) return;
+        rootEl._jhStickyLayoutRaf = requestAnimationFrame(() => {
+          rootEl._jhStickyLayoutRaf = 0;
+          apply();
+        });
+      });
+    }
+    const ro = rootEl._jhStickyLayoutRo;
+    for (const el of rootEl._jhStickyLayoutObserved || []) {
+      try { ro.unobserve(el); } catch (_) { /* ignore */ }
+    }
+    const observed = [section, middle, footer];
+    if (scrollPane) observed.push(scrollPane);
+    if (header) observed.push(header);
+    for (const el of observed) ro.observe(el);
+    rootEl._jhStickyLayoutObserved = observed;
+
+    if (!volunteerStickyLayoutBound) {
+      volunteerStickyLayoutBound = true;
+      window.__jhVolunteerSyncStickyLayout = syncVolunteerStickyLayout;
+      window.addEventListener('resize', () => {
+        if (typeof window.jhSyncSafariVvTopDebounced === 'function') {
+          window.jhSyncSafariVvTopDebounced();
+        } else {
+          syncVolunteerShellViewport();
+        }
+        const active = document.querySelector('#volunteer-sdui-section .jh-sdui-sticky-footer');
+        if (active) syncVolunteerStickyLayout(active);
+      }, { passive: true });
+      window.visualViewport?.addEventListener('resize', () => {
+        if (typeof window.jhSyncSafariVvTopDebounced === 'function') {
+          window.jhSyncSafariVvTopDebounced();
+        } else {
+          syncVolunteerShellViewport();
+        }
+        const active = document.querySelector('#volunteer-sdui-section .jh-sdui-sticky-footer');
+        if (active) syncVolunteerStickyLayout(active);
+      }, { passive: true });
+    }
+  }
+
   function syncPlatformClasses() {
     const ua = navigator.userAgent || '';
-    const ios = /iPad|iPhone|iPod/.test(ua)
-      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const touchMac = navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || '');
+    const ios = /iPad|iPhone|iPod/.test(ua) || touchMac;
     const iosChrome = /CriOS/.test(ua);
     const iosSafari = ios && !iosChrome && !/FxiOS|EdgiOS/.test(ua);
+    ensureVolunteerIosHtmlClasses();
+    document.documentElement.classList.toggle('jh-html-ios-safari', iosSafari);
+    document.body.classList.toggle('jh-vol-ios-safari', iosSafari);
+    document.body.classList.toggle('jh-vol-ios-chrome', iosChrome);
     rootEl.classList.toggle('jh-sdui-ios-safari', iosSafari);
     rootEl.classList.toggle('jh-sdui-ios-chrome', iosChrome);
+    syncVolunteerShellViewport();
   }
 
   function renderScreen(envelope) {
     const screen = envelope?.screen || envelope;
     if (screen.id) screenId = screen.id;
+    volunteerLayoutDebugReport({
+      screenId: screen.id || screenId,
+      apiStamp: screen.metadata?.buildStamp || '',
+    });
     clearActionStore();
     personPickerState.clear();
     rootEl.innerHTML = '';
@@ -1734,15 +2224,30 @@ export function createVolunteerSduiController(options) {
       });
     }
 
-    if (shiftAssignFlex) {
-      syncInstructionScrollAffordance(rootEl);
+    if (stickyFooter) {
+      syncVolunteerStickyLayout(rootEl);
+    }
+
+    if (isIosSafariBrowser() && typeof window.jhSyncSafariVvTop === 'function') {
+      window.jhSyncSafariVvTop();
+      requestAnimationFrame(() => {
+        window.jhSyncSafariVvTop();
+        if (stickyFooter) {
+          syncVolunteerStickyLayout(rootEl);
+          requestAnimationFrame(() => syncVolunteerStickyLayout(rootEl));
+        }
+      });
     }
   }
 
-  async function load() {
+  async function performLoad({ allowAbort = true } = {}) {
     bindBrowserBack();
     bindRootActions();
-    if (loadAbort) loadAbort.abort();
+    ensureVolunteerIosHtmlClasses();
+    document.documentElement.classList.toggle('jh-html-ios-safari', isIosSafariBrowser());
+    document.body.classList.toggle('jh-vol-ios-safari', isIosSafariBrowser());
+    syncVolunteerShellViewport();
+    if (allowAbort && loadAbort) loadAbort.abort();
     loadAbort = new AbortController();
     const signal = loadAbort.signal;
     updateBuildStamp(null);
@@ -1777,6 +2282,22 @@ export function createVolunteerSduiController(options) {
         delete params.checkinBaselineIds;
       }
     }
+  }
+
+  async function load() {
+    const checkinWriteOp = params.checkinOp ? String(params.checkinOp) : '';
+    const isCheckinWrite =
+      screenId === 'jewelheart.volunteer.checkin' &&
+      ['start', 'finish', 'undo', 'done'].includes(checkinWriteOp);
+    if (isCheckinWrite) {
+      rootEl.classList.add('jh-sdui-checkin-busy');
+      const run = () => performLoad({ allowAbort: false });
+      checkinOpChain = checkinOpChain.then(run, run);
+      return checkinOpChain.finally(() => {
+        rootEl.classList.remove('jh-sdui-checkin-busy');
+      });
+    }
+    return performLoad({ allowAbort: true });
   }
 
   function goBack() {

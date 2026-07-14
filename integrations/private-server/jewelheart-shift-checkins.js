@@ -143,6 +143,14 @@ export async function volunteerApplyCheckinOpDb(assignment, todayIso, op) {
   if (op === 'start') {
     if (dayIso !== todayIso) return { ok: false, error: 'not_today' };
     try {
+      const open = await query(
+        `SELECT id FROM jewelheart_shift_checkins
+         WHERE assignment_id = $1 AND finished_at IS NULL
+         ORDER BY started_at DESC
+         LIMIT 1`,
+        [assignment.assignmentId],
+      );
+      if (open.rows[0]) return { ok: true, alreadyOpen: true };
       await query(
         `INSERT INTO jewelheart_shift_checkins (assignment_id, started_at)
          VALUES ($1, now())`,

@@ -1809,9 +1809,9 @@ function volunteerHomeOnlyHomeNavRow(params = {}) {
 }
 
 function volunteerHomeNavIconButton(icon, actionOrTarget, payload, options = {}) {
-  const defaultLabel = icon === 'nav_back' ? '←' : icon === 'nav_home' ? '⌂' : '';
+  const defaultLabel = icon === 'nav_back' ? 'Done' : icon === 'nav_home' ? '⌂' : '';
   const label = options.label != null ? String(options.label) : defaultLabel;
-  const navBackText = icon === 'nav_back' && label !== '←';
+  const navBackText = icon === 'nav_back' && !!label && label !== '←';
   const action =
     typeof actionOrTarget === 'object' && actionOrTarget !== null
       ? actionOrTarget
@@ -1846,10 +1846,10 @@ function volunteerHomeNavIconButton(icon, actionOrTarget, payload, options = {})
 function volunteerHomeFooterLabeledButtons(params = {}) {
   const labeledReturnTo = params.labeledReturnTo || params.returnTo;
   if (!labeledReturnTo || labeledReturnTo === 'jewelheart.home') return [];
-  const label = volunteerHomeScreenBackLabel(labeledReturnTo);
+  if (params.currentScreenId && labeledReturnTo === params.currentScreenId) return [];
   return [
     volunteerHomePillButton(
-      `← ${label}`,
+      'Done',
       labeledReturnTo,
       volunteerHomeBackPayload(params, labeledReturnTo),
       volunteerHomeSummaryBlue,
@@ -1873,7 +1873,7 @@ function volunteerHomeManageFooterNav(params = {}) {
     textStyle: { textAlign: 'center' },
     style: { padding: { top: 8, bottom: 8, left: 8, right: 8 }, fixedFooter: true },
     children: [
-      volunteerHomeNavIconButton('nav_back', { type: 'navBack' }, undefined, {}),
+      volunteerHomeNavIconButton('nav_back', { type: 'navBack' }, undefined, { label: 'Done' }),
       volunteerHomeNavIconButton('nav_home', 'jewelheart.home', homePayload),
       volunteerHomeNavIconButton(
         'nav_back',
@@ -1892,8 +1892,8 @@ function volunteerHomeStandardFooterNav(params = {}) {
   }
   const homePayload = params.retreatId ? { retreatId: String(params.retreatId) } : {};
   const simple = params.footerNavSimple === true;
-  const backLabel = params.navBackLabel ? String(params.navBackLabel) : undefined;
-  const backBtnOpts = backLabel ? { label: backLabel } : {};
+  const backLabel = params.navBackLabel != null ? String(params.navBackLabel) : 'Done';
+  const backBtnOpts = { label: backLabel };
   const backAction =
     params.navBackTarget
       ? {
@@ -1934,10 +1934,9 @@ function volunteerHomeBottomNavChildren(params = {}) {
   const backTarget = params.returnTo || 'jewelheart.home';
   const children = [];
   if (backTarget !== 'jewelheart.home') {
-    const backLabel = `← ${volunteerHomeScreenBackLabel(backTarget)}`;
     children.push(
       volunteerHomePillButton(
-        backLabel,
+        'Done',
         backTarget,
         volunteerHomeBackPayload(params, backTarget),
         volunteerHomeSummaryBlue,
@@ -1949,7 +1948,7 @@ function volunteerHomeBottomNavChildren(params = {}) {
   const homePayload = params.retreatId ? { retreatId: String(params.retreatId) } : {};
   children.push(
     volunteerHomePillButton(
-      '← Home',
+      'Done',
       'jewelheart.home',
       homePayload,
       volunteerHomeSummaryBlue,
@@ -2474,7 +2473,7 @@ function volunteerHomeCheckinControlRows(options) {
     ],
     { spacing: 8 },
   );
-  return [actionRow, volunteerHomeGap(), commitRow];
+  return [actionRow, volunteerHomeGap(), volunteerHomeGap(), commitRow];
 }
 
 async function volunteerHomeRedirectScreen(returnTo, firebaseUid, authToken, params) {
@@ -2966,7 +2965,6 @@ function volunteerHomeJobListScroll(children) {
     style: {
       jobListFrame: true,
       borderColor: volunteerHomeMaroon,
-      flexGrow: true,
       padding: { top: 4, bottom: 4, left: 4, right: 4 },
     },
     children,
@@ -2981,7 +2979,6 @@ function volunteerHomeDayShiftListScroll(children) {
     spacing: 0,
     style: {
       dayShiftListFrame: true,
-      flexGrow: true,
       padding: { top: 4, bottom: 4, left: 4, right: 4 },
     },
     children,
@@ -3044,11 +3041,13 @@ function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], e
   const stickyHeaderComponents = extraMeta.stickyHeaderComponents || [];
   let stickyFooterComponents = extraMeta.stickyFooterComponents || [];
   if (!isHome && extraMeta.includeFooterNav !== false && !stickyFooterComponents.length) {
-    stickyFooterComponents = [volunteerHomeStandardFooterNav(extraMeta.navParams || {})];
+    stickyFooterComponents = [
+      volunteerHomeStandardFooterNav({ ...(extraMeta.navParams || {}), currentScreenId: id }),
+    ];
   }
   const stickyFooter = homeSplit || extraMeta.stickyFooter === true || stickyFooterComponents.length > 0;
   const stickyHeader = homeSplit || extraMeta.stickyHeader === true;
-  const layoutFlat = extraMeta.layoutFlat === true || homeSplit;
+  const layoutFlat = extraMeta.layoutFlat === true && !homeSplit;
   if (homeSplit) {
     const flatComponents = layoutFlat
       ? [...stickyHeaderComponents, ...(extraMeta.scrollChildren || []), ...stickyFooterComponents]
@@ -3087,11 +3086,9 @@ function volunteerHomeScreenEnvelope(id, title, children, layoutWarnings = [], e
         : { all: 12 },
   };
   if (shiftAssignFlex) {
-    bodyWrapStyle.flexGrow = true;
     bodyWrapStyle.shiftAssignBody = true;
   }
   if (searchByDayFlex || searchByTypeFlex || manageCheckinsFlex) {
-    bodyWrapStyle.flexGrow = true;
     bodyWrapStyle.searchByDayBody = true;
   }
   return {
@@ -4297,8 +4294,8 @@ function volunteerHomeInstructionScrollSection(jobName, lines, warnings, codePre
   if (flexFill) {
     scrollStyle.instructionScrollFlex = true;
     scrollStyle.flexGrow = true;
-  } else {
-    scrollStyle.maxHeight = { value: options.maxHeight ?? 168 };
+  } else if (options.maxHeight != null) {
+    scrollStyle.maxHeight = { value: options.maxHeight };
   }
   const scrollBlock = {
     type: 'instructionScroll',
@@ -4448,9 +4445,7 @@ export async function buildJewelheartVolunteerShiftScreen(
     ];
     const scrollChildren = [
       volunteerHomeSpacer(VOLUNTEER_HOME_ACTION_SECTION_SPACER),
-      ...volunteerHomeInstructionScrollSection(jobName, instructionLines, ctx.layoutWarnings, 'shift_instr', {
-        flexFill: true,
-      }),
+      ...volunteerHomeInstructionScrollSection(jobName, instructionLines, ctx.layoutWarnings, 'shift_instr'),
     ];
     const footerComponents = [
       volunteerHomeStandardFooterNav(navParams),
@@ -4568,7 +4563,11 @@ export async function buildJewelheartVolunteerMineScreen(
   const retreatId = ctx.retreatId || (params.retreatId ? String(params.retreatId) : '');
   const basePayload = retreatId ? { retreatId } : {};
   const returnTo = params.returnTo || 'jewelheart.home';
-  const navParams = { retreatId, returnTo };
+  const navParams = {
+    retreatId,
+    returnTo: returnTo === 'jewelheart.volunteer.mine' ? 'jewelheart.home' : returnTo,
+    currentScreenId: 'jewelheart.volunteer.mine',
+  };
   const todayIso = ctx.todayIso;
   const shifts = (ctx.myShifts || []).slice();
 

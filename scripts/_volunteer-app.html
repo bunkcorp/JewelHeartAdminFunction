@@ -2,7 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <script>
+    (function () {
+      var safariLayoutBound = false;
+
+      function detectIos() {
+        var ua = navigator.userAgent || '';
+        return /iPad|iPhone|iPod/.test(ua)
+          || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+          || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || ''));
+      }
+
+      function detectSafari() {
+        var ua = navigator.userAgent || '';
+        return detectIos() && !/CriOS|FxiOS|EdgiOS/.test(ua);
+      }
+
+      /** iPad Safari: anchor shell to visualViewport (portrait OK; landscape needs vv box). */
+      function isLandscape() {
+        return window.innerWidth > window.innerHeight;
+      }
+
+      function isIpadSafari() {
+        var ua = navigator.userAgent || '';
+        return /iPad/.test(ua)
+          || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+          || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || ''));
+      }
+
+      var isPad = false;
+      var safariShellSyncTimer = null;
+
+      function resyncVolunteerStickyLayout() {
+        var root = document.querySelector('#volunteer-sdui-section .jh-sdui-sticky-footer');
+        if (root && typeof window.__jhVolunteerSyncStickyLayout === 'function') {
+          window.__jhVolunteerSyncStickyLayout(root);
+        }
+      }
+
+      function syncSafariShellTop() {
+        if (!isPad) return;
+        var shell = document.querySelector('.jh-volunteer-shell');
+        if (!shell) return;
+        var vv = window.visualViewport;
+
+        document.documentElement.classList.toggle('jh-html-ios-safari-landscape', isLandscape());
+
+        shell.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        try { window.scrollTo(0, 0); } catch (_) { /* ignore */ }
+
+        if (vv && vv.height > 0) {
+          var offTop = Math.round(vv.offsetTop || 0);
+          var offLeft = Math.round(vv.offsetLeft || 0);
+          var vvh = Math.round(vv.height);
+          var vvw = Math.round(vv.width);
+          var cardW = Math.min(420, vvw);
+          var leftPx = offLeft + Math.max(0, Math.round((vvw - cardW) / 2));
+          var shellTop = offTop;
+
+          shell.style.setProperty('top', shellTop + 'px', 'important');
+          shell.style.setProperty('left', leftPx + 'px', 'important');
+          shell.style.setProperty('right', 'auto', 'important');
+          shell.style.setProperty('width', cardW + 'px', 'important');
+          shell.style.setProperty('max-width', cardW + 'px', 'important');
+          shell.style.setProperty('margin', '0', 'important');
+          shell.style.setProperty('height', Math.max(0, vvh - (shellTop - offTop)) + 'px', 'important');
+          shell.style.setProperty('max-height', Math.max(0, vvh - (shellTop - offTop)) + 'px', 'important');
+          shell.style.setProperty('bottom', 'auto', 'important');
+        } else {
+          shell.style.setProperty('top', '0', 'important');
+          shell.style.setProperty('left', '0', 'important');
+          shell.style.setProperty('right', '0', 'important');
+          shell.style.setProperty('width', '100%', 'important');
+          shell.style.setProperty('max-width', '420px', 'important');
+          shell.style.setProperty('margin-left', 'auto', 'important');
+          shell.style.setProperty('margin-right', 'auto', 'important');
+          shell.style.removeProperty('height');
+          shell.style.removeProperty('max-height');
+          shell.style.setProperty('bottom', '0', 'important');
+        }
+
+        shell.style.setProperty('padding-top', '0', 'important');
+
+        requestAnimationFrame(function () {
+          resyncVolunteerStickyLayout();
+          requestAnimationFrame(resyncVolunteerStickyLayout);
+          if (typeof window.__jhVolunteerLayoutDebugRefresh === 'function') {
+            window.__jhVolunteerLayoutDebugRefresh();
+          }
+        });
+      }
+
+      function scheduleSafariShellSync() {
+        syncSafariShellTop();
+        if (safariShellSyncTimer) clearTimeout(safariShellSyncTimer);
+        safariShellSyncTimer = setTimeout(syncSafariShellTop, 120);
+        setTimeout(syncSafariShellTop, 350);
+      }
+
+      function initVolunteerIosHeadLayout() {
+        if (!detectSafari()) return;
+        isPad = isIpadSafari();
+        document.documentElement.classList.add('jh-html-ios-safari');
+        document.documentElement.classList.toggle('jh-html-ios-safari-pad', isPad);
+        document.documentElement.classList.toggle('jh-html-ios-safari-phone', !isPad);
+        document.documentElement.classList.toggle('jh-html-ios-safari-landscape', isLandscape());
+
+        window.jhSyncSafariVvTop = syncSafariShellTop;
+        window.jhSyncSafariVvTopDebounced = scheduleSafariShellSync;
+        scheduleSafariShellSync();
+
+        if (safariLayoutBound) return;
+        safariLayoutBound = true;
+        window.addEventListener('pageshow', scheduleSafariShellSync);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', scheduleSafariShellSync, { passive: true });
+          window.visualViewport.addEventListener('scroll', scheduleSafariShellSync, { passive: true });
+        }
+        window.addEventListener('resize', scheduleSafariShellSync, { passive: true });
+        window.addEventListener('orientationchange', scheduleSafariShellSync, { passive: true });
+      }
+
+      function bootVolunteerIosHeadLayout() {
+        initVolunteerIosHeadLayout();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootVolunteerIosHeadLayout);
+      } else {
+        bootVolunteerIosHeadLayout();
+      }
+      window.addEventListener('pageshow', bootVolunteerIosHeadLayout);
+    })();
+  </script>
+  <style>
+    /* Critical: iPad Safari — JS sets vv box + minimal padding (avoid 72px double inset). */
+    html.jh-html-ios-safari-pad body.jh-volunteer-clean .jh-volunteer-shell {
+      position: fixed !important;
+      top: 0 !important;
+      bottom: auto !important;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-width: 420px;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      overflow: hidden !important;
+      padding-top: 0 !important;
+      box-sizing: border-box;
+    }
+  </style>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="__JH_ASSET_PREFIX__favicon-32.png" type="image/png" sizes="32x32" />
   <link rel="apple-touch-icon" href="__JH_ASSET_PREFIX__apple-touch-icon.png" />
@@ -62,11 +214,19 @@
       box-shadow: none;
     }
     .jh-signin-method:not(.jh-signin-method-selected) {
-      background: var(--jh-maroon-light);
+      background: #C9D4E9;
+      color: #1a1a1a;
       cursor: pointer;
     }
     .jh-signin-method.jh-signin-method-selected {
-      background: var(--jh-maroon);
+      background: #7A95CA;
+      color: #fff;
+    }
+    .jh-signin-or {
+      font-weight: 600;
+      color: #333;
+      padding: 0 0.1rem;
+      user-select: none;
     }
     .jh-signin-input {
       width: 30ch;
@@ -236,6 +396,7 @@ __JH_ENV_BADGE_HTML__
               role="radio"
               aria-checked="true"
             >Use Google</button>
+            <span class="jh-signin-or" aria-hidden="true"> or </span>
             <button
               type="button"
               id="method-email"
@@ -259,7 +420,7 @@ __JH_ENV_BADGE_HTML__
           </div>
 
           <div class="jh-signin-row">
-            <button type="button" id="btn-sign-in" class="jh-signin-btn">Complete sign-in</button>
+            <button type="button" id="btn-sign-in" class="jh-signin-btn">Complete sign-in with Google</button>
           </div>
         </div>
 
@@ -302,7 +463,6 @@ __JH_ENV_BADGE_HTML__
   </div>
 
   <div class="jh-dev-tools" id="jh-dev-tools" hidden aria-label="Dev testing tools">
-    <button type="button" id="btn-dev-test-new-user" class="secondary small">Test as new user</button>
     <button type="button" id="btn-dev-restore-admin" class="secondary small" hidden>Restore admin (Google)</button>
     <p class="jh-dev-tools-hint" id="jh-dev-tools-hint" hidden></p>
   </div>
@@ -450,7 +610,6 @@ __JH_ENV_BADGE_HTML__
     const emailRow = document.getElementById('email-row');
     const emailSentMsg = document.getElementById('email-sent-msg');
     const devToolsEl = document.getElementById('jh-dev-tools');
-    const btnDevTestNewUser = document.getElementById('btn-dev-test-new-user');
     const btnDevRestoreAdmin = document.getElementById('btn-dev-restore-admin');
     const devToolsHint = document.getElementById('jh-dev-tools-hint');
 
@@ -630,11 +789,12 @@ __JH_UI_CHANNEL_LINE__    });
     }
 
     function refreshSignInUi() {
-      const canSignIn =
-        signInMethod === 'google' || isValidEmailFormat(authEmailInput.value);
+      const canSignIn = signInMethod === 'google' || signInMethod === 'email';
       if (btnSignIn) {
         btnSignIn.disabled = !canSignIn;
         btnSignIn.classList.toggle('jh-signin-btn-inactive', !canSignIn);
+        const methodLabel = signInMethod === 'google' ? 'Google' : 'Email';
+        btnSignIn.textContent = `Complete sign-in with ${methodLabel}`;
       }
     }
 
@@ -973,7 +1133,6 @@ __JH_UI_CHANNEL_LINE__    });
 
     function refreshDevToolsUi() {
       if (BUILD_ENV !== 'dev' || !devToolsEl) return;
-      devToolsEl.hidden = false;
       const hint = devAdminHintEmail();
       const signedOut = Boolean(sessionStorage.getItem(VOLUNTEER_SIGNOUT_KEY)) || !auth.currentUser;
       if (btnDevRestoreAdmin) btnDevRestoreAdmin.hidden = !(signedOut && hint);
@@ -986,6 +1145,7 @@ __JH_UI_CHANNEL_LINE__    });
           devToolsHint.textContent = '';
         }
       }
+      devToolsEl.hidden = !(signedOut && hint);
     }
 
     function clearVolunteerClientState() {
@@ -996,25 +1156,6 @@ __JH_UI_CHANNEL_LINE__    });
       clearEmailSentUi();
       if (authEmailInput) authEmailInput.value = '';
       setSignInMethod('google');
-    }
-
-    async function devTestAsNewUser() {
-      rememberDevAdminEmail();
-      clearVolunteerClientState();
-      try {
-        await signOut(auth);
-      } catch {
-        /* ignore */
-      }
-      markVolunteerSignedOut();
-      const hint = devAdminHintEmail();
-      setAuthMsg(
-        hint
-          ? `Signed out for login/onboarding testing. Sign in with ${hint} (Google or email) to restore Manage and Admin. Use a different address to test a brand-new volunteer.`
-          : 'Signed out for testing. Sign in with your usual admin Google account to restore Manage and Admin.',
-        false,
-      );
-      refreshDevToolsUi();
     }
 
     function markVolunteerSignedOut() {
@@ -1113,12 +1254,6 @@ __JH_UI_CHANNEL_LINE__    });
     if (btnSignIn) {
       btnSignIn.addEventListener('click', () => {
         submitSignIn();
-      });
-    }
-
-    if (btnDevTestNewUser) {
-      btnDevTestNewUser.addEventListener('click', () => {
-        devTestAsNewUser().catch((e) => console.error('dev test new user', e));
       });
     }
 
