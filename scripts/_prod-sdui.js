@@ -64,9 +64,12 @@ function volunteerLayoutDebugFormat() {
   const middle = root?.querySelector(
     ':scope > .jh-sdui-home-middle, :scope > .jh-sdui-shift-assign-scroll, :scope > .jh-sdui-search-by-day-scroll, :scope > .jh-sdui-scroll',
   );
-  const scrollPane = middle?.querySelector(
-    '.jh-sdui-today-shift-scroll, .jh-sdui-day-shift-list, .jh-sdui-job-list-scroll, .jh-sdui-manage-checkins-scroll',
-  ) || null;
+  const scrollPane = (() => {
+    const header = root?.querySelector(':scope > .jh-sdui-header');
+    const paneSelector =
+      '.jh-sdui-today-shift-scroll, .jh-sdui-day-shift-list, .jh-sdui-job-list-scroll, .jh-sdui-manage-checkins-scroll';
+    return middle?.querySelector(paneSelector) || header?.querySelector(paneSelector) || null;
+  })();
   const scrollTarget = scrollPane || middle;
   const footer = root?.querySelector(':scope > .jh-sdui-footer');
   const vv = window.visualViewport;
@@ -229,6 +232,20 @@ function filterPersonRoster(roster, query, maxVisible = PERSON_PICKER_MAX) {
   };
 }
 
+function filterJobList(jobs, query, maxVisible = PERSON_PICKER_MAX) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  const q = String(query || '').toLowerCase().trim();
+  if (!q) return { items: [], total: 0, capped: false };
+  const matches = list.filter((j) => String(j.title || '').toLowerCase().includes(q));
+  matches.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+  const total = matches.length;
+  return {
+    items: matches.slice(0, maxVisible),
+    total,
+    capped: total > maxVisible,
+  };
+}
+
 const SEARCH_FILTER_KEYS = [
   'daysAll',
   'selectedDays',
@@ -293,6 +310,254 @@ export function createVolunteerSduiController(options) {
   let actionSeq = 0;
   let profileVolunteerMeta = null;
   const personPickerState = new Map();
+  const jobPickerState = new Map();
+  let checkinManualState = null;
+  let checkinManualTaskId = null;
+
+  const OBO_ID_KEY = 'jh_obo_volunteer_id';
+  const OBO_NAME_KEY = 'jh_obo_volunteer_name';
+
+  function readOboSession() {
+    try {
+      const oboVolunteerId = sessionStorage.getItem(OBO_ID_KEY) || '';
+      if (!oboVolunteerId) return null;
+      return {
+        oboVolunteerId,
+        oboVolunteerName: sessionStorage.getItem(OBO_NAME_KEY) || '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function writeOboSession(oboVolunteerId, oboVolunteerName = '') {
+    try {
+      sessionStorage.setItem(OBO_ID_KEY, String(oboVolunteerId));
+      sessionStorage.setItem(OBO_NAME_KEY, String(oboVolunteerName || ''));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearOboSession() {
+    try {
+      sessionStorage.removeItem(OBO_ID_KEY);
+      sessionStorage.removeItem(OBO_NAME_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function syncOboRequestParams(requestParams) {
+    if (String(requestParams.oboClear || '') === '1') return;
+    const obo = readOboSession();
+    if (obo) {
+      requestParams.oboVolunteerId = obo.oboVolunteerId;
+      if (obo.oboVolunteerName) requestParams.oboVolunteerName = obo.oboVolunteerName;
+    }
+  }
+
+  function applyOboHomePayload(payload = {}) {
+    if (payload.oboClear === '1') {
+      clearOboSession();
+      return;
+    }
+    if (payload.oboVolunteerId) {
+      writeOboSession(payload.oboVolunteerId, payload.oboVolunteerName || '');
+    }
+    const obo = readOboSession();
+    if (obo) params.oboVolunteerId = obo.oboVolunteerId;
+  }
+
+  function parseCheckinClockLabel(raw) {
+    const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (h < 1 || h > 12 || min < 0 || min > 59) return null;
+    const pm = m[3].toUpperCase() === 'PM';
+    const hour12 = h;
+    if (h === 12) h = pm ? 12 : 0;
+    else if (pm) h += 12;
+    const suffix = pm ? 'PM' : 'AM';
+    const text = `${hour12}:${String(min).padStart(2, '0')} ${suffix}`;
+    return { text, minutes: h * 60 + min };
+  }
+
+  function validateCheckinClockPair(startLabel, finishLabel) {
+    const start = parseCheckinClockLabel(startLabel);
+    const end = parseCheckinClockLabel(finishLabel);
+    if (!start || !end) {
+      return { ok: false, error: 'Enter times as h:mm AM or PM.' };
+    }
+    if (end.minutes <= start.minutes) {
+      return { ok: false, error: 'End time must be after start time.' };
+    }
+    if (end.minutes - start.minutes > 60) {
+      return { ok: false, error: 'Start and end must be within one hour.' };
+    }
+    return { ok: true };
+  }
+
+  function findCheckinControlButton(label) {
+    const buttons = rootEl.querySelectorAll('.jh-sdui-btn');
+    for (const btn of buttons) {
+      if ((btn.textContent || '').trim() === label) return btn;
+    }
+    return null;
+  }
+
+  function disableCheckinControlButton(btn) {
+    if (!btn) return;
+    const id = btn.dataset.sduiActionId;
+    if (id) actionStore.delete(id);
+    delete btn.dataset.sduiActionId;
+    btn.disabled = true;
+    btn.style.cursor = 'default';
+    btn.style.opacity = '0.92';
+  }
+
+  function wireCheckinManualTimes() {
+    if (screenId !== 'jewelheart.volunteer.checkin') {
+      checkinManualState = null;
+      checkinManualTaskId = null;
+      return;
+    }
+    const startBox = rootEl.querySelector('[data-checkin-time-box="start"]');
+    const endBox = rootEl.querySelector('[data-checkin-time-box="end"]');
+    if (!startBox || !endBox) return;
+
+    const taskId = params.taskId ? String(params.taskId) : '';
+    if (taskId !== checkinManualTaskId) {
+      checkinManualState = null;
+      checkinManualTaskId = taskId;
+    }
+
+    const startBtn = findCheckinControlButton('Start');
+    const endBtn = findCheckinControlButton('End');
+    const doneBtn = findCheckinControlButton('Done');
+    const savedDoneAction = doneBtn?.dataset.sduiActionId
+      ? actionStore.get(doneBtn.dataset.sduiActionId)
+      : null;
+
+    const manualLocked =
+      checkinManualState?.startManualLock === true ||
+      checkinManualState?.endManualLock === true;
+    const startText = manualLocked
+      ? (checkinManualState?.startText || '').trim()
+      : (startBox.textContent || '').trim();
+    const endText = manualLocked
+      ? (checkinManualState?.endText || '').trim()
+      : (endBox.textContent || '').trim();
+    checkinManualState = {
+      phase: !startText ? 'start' : !endText ? 'end' : 'both',
+      startManualLock: manualLocked && checkinManualState?.startManualLock === true,
+      endManualLock: manualLocked && checkinManualState?.endManualLock === true,
+      startText,
+      endText,
+    };
+    if (checkinManualState.startManualLock) disableCheckinControlButton(startBtn);
+    if (checkinManualState.endManualLock) disableCheckinControlButton(endBtn);
+
+    let warningEl = rootEl.querySelector('.jh-sdui-checkin-time-warn');
+    if (!warningEl) {
+      warningEl = document.createElement('div');
+      warningEl.className = 'jh-sdui-text jh-sdui-checkin-time-warn';
+      const row = startBox.closest('.jh-sdui-row-nowrap');
+      if (row?.parentElement) {
+        row.parentElement.insertBefore(warningEl, row.nextSibling);
+      }
+    }
+
+    function refreshCheckinManualUi() {
+      startBox.textContent = checkinManualState.startText || '';
+      endBox.textContent = checkinManualState.endText || '';
+      const manual = checkinManualState.startManualLock || checkinManualState.endManualLock;
+      let warn = '';
+      let blockDone = false;
+      if (manual) {
+        if (!checkinManualState.startText || !checkinManualState.endText) {
+          warn = 'Enter start and end times.';
+          blockDone = true;
+        } else {
+          const v = validateCheckinClockPair(checkinManualState.startText, checkinManualState.endText);
+          if (!v.ok) {
+            warn = v.error;
+            blockDone = true;
+          }
+        }
+      }
+      warningEl.textContent = warn;
+      warningEl.hidden = !warn;
+      if (doneBtn) {
+        doneBtn.disabled = blockDone;
+        doneBtn.classList.toggle('jh-sdui-checkin-done-blocked', blockDone);
+        if (blockDone) {
+          const id = doneBtn.dataset.sduiActionId;
+          if (id) actionStore.delete(id);
+          delete doneBtn.dataset.sduiActionId;
+        } else if (!doneBtn.dataset.sduiActionId && savedDoneAction) {
+          attachAction(doneBtn, savedDoneAction);
+        }
+      }
+      startBox.classList.toggle('jh-sdui-checkin-time-active', checkinManualState.phase === 'start' || checkinManualState.phase === 'both');
+      endBox.classList.toggle('jh-sdui-checkin-time-active', checkinManualState.phase === 'end' || checkinManualState.phase === 'both');
+    }
+
+    function openCheckinTimeEditor(box, slot) {
+      if (box.querySelector('.jh-sdui-checkin-time-input')) return;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'jh-sdui-checkin-time-input';
+      input.placeholder = '9:30 AM';
+      input.value = slot === 'start' ? checkinManualState.startText : checkinManualState.endText;
+      input.setAttribute('inputmode', 'text');
+      input.autocomplete = 'off';
+      box.textContent = '';
+      box.appendChild(input);
+      input.focus();
+      input.select();
+      const commit = () => {
+        const parsed = parseCheckinClockLabel(input.value);
+        if (!parsed) {
+          box.textContent = slot === 'start' ? checkinManualState.startText : checkinManualState.endText;
+          refreshCheckinManualUi();
+          return;
+        }
+        if (slot === 'start') {
+          checkinManualState.startText = parsed.text;
+          checkinManualState.startManualLock = true;
+          disableCheckinControlButton(startBtn);
+          checkinManualState.phase = checkinManualState.endText ? 'both' : 'end';
+        } else {
+          checkinManualState.endText = parsed.text;
+          checkinManualState.endManualLock = true;
+          disableCheckinControlButton(endBtn);
+          checkinManualState.phase = 'both';
+        }
+        box.textContent = parsed.text;
+        refreshCheckinManualUi();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        }
+      });
+    }
+
+    startBox.addEventListener('click', () => {
+      if (checkinManualState.phase !== 'start' && checkinManualState.phase !== 'both') return;
+      openCheckinTimeEditor(startBox, 'start');
+    });
+    endBox.addEventListener('click', () => {
+      if (checkinManualState.phase !== 'end' && checkinManualState.phase !== 'both') return;
+      openCheckinTimeEditor(endBox, 'end');
+    });
+
+    refreshCheckinManualUi();
+  }
 
   function clearActionStore() {
     actionStore.clear();
@@ -594,6 +859,7 @@ export function createVolunteerSduiController(options) {
           retreatId = payload.retreatId;
           params.retreatId = payload.retreatId;
         }
+        applyOboHomePayload(payload);
       } else if (target === 'jewelheart.volunteer.search') {
         applySearchFilterPayload(payload);
       } else if (
@@ -631,8 +897,15 @@ export function createVolunteerSduiController(options) {
         }
       }
 
-      if (payload.taskId) params.taskId = payload.taskId;
-      else if (
+      if (payload.taskId) {
+        const nextTaskId = String(payload.taskId);
+        if (!params.taskId || String(params.taskId) !== nextTaskId) {
+          checkinManualState = null;
+          checkinManualTaskId = null;
+          delete params.checkinBaselineIds;
+        }
+        params.taskId = nextTaskId;
+      } else if (
         target === 'jewelheart.volunteer.checkin' ||
         target === 'jewelheart.volunteer.shiftDetail'
       ) {
@@ -754,6 +1027,72 @@ export function createVolunteerSduiController(options) {
         delete params.userManagePendingOp;
       }
 
+      if (payload.oboClear === '1') {
+        clearOboSession();
+        delete params.oboVolunteerId;
+        delete params.oboVolunteerName;
+      } else if (payload.oboVolunteerId) {
+        writeOboSession(payload.oboVolunteerId, payload.oboVolunteerName || '');
+        params.oboVolunteerId = String(payload.oboVolunteerId);
+        if (payload.oboVolunteerName) params.oboVolunteerName = String(payload.oboVolunteerName);
+      }
+
+      const OBO_PERSIST_SCREENS = new Set([
+        'jewelheart.home',
+        'jewelheart.volunteer.mine',
+        'jewelheart.volunteer.search',
+        'jewelheart.volunteer.searchByDay',
+        'jewelheart.volunteer.searchByType',
+        'jewelheart.volunteer.assign',
+        'jewelheart.volunteer.shift',
+        'jewelheart.volunteer.checkin',
+        'jewelheart.volunteer.shiftEdit',
+      ]);
+      if (!OBO_PERSIST_SCREENS.has(target)) {
+        delete params.oboVolunteerId;
+        delete params.oboVolunteerName;
+        delete params.oboClear;
+      }
+
+      if (payload.jobFinderClear === '1') {
+        delete params.jobFinderJobId;
+        delete params.jobFinderJobTitle;
+        delete params.jobFinderDayIso;
+      } else {
+        if (payload.jobFinderJobId) params.jobFinderJobId = String(payload.jobFinderJobId);
+        if (payload.jobFinderJobTitle) params.jobFinderJobTitle = String(payload.jobFinderJobTitle);
+        if (payload.jobFinderDayIso) params.jobFinderDayIso = String(payload.jobFinderDayIso);
+      }
+
+      if (target === 'jewelheart.volunteer.jobFinder') {
+        if (payload.jobFinderOp) {
+          params.jobFinderOp = String(payload.jobFinderOp);
+          if (payload.jobFinderTaskId) params.jobFinderTaskId = String(payload.jobFinderTaskId);
+          if (payload.jobFinderVolunteerId) {
+            params.jobFinderVolunteerId = String(payload.jobFinderVolunteerId);
+          }
+          if (payload.jobFinderPickVolunteerId) {
+            params.jobFinderPickVolunteerId = String(payload.jobFinderPickVolunteerId);
+          }
+        } else if (!payload.jobFinderAssignConfirm && !payload.jobFinderConfirm) {
+          delete params.jobFinderOp;
+          delete params.jobFinderTaskId;
+          delete params.jobFinderVolunteerId;
+          delete params.jobFinderPickVolunteerId;
+        }
+      }
+
+      if (target !== 'jewelheart.volunteer.jobFinder') {
+        delete params.jobFinderJobId;
+        delete params.jobFinderJobTitle;
+        delete params.jobFinderDayIso;
+        delete params.jobFinderClear;
+        delete params.jobFinderOp;
+        delete params.jobFinderTaskId;
+        delete params.jobFinderVolunteerId;
+        delete params.jobFinderPickVolunteerId;
+      }
+
       if (payload.adminPrivClear === '1') {
         delete params.adminPrivVolunteerId;
         delete params.adminPrivVolunteerName;
@@ -827,6 +1166,21 @@ export function createVolunteerSduiController(options) {
               'adminPrivVolunteerName',
               'adminPrivStatusNote',
               'adminClearStep',
+              'oboConfirm',
+              'oboClear',
+              'oboVolunteerId',
+              'oboVolunteerName',
+              'jobFinderConfirm',
+              'jobFinderClear',
+              'jobFinderJobId',
+              'jobFinderJobTitle',
+              'jobFinderDayIso',
+              'pickJobFrom',
+              'jobFinderOp',
+              'jobFinderTaskId',
+              'jobFinderVolunteerId',
+              'jobFinderPickVolunteerId',
+              'jobFinderAssignConfirm',
             ].includes(k) &&
             v != null &&
             v !== ''
@@ -912,6 +1266,13 @@ export function createVolunteerSduiController(options) {
     delete requestParams.filterReset;
     delete requestParams.allJobsTap;
     delete requestParams.scrollTop;
+    delete requestParams.oboConfirm;
+    delete requestParams.pickVolunteerFrom;
+    delete requestParams.jobFinderConfirm;
+    delete requestParams.pickJobFrom;
+    delete requestParams.jobFinderAssignConfirm;
+    delete requestParams.shiftEditConfirm;
+    syncOboRequestParams(requestParams);
     delete params.filterReset;
     delete params.allJobsTap;
     delete params.scrollTop;
@@ -1202,6 +1563,24 @@ export function createVolunteerSduiController(options) {
         setMsg(j.message || 'Assignments cleared.', false);
         return load();
       }
+      if (op === 'reloadPosterData') {
+        setMsg('Reloading jobs & instructions…', false);
+        const res = await fetch(
+          `${apiBase}/retreats/${encodeURIComponent(rid)}/admin/reload-poster-data`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: '{}',
+          },
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+        setMsg(j.message || 'Poster data reloaded.', false);
+        return load();
+      }
       setMsg('Unknown action.', true);
     } catch (e) {
       console.error('volunteerAdminTools', e);
@@ -1215,9 +1594,73 @@ export function createVolunteerSduiController(options) {
       goBack();
       return Promise.resolve();
     }
+    if (action.type === 'oboExit') {
+      clearOboSession();
+      applyNavigate({
+        type: 'navigate',
+        target: 'jewelheart.home',
+        payload: { oboClear: '1', ...(retreatId ? { retreatId } : {}) },
+      });
+      return load();
+    }
     if (action.type === 'navigate') {
       let navAction = action;
-      if (navAction.payload?.userManageConfirm) {
+      if (navAction.payload?.oboConfirm) {
+        const pickerId = navAction.payload.pickVolunteerFrom || 'oboPicker';
+        const st = personPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        writeOboSession(st.selectedId, st.selectedName || '');
+        const payload = { ...navAction.payload };
+        payload.oboVolunteerId = st.selectedId;
+        payload.oboVolunteerName = st.selectedName || '';
+        delete payload.oboConfirm;
+        delete payload.pickVolunteerFrom;
+        navAction = { ...navAction, target: 'jewelheart.home', payload };
+      } else if (navAction.payload?.jobFinderConfirm) {
+        const pickerId = navAction.payload.pickJobFrom || 'jobFinderPicker';
+        const st = jobPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a job from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload };
+        payload.jobFinderJobId = st.selectedId;
+        payload.jobFinderJobTitle = st.selectedName || '';
+        delete payload.jobFinderConfirm;
+        delete payload.pickJobFrom;
+        delete payload.jobFinderDayIso;
+        navAction = { ...navAction, payload };
+      } else if (navAction.payload?.jobFinderAssignConfirm) {
+        const pickerId = navAction.payload.pickVolunteerFrom || 'jobFinderAssignPicker';
+        const st = personPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload };
+        payload.jobFinderOp = 'assign';
+        payload.jobFinderPickVolunteerId = st.selectedId;
+        delete payload.jobFinderAssignConfirm;
+        delete payload.pickVolunteerFrom;
+        navAction = { ...navAction, payload };
+      } else if (navAction.payload?.shiftEditConfirm) {
+        const pickerId = navAction.payload.pickVolunteerFrom || 'shiftEditReassignPicker';
+        const st = personPickerState.get(pickerId);
+        if (!st?.selectedId) {
+          setMsg('Select a person from the list first.', true);
+          return Promise.resolve();
+        }
+        const payload = { ...navAction.payload };
+        payload.shiftEditOp = 'reassign';
+        payload.pickVolunteerId = st.selectedId;
+        payload.reassignedName = st.selectedName || '';
+        delete payload.shiftEditConfirm;
+        delete payload.pickVolunteerFrom;
+        navAction = { ...navAction, payload };
+      } else if (navAction.payload?.userManageConfirm) {
         const pickerId = navAction.payload.pickVolunteerFrom || 'userManagePicker';
         const st = personPickerState.get(pickerId);
         if (!st?.selectedId) {
@@ -1280,6 +1723,33 @@ export function createVolunteerSduiController(options) {
         ['start', 'finish', 'undo', 'done'].includes(checkinWriteOp);
       if (isCheckinWrite && rootEl.classList.contains('jh-sdui-checkin-busy')) {
         return Promise.resolve();
+      }
+      if (isCheckinWrite && ['start', 'finish', 'undo'].includes(checkinWriteOp)) {
+        checkinManualState = null;
+      }
+      if (isCheckinWrite && checkinWriteOp === 'done') {
+        const manual = checkinManualState?.startManualLock || checkinManualState?.endManualLock;
+        if (manual) {
+          if (!checkinManualState.startText || !checkinManualState.endText) {
+            setMsg('Enter start and end times.', true);
+            return Promise.resolve();
+          }
+          const v = validateCheckinClockPair(checkinManualState.startText, checkinManualState.endText);
+          if (!v.ok) {
+            setMsg(v.error, true);
+            return Promise.resolve();
+          }
+          navAction = {
+            ...navAction,
+            payload: {
+              ...navAction.payload,
+              checkinManualStart: checkinManualState.startManualLock ? '1' : '',
+              checkinManualEnd: checkinManualState.endManualLock ? '1' : '',
+              checkinStartTime: checkinManualState.startText,
+              checkinFinishTime: checkinManualState.endText,
+            },
+          };
+        }
       }
       applyNavigate(navAction);
       return load();
@@ -1634,6 +2104,107 @@ export function createVolunteerSduiController(options) {
       return wrap;
     }
 
+    if (type === 'jobPicker') {
+      const pickerId = component.id || 'jobPicker';
+      const disabled = component.disabled === true;
+      const maxVisible = component.maxVisible ?? PERSON_PICKER_MAX;
+      const localJobs = (component.jobs || []).map((j) => ({
+        id: String(j.id),
+        title: j.title || '',
+      }));
+
+      if (!jobPickerState.has(pickerId)) {
+        jobPickerState.set(pickerId, {
+          selectedId: component.selectedId || '',
+          selectedName: component.selectedName || '',
+          query: component.selectedName || '',
+          localJobs,
+        });
+      }
+      const st = jobPickerState.get(pickerId);
+      st.localJobs = localJobs;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'jh-sdui-person-picker jh-sdui-job-picker';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'jh-sdui-person-picker-input';
+      input.placeholder = component.placeholder || 'Start typing a job name...';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.disabled = disabled;
+      input.value = disabled ? st.selectedName || st.query : st.query;
+
+      const status = document.createElement('p');
+      status.className = 'jh-sdui-person-picker-status';
+
+      const list = document.createElement('div');
+      list.className = 'jh-sdui-person-picker-results';
+      list.hidden = true;
+
+      function paintJobResults(items, total, capped) {
+        list.innerHTML = '';
+        const selectedHint = component.selectedHint || 'Selected — tap Confirm';
+        if (!items.length) {
+          list.hidden = true;
+          status.textContent = 'No matches — try another spelling.';
+          return;
+        }
+        list.hidden = false;
+        status.textContent = capped
+          ? `Showing ${items.length} of ${total} — keep typing to narrow`
+          : `${total} match(es) — tap one to select`;
+        for (const row of items) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'jh-sdui-person-picker-item';
+          btn.textContent = row.title;
+          btn.addEventListener('mousedown', (ev) => {
+            ev.preventDefault();
+            st.selectedId = row.id;
+            st.selectedName = row.title;
+            input.value = st.selectedName;
+            list.hidden = true;
+            status.textContent = selectedHint;
+          });
+          list.appendChild(btn);
+        }
+      }
+
+      function renderJobMatches() {
+        if (disabled) {
+          list.hidden = true;
+          status.textContent = '';
+          return;
+        }
+        const q = input.value.trim();
+        st.query = input.value;
+        if (!q) {
+          st.selectedId = '';
+          st.selectedName = '';
+          list.hidden = true;
+          list.innerHTML = '';
+          status.textContent = '';
+          return;
+        }
+        const { items, total, capped } = filterJobList(st.localJobs, q, maxVisible);
+        paintJobResults(items, total, capped);
+      }
+
+      input.addEventListener('input', () => {
+        st.selectedId = '';
+        st.selectedName = '';
+        renderJobMatches();
+      });
+      input.addEventListener('focus', renderJobMatches);
+
+      wrap.appendChild(input);
+      wrap.appendChild(status);
+      wrap.appendChild(list);
+      return wrap;
+    }
+
     if (type === 'jobListScroll') {
       const el = document.createElement('div');
       el.className = 'jh-sdui-job-list-scroll';
@@ -1695,6 +2266,9 @@ export function createVolunteerSduiController(options) {
       if (component.style?.searchByDayBody) {
         el.classList.add('jh-sdui-search-by-day-body');
       }
+      if (component.style?.todayShiftPanelInHeader) {
+        el.classList.add('jh-sdui-today-shift-panel-header');
+      }
       if (component.style?.noWrap) el.classList.add('jh-sdui-row-nowrap');
       if (component.style?.flexGrow) el.classList.add('jh-sdui-flex-grow');
       const spacing = component.spacing ?? 16;
@@ -1729,7 +2303,11 @@ export function createVolunteerSduiController(options) {
         el.classList.add('jh-sdui-flex-grow');
       }
 
-      for (const child of component.children || []) {
+      let navChildren = component.children || [];
+      if (component.style?.fixedFooter) {
+        navChildren = filterRedundantFooterNavChildren(navChildren);
+      }
+      for (const child of navChildren) {
         const childEl = renderComponent(child);
         if (component.style?.equalWidthChildren || child.style?.flexGrow) {
           childEl.classList.add('jh-sdui-flex-child');
@@ -1870,6 +2448,11 @@ export function createVolunteerSduiController(options) {
 
     if (style.flexGrow) el.classList.add('jh-sdui-flex-child');
 
+    if (style.checkinTimeBox) {
+      el.classList.add('jh-sdui-checkin-time-box');
+      el.dataset.checkinTimeBox = String(style.checkinTimeBox);
+    }
+
     if (component.action) {
       attachAction(el, component.action);
     } else if (isButton) {
@@ -1961,7 +2544,9 @@ export function createVolunteerSduiController(options) {
     const pad = 4;
     const ceilingTop = shellRect.bottom - stampH - footerH - pad;
     let floorTop;
-    if (scrollPane) {
+    if (scrollPane && header?.contains(scrollPane)) {
+      floorTop = scrollPane.getBoundingClientRect().top;
+    } else if (scrollPane) {
       const middleTop = middle.getBoundingClientRect().top;
       floorTop = middleTop + scrollPane.offsetTop;
     } else if (header) {
@@ -1999,7 +2584,10 @@ export function createVolunteerSduiController(options) {
   function volunteerStickyStackHeight(header, middle, scrollPane, footer) {
     const headerH = header?.offsetHeight || 0;
     const footerH = footer?.offsetHeight || 0;
-    if (scrollPane && middle) {
+    if (scrollPane && header?.contains(scrollPane)) {
+      return headerH + footerH;
+    }
+    if (scrollPane && middle?.contains(scrollPane)) {
       const listH = volunteerScrollContentHeight(scrollPane);
       const fromMiddle = Math.max(0, (middle.scrollHeight || 0) - scrollPane.offsetTop);
       return headerH + scrollPane.offsetTop + Math.max(listH, fromMiddle) + footerH;
@@ -2067,15 +2655,13 @@ export function createVolunteerSduiController(options) {
     return Math.max(0, middle.scrollHeight - paneLayoutH);
   }
 
-  function volunteerStickyScrollPane(middle) {
-    if (!middle) return null;
+  function volunteerStickyScrollPane(rootEl, middle) {
+    const header = rootEl?.querySelector(':scope > .jh-sdui-header');
+    const paneSelector =
+      '.jh-sdui-today-shift-scroll, .jh-sdui-day-shift-list, .jh-sdui-job-list-scroll, .jh-sdui-manage-checkins-scroll, .jh-sdui-instruction-scroll.jh-sdui-instruction-flex, .jh-sdui-instruction-scroll';
     return (
-      middle.querySelector('.jh-sdui-today-shift-scroll') ||
-      middle.querySelector('.jh-sdui-day-shift-list') ||
-      middle.querySelector('.jh-sdui-job-list-scroll') ||
-      middle.querySelector('.jh-sdui-manage-checkins-scroll') ||
-      middle.querySelector('.jh-sdui-instruction-scroll.jh-sdui-instruction-flex') ||
-      middle.querySelector('.jh-sdui-instruction-scroll') ||
+      middle?.querySelector(paneSelector) ||
+      header?.querySelector(paneSelector) ||
       null
     );
   }
@@ -2155,7 +2741,7 @@ export function createVolunteerSduiController(options) {
     const footer = rootEl.querySelector(':scope > .jh-sdui-footer');
     if (!section || !footer || !middle) return;
 
-    const scrollPane = volunteerStickyScrollPane(middle);
+    const scrollPane = volunteerStickyScrollPane(rootEl, middle);
 
     const apply = () => {
       ensureVolunteerIosHtmlClasses();
@@ -2173,7 +2759,9 @@ export function createVolunteerSduiController(options) {
       let paneBudget = volunteerStickyMiddleBudget(header, middle, scrollPane, footer, main);
       if (paneBudget < MIN_SCROLL_PANE_PX && overflowsRoot) {
         const headerH = header?.offsetHeight || 0;
-        const aboveList = scrollPane ? scrollPane.offsetTop : 0;
+        const aboveList = scrollPane && header?.contains(scrollPane)
+          ? scrollPane.getBoundingClientRect().top - (header?.getBoundingClientRect().top || 0)
+          : scrollPane ? scrollPane.offsetTop : 0;
         paneBudget = Math.max(
           MIN_SCROLL_PANE_PX,
           rootBudget - (footer.offsetHeight || 0) - headerH - aboveList - 4,
@@ -2294,6 +2882,7 @@ export function createVolunteerSduiController(options) {
     });
     clearActionStore();
     personPickerState.clear();
+    jobPickerState.clear();
     rootEl.innerHTML = '';
     rootEl.dataset.screenId = screen.id || screenId;
 
@@ -2379,6 +2968,8 @@ export function createVolunteerSduiController(options) {
       syncVolunteerStickyLayout(rootEl);
     }
 
+    wireCheckinManualTimes();
+
     if (isIosSafariBrowser() && typeof window.jhSyncSafariVvTop === 'function') {
       window.jhSyncSafariVvTop();
       requestAnimationFrame(() => {
@@ -2449,6 +3040,25 @@ export function createVolunteerSduiController(options) {
       });
     }
     return performLoad({ allowAbort: true });
+  }
+
+  function navActionTargetsHome(action) {
+    const home = 'jewelheart.home';
+    if (!action) return false;
+    if (action.type === 'navigate' && action.target === home) return true;
+    if (action.type === 'navBack') {
+      if (history.length === 0) return false;
+      return history[history.length - 1].screenId === home;
+    }
+    return false;
+  }
+
+  function filterRedundantFooterNavChildren(children) {
+    if (!Array.isArray(children) || !children.length) return children || [];
+    const backBtn = children.find((c) => c?.icon === 'nav_back');
+    if (!backBtn || !children.some((c) => c?.icon === 'nav_home')) return children;
+    if (!navActionTargetsHome(backBtn.action)) return children;
+    return children.filter((c) => c?.icon !== 'nav_home');
   }
 
   function goBack() {

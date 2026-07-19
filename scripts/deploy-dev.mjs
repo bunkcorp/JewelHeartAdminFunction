@@ -122,6 +122,8 @@ scp('integrations/private-server/jewelheart-shift-checkins.js', 'src/jewelheart/
 
 scp('integrations/private-server/jewelheart-poster-xlsx.js', 'src/jewelheart/jewelheart-poster-xlsx.js');
 
+scp('integrations/private-server/jewelheart-poster-data.js', 'src/jewelheart/jewelheart-poster-data.js');
+
 scp('integrations/private-server/jewelheart-volunteer-invite.fragment.js', 'src/jewelheart/jewelheart-volunteer-invite.js');
 
 scpStamped('integrations/private-server/jewelheart-volunteer-time-context.js', 'src/jewelheart/jewelheart-volunteer-time-context.js', 'api');
@@ -131,6 +133,17 @@ scp('integrations/private-server/jewelheart-volunteer-onboarding.fragment.js', '
 scp('integrations/private-server/jewelheart-volunteer-user-manage.fragment.js', 'src/jewelheart/jewelheart-volunteer-user-manage.js');
 
 scp('integrations/private-server/jewelheart-volunteer-admin-tools.fragment.js', 'src/jewelheart/jewelheart-volunteer-admin-tools.js');
+
+run('ssh', ['-o', 'BatchMode=yes', SSH, `mkdir -p ~/${DEV_DIR}/data/jewelheart`]);
+for (const f of [
+  'jobs-v4.xlsx',
+  'instructions.docx',
+  'poster-bundle-v4.json',
+  'poster-jobs-v4.json',
+  'poster-instructions-v4.json',
+]) {
+  scp(`data/jewelheart/${f}`, `data/jewelheart/${f}`);
+}
 
 scp('shared/jewelheart-auth-identity.js', 'src/jewelheart/jewelheart-auth-identity.js');
 

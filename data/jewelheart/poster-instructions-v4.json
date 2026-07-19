@@ -1,0 +1,124 @@
+{
+  "version": 4,
+  "instructions": {
+    "poster-cafe-lunch-light": [
+      "AT END OF LUNCH BREAK:",
+      "Wipe tables",
+      "Clean & tidy serving table",
+      "Vacuum or sweep",
+      "As needed, trash bag to kitchen, replace"
+    ],
+    "poster-cafe-eod-full": [
+      "AT END OF DAY:",
+      "Wipe tables",
+      "Clear & clean serving table",
+      "Vacuum or sweep, mop",
+      "Wash dishes in kitchen",
+      "Trash (separate assignment)"
+    ],
+    "poster-kitchen-lunch-light": [
+      "AT END OF LUNCH BREAK:",
+      "Wipe & tidy big table",
+      "Vacuum or sweep",
+      "Store dry dishes, wash dishes…",
+      "Or load and run dishwasher"
+    ],
+    "poster-kitchen-eod-full": [
+      "AT END OF DAY:",
+      "Wipe & tidy big table",
+      "Vacuum or sweep, mop",
+      "Store dry dishes, wash dishes",
+      "Or load and run dishwasher"
+    ],
+    "poster-coffee-morning": [
+      "EARLY MORNING, in Cafe:",
+      "Set out snacks",
+      "Set up tea, coffee, snacks",
+      "UNTIL END OF LUNCH:",
+      "Keep pots full, space tidy"
+    ],
+    "poster-coffee-evening": [
+      "LUNCH TO END OF DAY:",
+      "Keep pots full, space tidy",
+      "AT END OF DAY:",
+      "Put away or cover snacks",
+      "Clear & clean serving table",
+      "Wash coffee & tea pots"
+    ],
+    "poster-towels-launder": [
+      "Get dirty towels under kitchen rack",
+      "Get dirty mop pads in closet",
+      "Launder at home",
+      "Return in the morning"
+    ],
+    "poster-trash-recycling": [
+      "Gather, bag kitchen & café trash",
+      "Take bags to dumpster",
+      "Put in fresh bags",
+      "If needed…",
+      "Gather, bag kitchn & café recycle",
+      "Take to JH office…",
+      "(behind Hartmut’s old desk)",
+      "Put fresh big bags in boxes"
+    ],
+    "poster-tara-vacuum": [
+      "Vacuum Tara Paradise floors",
+      "Vacuum store floors",
+      "Vac, dust, tidy office as needed",
+      "Vacuum store-to-Tara hall",
+      "Vacuum sofas as needed"
+    ],
+    "poster-jh-hallway-vacuum": [
+      "Vacuum JH office",
+      "Vacuum main hallway",
+      "Vacuum carpet room as needed"
+    ],
+    "poster-coatrm-vacuum": [
+      "Vacuum coatroom",
+      "Vacuum café-coatrm hall",
+      "Vacuum rear of main hall"
+    ],
+    "poster-foyer-vacuum": [
+      "Vacuum lobby to café entrance",
+      "Vacuum to main hall entrance",
+      "Vacuum entrance/foyer",
+      "Vacuum under big rugs",
+      "Vacuum big rugs",
+      "If really dirty, shake outside (get help)"
+    ],
+    "poster-front-windows": [
+      "Clean entrance windows"
+    ],
+    "poster-mens-room": [
+      "Take trash bag to kitchen",
+      "Replace trash bag",
+      "Mop",
+      "Clean sink, wipe counter, fixtures",
+      "Clean toilet with sanitary wipes",
+      "Replenish supplies from cabinet"
+    ],
+    "poster-urinals": [
+      "TWICE A DAY OR MORE, as needed:",
+      "Mop around urinals",
+      "Clean urinals with sanitary wipes",
+      "Moisten mop pad SLIGHTLY",
+      "Or change mop pad as needed"
+    ],
+    "poster-womens-room": [
+      "Take trash bag to kitchen or dumpster",
+      "Replace trash bag",
+      "Mop",
+      "Clean sink, wipe counter, fixtures",
+      "Clean toilets with sanitary wipes",
+      "Replenish supplies from cabinet"
+    ],
+    "poster-unisex-lama": [
+      "Take trash bag to kitchen or dumpster",
+      "Replace trash bag",
+      "Mop",
+      "Clean sink, wipe counter. fixtures",
+      "Clean toilets with sanitary wipes",
+      "Replenish supplies from cabinet"
+    ]
+  }
+}

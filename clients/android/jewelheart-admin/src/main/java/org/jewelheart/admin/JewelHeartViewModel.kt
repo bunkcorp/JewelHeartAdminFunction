@@ -50,6 +50,16 @@ class JewelHeartViewModel(
 
     fun canGoBack(): Boolean = navHistory.isNotEmpty()
 
+    fun actionTargetsVolunteerHome(action: SduiAction?): Boolean {
+        if (action == null) return false
+        if (action.type == "navigate" && action.target == "jewelheart.home") return true
+        if (action.type == "navBack") {
+            val top = navHistory.lastOrNull() ?: return false
+            return top.screenId == "jewelheart.home"
+        }
+        return false
+    }
+
     fun goBack() {
         val prev = navHistory.removeLastOrNull() ?: return
         screenId = prev.screenId

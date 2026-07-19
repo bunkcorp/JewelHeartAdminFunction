@@ -3,7 +3,7 @@
  * Re-seed the live Summer-2026 retreat with the v8 single-field job set.
  * - Replaces old jobs/slots/tasks (assignments cascade away).
  * - One shift per (job, scheduled day); capacity 1 each.
- * - Spreadsheet order preserved via increasing created_at.
+ * - Spreadsheet order preserved via sort_order (0..n-1).
  * - Starts with NO assignments.
  *
  * Run on prod from ~/private-server:
@@ -67,8 +67,8 @@ let taskCount = 0;
 JOBS.forEach((job, idx) => {
   const jobId = randomUUID();
   stmts.push(
-    `INSERT INTO jewelheart_jobs (id, retreat_id, title, volunteers_needed, estimated_minutes, created_at, updated_at) ` +
-      `VALUES ('${jobId}', '${RETREAT_ID}', '${esc(job.title)}', 1, 0, now() + interval '${idx} second', now());`,
+    `INSERT INTO jewelheart_jobs (id, retreat_id, title, volunteers_needed, estimated_minutes, sort_order, created_at, updated_at) ` +
+      `VALUES ('${jobId}', '${RETREAT_ID}', '${esc(job.title)}', 1, 0, ${idx}, now() + interval '${idx} second', now());`,
   );
   for (const iso of job.days) {
     const slot = slotByIso.get(iso);
@@ -95,7 +95,7 @@ const a = await query(
 console.log('VERIFY -> jobs:', j.rows[0].n, 'slots:', s.rows[0].n, 'tasks:', t.rows[0].n, 'assignments:', a.rows[0].n);
 console.log('\nJob order check:');
 const ord = await query(
-  `SELECT title FROM jewelheart_jobs WHERE retreat_id=$1 ORDER BY created_at`,
+  `SELECT title FROM jewelheart_jobs WHERE retreat_id=$1 ORDER BY sort_order, title`,
   [RETREAT_ID],
 );
 ord.rows.forEach((r, i) => console.log(`  ${i + 1}. ${r.title}`));

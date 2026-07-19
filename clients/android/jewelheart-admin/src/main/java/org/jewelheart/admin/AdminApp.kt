@@ -248,6 +248,7 @@ fun SduiTabContent(vm: JewelHeartViewModel) {
                                 .then(
                                     when {
                                         homeSplit && middleHasScroll && !layoutFlat -> Modifier.weight(1f)
+                                        homeSplit && !middleHasScroll && !layoutFlat -> Modifier.fillMaxWidth()
                                         homeSplit && layoutFlat -> Modifier.weight(1f)
                                         hasJobListScroll -> Modifier.weight(1f).fillMaxHeight()
                                         else -> Modifier.weight(1f)
@@ -282,6 +283,14 @@ fun SduiTabContent(vm: JewelHeartViewModel) {
     }
 }
 
+private fun footerNavRowChildren(children: List<UiComponent>?, vm: JewelHeartViewModel): List<UiComponent> {
+    val list = children ?: return emptyList()
+    val back = list.firstOrNull { it.icon == "nav_back" } ?: return list
+    if (list.none { it.icon == "nav_home" }) return list
+    if (!vm.actionTargetsVolunteerHome(back.action)) return list
+    return list.filter { it.icon != "nav_home" }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SduiComponentView(
@@ -300,12 +309,13 @@ private fun SduiComponentView(
                         "left", "start" -> Arrangement.spacedBy(spacing, Alignment.Start)
                         else -> Arrangement.spacedBy(spacing, Alignment.CenterHorizontally)
                     }
+                    val rowChildren = footerNavRowChildren(c.children, vm)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = rowAlign,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        c.children?.forEach { child ->
+                        rowChildren.forEach { child ->
                             when {
                                 equalWidth -> {
                                     Box(
