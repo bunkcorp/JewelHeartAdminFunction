@@ -25,6 +25,31 @@ export function formatDeployStamp(stamp) {
   return s;
 }
 
+function normalizeDeployStamp(stamp) {
+  const s = String(stamp || '').trim();
+  if (!s || s === '…' || s === 'pending-deploy') return '';
+  let m = /^(\d{4})-(\d{2})-(\d{2})-(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${y}-${mo}-${d}-${String(h).padStart(2, '0')}:${mi}`;
+  }
+  m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(s);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${y}-${mo}-${d}-${h}:${mi}`;
+  }
+  return s;
+}
+
+/** Negative if client < server, 0 if equal/unknown, positive if client > server. */
+export function compareDeployStamps(clientStamp, serverStamp) {
+  const a = normalizeDeployStamp(clientStamp);
+  const b = normalizeDeployStamp(serverStamp);
+  if (!a || !b) return 0;
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
 export function formatBuildStampLine(webStamp, apiStamp) {
   const web = formatDeployStamp(webStamp);
   const api = formatDeployStamp(apiStamp || '…');
@@ -348,6 +373,15 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  /** Hard reset clears OBO unless this navigation explicitly starts OBO for someone. */
+  function hardResetOboUnlessPayload(payload = {}) {
+    if (payload.oboVolunteerId) return;
+    clearOboSession();
+    delete params.oboVolunteerId;
+    delete params.oboVolunteerName;
+    delete params.oboClear;
+  }
+
   function syncOboRequestParams(requestParams) {
     if (String(requestParams.oboClear || '') === '1') return;
     const obo = readOboSession();
@@ -440,15 +474,20 @@ export function createVolunteerSduiController(options) {
       ? actionStore.get(doneBtn.dataset.sduiActionId)
       : null;
 
+    const sessionActive = startBtn?.disabled === true;
     const manualLocked =
       checkinManualState?.startManualLock === true ||
       checkinManualState?.endManualLock === true;
     const startText = manualLocked
       ? (checkinManualState?.startText || '').trim()
-      : (startBox.textContent || '').trim();
+      : sessionActive
+        ? (startBox.textContent || '').trim()
+        : '';
     const endText = manualLocked
       ? (checkinManualState?.endText || '').trim()
-      : (endBox.textContent || '').trim();
+      : sessionActive
+        ? (endBox.textContent || '').trim()
+        : '';
     checkinManualState = {
       phase: !startText ? 'start' : !endText ? 'end' : 'both',
       startManualLock: manualLocked && checkinManualState?.startManualLock === true,
@@ -859,6 +898,7 @@ export function createVolunteerSduiController(options) {
           retreatId = payload.retreatId;
           params.retreatId = payload.retreatId;
         }
+        hardResetOboUnlessPayload(payload);
         applyOboHomePayload(payload);
       } else if (target === 'jewelheart.volunteer.search') {
         applySearchFilterPayload(payload);
@@ -1221,6 +1261,10 @@ export function createVolunteerSduiController(options) {
       screenId = target;
       applyVolunteerPayload(target, payload);
       return;
+    }
+
+    if (screenId === 'jewelheart.home') {
+      hardResetOboUnlessPayload(payload);
     }
 
     // Entering Find from Home resets to All days + All jobs.
@@ -2304,9 +2348,6 @@ export function createVolunteerSduiController(options) {
       }
 
       let navChildren = component.children || [];
-      if (component.style?.fixedFooter) {
-        navChildren = filterRedundantFooterNavChildren(navChildren);
-      }
       for (const child of navChildren) {
         const childEl = renderComponent(child);
         if (component.style?.equalWidthChildren || child.style?.flexGrow) {
@@ -2459,6 +2500,18 @@ export function createVolunteerSduiController(options) {
       el.disabled = true;
       el.style.cursor = 'default';
       el.style.opacity = '0.92';
+    }
+
+    if (style.earlyAlertPreviewPill) {
+      el.classList.add('jh-sdui-early-alert-preview-pill');
+      el.style.opacity = '1';
+      el.style.cursor = 'not-allowed';
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        el.classList.remove('jh-sdui-shake-once');
+        void el.offsetWidth;
+        el.classList.add('jh-sdui-shake-once');
+      });
     }
 
     if (isButton && style.parentCentered) {
@@ -2982,6 +3035,51 @@ export function createVolunteerSduiController(options) {
     }
   }
 
+  async function maybeReloadStaleClientForHome(signal) {
+    const local = JH_LOGIN_WEB_BUILD;
+    if (!local || local === 'pending-deploy') return false;
+
+    let minWebBuild = '';
+    try {
+      const res = await fetch(`${apiBase}/volunteer/time-context`, { signal });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        minWebBuild = String(data.minWebBuild || data.apiBuildStamp || '').trim();
+      }
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      return false;
+    }
+
+    if (!minWebBuild || minWebBuild === 'pending-deploy') return false;
+
+    if (compareDeployStamps(local, minWebBuild) >= 0) {
+      try {
+        for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+          const key = sessionStorage.key(i);
+          if (key && key.startsWith('jh_client_reload_for:')) sessionStorage.removeItem(key);
+        }
+      } catch {
+        /* ignore */
+      }
+      return false;
+    }
+
+    const guardKey = `jh_client_reload_for:${minWebBuild}`;
+    try {
+      if (sessionStorage.getItem(guardKey) === '1') {
+        console.warn('[jewelheart] stale web build; reload already attempted', local, minWebBuild);
+        return false;
+      }
+      sessionStorage.setItem(guardKey, '1');
+    } catch {
+      /* ignore */
+    }
+
+    window.location.reload();
+    return true;
+  }
+
   async function performLoad({ allowAbort = true } = {}) {
     bindBrowserBack();
     bindRootActions();
@@ -2995,8 +3093,15 @@ export function createVolunteerSduiController(options) {
     updateBuildStamp(null);
     setMsg('Loading…', false);
     try {
+      if (screenId === 'jewelheart.home') {
+        if (await maybeReloadStaleClientForHome(signal)) return;
+      }
       const envelope = await fetchScreen(signal);
       if (signal.aborted) return;
+      const destId = envelope?.screen?.id || screenId;
+      if (destId === 'jewelheart.home' && screenId !== 'jewelheart.home') {
+        if (await maybeReloadStaleClientForHome(signal)) return;
+      }
       renderScreen(envelope);
       syncFilterStateFromMetadata(envelope);
       setMsg('', false);
@@ -3042,25 +3147,6 @@ export function createVolunteerSduiController(options) {
     return performLoad({ allowAbort: true });
   }
 
-  function navActionTargetsHome(action) {
-    const home = 'jewelheart.home';
-    if (!action) return false;
-    if (action.type === 'navigate' && action.target === home) return true;
-    if (action.type === 'navBack') {
-      if (history.length === 0) return false;
-      return history[history.length - 1].screenId === home;
-    }
-    return false;
-  }
-
-  function filterRedundantFooterNavChildren(children) {
-    if (!Array.isArray(children) || !children.length) return children || [];
-    const backBtn = children.find((c) => c?.icon === 'nav_back');
-    if (!backBtn || !children.some((c) => c?.icon === 'nav_home')) return children;
-    if (!navActionTargetsHome(backBtn.action)) return children;
-    return children.filter((c) => c?.icon !== 'nav_home');
-  }
-
   function goBack() {
     if (history.length === 0) return load();
     const prev = history.pop();
@@ -3084,6 +3170,7 @@ export function createVolunteerSduiController(options) {
     screenId = 'jewelheart.home';
     const keepRetreat = retreatId;
     retreatId = keepRetreat;
+    clearOboSession();
     params = keepRetreat ? { retreatId: keepRetreat } : {};
     window.history.replaceState({ volunteerSdui: true }, '', window.location.href);
     return load();

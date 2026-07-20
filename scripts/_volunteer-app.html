@@ -190,6 +190,20 @@
       padding: var(--jh-gap) var(--jh-page-pad) 0;
       text-align: center;
     }
+    .jh-signin-step-hint {
+      margin: 0.65rem 0 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+    }
+    .jh-signin-step-subhint {
+      margin: 0.2rem 0 0;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #444;
+      text-align: center;
+    }
     .jh-signin-row {
       display: flex;
       flex-wrap: wrap;
@@ -388,6 +402,9 @@ __JH_ENV_BADGE_HTML__
         <div class="jh-signin-body">
           <div id="invite-banner" class="jh-invite-banner" hidden aria-live="polite"></div>
 
+          <p class="jh-signin-step-hint">First, select ...</p>
+          <p class="jh-signin-step-subhint">(Google best if you have it)</p>
+
           <div class="jh-signin-row" role="radiogroup" aria-label="Sign-in method">
             <button
               type="button"
@@ -418,6 +435,8 @@ __JH_ENV_BADGE_HTML__
               maxlength="254"
             />
           </div>
+
+          <p class="jh-signin-step-hint">Then...</p>
 
           <div class="jh-signin-row">
             <button type="button" id="btn-sign-in" class="jh-signin-btn">Complete sign-in with Google</button>

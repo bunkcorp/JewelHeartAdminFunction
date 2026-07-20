@@ -6,13 +6,18 @@
       "id": "poster-cafe-lunch-light",
       "title": "Café - lunch break - light cleanup",
       "dbTitle": "Café, lunch break, light cleanup",
-      "abbrev": "Café, lunch, light clean",
+      "abbrev": "Café - lunch brk- light cln",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 15,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -20,13 +25,18 @@
       "id": "poster-cafe-eod-full",
       "title": "Café - end of day - full cleanup",
       "dbTitle": "Café, end of day, full cleanup",
-      "abbrev": "Café, end of day, clean",
+      "abbrev": "Café - end of day - clean",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 20,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -34,13 +44,18 @@
       "id": "poster-kitchen-lunch-light",
       "title": "Kitchen - lunch break - light cleanup",
       "dbTitle": "Kitchen, lunch brk, light cleanup",
-      "abbrev": "Ktchn, lunch, light clean",
+      "abbrev": "Ktchn - lnch brk - light cln",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 15,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -48,13 +63,18 @@
       "id": "poster-kitchen-eod-full",
       "title": "Kitchen - end of day - full cleanup",
       "dbTitle": "Kitchen, end of day, full cleanup",
-      "abbrev": "Ktchn, end of day, clean",
+      "abbrev": "Ktchn - end of day - clean",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 25,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -68,7 +88,12 @@
       "earlyAlert": true,
       "estMinutes": 15,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -76,13 +101,18 @@
       "id": "poster-coffee-evening",
       "title": "Coffee & snacks - evening brkdwn",
       "dbTitle": "Coffee & snacks, evening brkdwn",
-      "abbrev": "Coffee, snacks Eve brkdwn",
+      "abbrev": "Coffee, sncks - eve - brkdwn",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 15,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -90,7 +120,7 @@
       "id": "poster-towels-launder",
       "title": "Dsh twls, mop pds - launder @home",
       "dbTitle": "Towels, mop pads, launder at home",
-      "abbrev": "Towels, mop pads launder",
+      "abbrev": "Twls, mop pds - laundr home",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
@@ -106,13 +136,18 @@
       "id": "poster-trash-recycling",
       "title": "Trash & recycling - end of day",
       "dbTitle": "Trash & recycling",
-      "abbrev": "Trash & recycle EOD",
+      "abbrev": "Trash, recycle - end of day",
       "jobType": "f",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 20,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -120,7 +155,7 @@
       "id": "poster-tara-vacuum",
       "title": "Tara Paradise, store - vacuum",
       "dbTitle": "Tara Paradise, store, vacuum",
-      "abbrev": "Tara Paradse, store, Vacuum",
+      "abbrev": "Tara Paradse, store - vacuum",
       "jobType": "v",
       "checkinsRequired": 1,
       "earlyAlert": false,
@@ -136,7 +171,7 @@
       "id": "poster-jh-hallway-vacuum",
       "title": "JH office, main hallway - vacuum",
       "dbTitle": "JH office, main hallway, vacuum",
-      "abbrev": "JH office, hallway Vacuum",
+      "abbrev": "JH office, hallway - vacuum",
       "jobType": "v",
       "checkinsRequired": 1,
       "earlyAlert": false,
@@ -152,13 +187,18 @@
       "id": "poster-coatrm-vacuum",
       "title": "Coatrm, café hallway - vacuum",
       "dbTitle": "Coatrm, café hallwy, vacuum",
-      "abbrev": "Coatrm, café, Vacuum",
+      "abbrev": "Coatrm, café hall, - vacuum",
       "jobType": "v",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 10,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -166,7 +206,7 @@
       "id": "poster-foyer-vacuum",
       "title": "Foyer & lobby - vacuum",
       "dbTitle": "Foyer & lobby, vacuum",
-      "abbrev": "Foyer,lobby Vacuum",
+      "abbrev": "Foyer, lobby - vacuum",
       "jobType": "v",
       "checkinsRequired": 1,
       "earlyAlert": false,
@@ -181,7 +221,7 @@
       "id": "poster-front-windows",
       "title": "Front windows - clean",
       "dbTitle": "Front windows, clean",
-      "abbrev": "Front windows Clean",
+      "abbrev": "Front windows - clean",
       "jobType": "v",
       "checkinsRequired": 1,
       "earlyAlert": false,
@@ -196,13 +236,18 @@
       "id": "poster-mens-room",
       "title": "Men's room - clean, stock",
       "dbTitle": "Men's room, clean & stock",
-      "abbrev": "Men's room Clean & stock",
+      "abbrev": "Men's room - Clean, stock",
       "jobType": "b",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 10,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -210,25 +255,37 @@
       "id": "poster-urinals",
       "title": "Urinals - check pads, mop (x2)",
       "dbTitle": "Urinals, check pads & mop",
-      "abbrev": "Urinals Check pads, mop",
+      "abbrev": "Urinals - Check pads, mop",
       "jobType": "b",
       "checkinsRequired": 2,
       "earlyAlert": false,
       "estMinutes": 15,
-      "scheduledDayIsos": []
+      "scheduledDayIsos": [
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
+      ]
     },
     {
       "index": 16,
       "id": "poster-womens-room",
       "title": "Women's room - clean, stock",
       "dbTitle": "Women's room, clean & stock",
-      "abbrev": "Women's room Clean, stock",
+      "abbrev": "Women's room - clean, stock",
       "jobType": "b",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 10,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     },
     {
@@ -236,13 +293,18 @@
       "id": "poster-unisex-lama",
       "title": "Unisx, lama bathrms - clean, stock",
       "dbTitle": "Unisx, lama bthrms, clean & stock",
-      "abbrev": "Unisx, Lama bathrooms",
+      "abbrev": "Unisx, Lama bathrms - clean",
       "jobType": "b",
       "checkinsRequired": 1,
       "earlyAlert": false,
       "estMinutes": 10,
       "scheduledDayIsos": [
-        "2026-07-20"
+        "2026-07-20",
+        "2026-07-21",
+        "2026-07-22",
+        "2026-07-23",
+        "2026-07-24",
+        "2026-07-25"
       ]
     }
   ],
@@ -370,7 +432,7 @@
   "source": {
     "jobsXlsx": "C:\\Data\\dev\\JHapp\\JewelHeartAdminFunction\\data\\jewelheart\\jobs-v4.xlsx",
     "instructionsDocx": "C:\\Data\\dev\\JHapp\\JewelHeartAdminFunction\\data\\jewelheart\\instructions.docx",
-    "generatedAt": "2026-07-19T02:32:22.835Z"
+    "generatedAt": "2026-07-19T19:07:20.234Z"
   },
   "titleCheck": {
     "errors": [],

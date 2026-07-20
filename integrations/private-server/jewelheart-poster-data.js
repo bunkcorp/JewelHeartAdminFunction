@@ -102,7 +102,9 @@ export function normPosterTitle(s) {
     .replace(/&amp;/g, '&')
     .replace(/[–—]/g, '-')
     .replace(/\s*\/\s*/g, ' ')
-    .replace(/[^a-z0-9&'()-]+/g, ' ')
+    .replace(/\s*-\s*/g, ' ')
+    .replace(/&/g, ' ')
+    .replace(/[^a-z0-9'()]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -148,26 +150,34 @@ function parseSharedStrings(xml) {
 function parseSheetRows(sheetXml, shared) {
   const rows = [];
   for (const rm of sheetXml.matchAll(/<row r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
+    const rnum = Number(rm[1]);
+    const inner = rm[2];
     const cells = {};
-    for (const cm of rm[2].matchAll(/<c r="([A-Z]+)\d+"([^>]*)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    for (const cm of inner.matchAll(/<c r="([A-Z]+)(\d+)"([^>]*?)(\/>|>([\s\S]*?)<\/c>)/g)) {
       const col = cm[1];
-      const attrs = cm[2] || '';
-      const inner = cm[3] || '';
-      const isStr = /t="s"/.test(attrs);
-      const isInline = /t="inlineStr"/.test(attrs);
+      const cellRow = Number(cm[2]);
+      if (cellRow !== rnum) continue;
+      const attrs = cm[3] || '';
+      const innerXml = cm[5] || '';
+      const isStr = / t="s"/.test(attrs);
+      const isInline = / t="inlineStr"/.test(attrs);
       let val = '';
-      const vm = inner.match(/<v>([\s\S]*?)<\/v>/);
-      if (isInline) {
-        const tm = inner.match(/<t[^>]*>([\s\S]*?)<\/t>/);
-        val = tm ? tm[1] : '';
-      } else if (vm) {
-        val = isStr ? shared[Number(vm[1])] ?? '' : vm[1];
+      if (cm[4] === '/>') {
+        val = '';
+      } else {
+        const vm = innerXml.match(/<v>([\s\S]*?)<\/v>/);
+        if (isInline) {
+          const tm = innerXml.match(/<t[^>]*>([\s\S]*?)<\/t>/);
+          val = tm ? tm[1] : '';
+        } else if (vm) {
+          val = isStr ? shared[Number(vm[1])] ?? '' : vm[1];
+        }
       }
       cells[col] = String(val || '')
         .replace(/&amp;/g, '&')
         .replace(/&#10;/g, '\n');
     }
-    rows.push({ rnum: Number(rm[1]), cells });
+    rows.push({ rnum, cells, inner });
   }
   return rows;
 }
@@ -193,7 +203,7 @@ function extractXlsxSheets(xlsxPath) {
       const file = path.join(xl, relMap[m[2]].replace(/^\//, ''));
       byName[m[1]] = parseSheetRows(fs.readFileSync(file, 'utf8'), shared);
     }
-    return byName;
+    return { sheets: byName, shared };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -203,12 +213,35 @@ function rowByNum(rows, n) {
   return rows.find((r) => r.rnum === n) || { rnum: n, cells: {} };
 }
 
-function scheduledFromPosterCells(cells) {
+function cellTextFromXml(cellXml, shared) {
+  if (/<c[^>]*\/>/.test(cellXml)) return '';
+  const attrs = cellXml.match(/<c r="[^"]+"([^>]*)>/)?.[1] || '';
+  const isStr = / t="s"/.test(attrs);
+  const isInline = / t="inlineStr"/.test(attrs);
+  const inner = cellXml.match(/<c r="[^"]+"[^>]*>([\s\S]*?)<\/c>/)?.[1] || '';
+  const vm = inner.match(/<v>([\s\S]*?)<\/v>/);
+  if (isInline) {
+    const tm = inner.match(/<t[^>]*>([\s\S]*?)<\/t>/);
+    return tm ? tm[1] : '';
+  }
+  if (vm) return isStr ? shared[Number(vm[1])] ?? '' : vm[1];
+  return '';
+}
+
+/** Poster convention: missing or X = not scheduled; blank cell or assignee = scheduled. */
+function scheduledFromPosterRowInner(rowInner, rowNum, shared) {
   const days = [];
   for (const [col, iso] of Object.entries(POSTER_DAY_COL_ISOS)) {
-    const v = String(cells[col] || '').trim();
-    if (/^X+$/i.test(v)) continue;
-    if (!v) continue;
+    const cellRe = new RegExp(`<c r="${col}${rowNum}"[^>]*/>|<c r="${col}${rowNum}"[^>]*>[\\s\\S]*?</c>`);
+    const m = rowInner.match(cellRe);
+    if (!m) continue;
+    const cellXml = m[0];
+    if (/<c[^>]*\/>/.test(cellXml)) {
+      days.push(iso);
+      continue;
+    }
+    const val = cellTextFromXml(cellXml, shared).trim();
+    if (/^X+$/i.test(val)) continue;
     days.push(iso);
   }
   return days;
@@ -384,7 +417,7 @@ export function parsePosterBundleFromFiles(opts = {}) {
     throw new Error(`Instructions doc not found: ${instructionsDocxPath}`);
   }
 
-  const sheets = extractXlsxSheets(jobsXlsxPath);
+  const { sheets, shared } = extractXlsxSheets(jobsXlsxPath);
   const jobsRows = sheets.Jobs || sheets.all || Object.values(sheets)[0] || [];
   const posterRows = sheets.Poster || sheets.Master || [];
   const compactRows = sheets.Compact || [];
@@ -411,7 +444,7 @@ export function parsePosterBundleFromFiles(opts = {}) {
       .replace(/\r?\n/g, ', ')
       .trim();
     const estMinutes = parseInt(posterRow.cells.I || jobsRow.cells.I || '15', 10) || 15;
-    let scheduledDayIsos = scheduledFromPosterCells(posterRow.cells);
+    let scheduledDayIsos = scheduledFromPosterRowInner(posterRow.inner || '', rowNum, shared);
     if (!scheduledDayIsos.length && id === 'poster-trash-recycling') {
       scheduledDayIsos = Object.values(POSTER_DAY_COL_ISOS);
     }

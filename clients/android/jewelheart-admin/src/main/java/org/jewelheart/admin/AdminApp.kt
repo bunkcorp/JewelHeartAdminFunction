@@ -283,13 +283,8 @@ fun SduiTabContent(vm: JewelHeartViewModel) {
     }
 }
 
-private fun footerNavRowChildren(children: List<UiComponent>?, vm: JewelHeartViewModel): List<UiComponent> {
-    val list = children ?: return emptyList()
-    val back = list.firstOrNull { it.icon == "nav_back" } ?: return list
-    if (list.none { it.icon == "nav_home" }) return list
-    if (!vm.actionTargetsVolunteerHome(back.action)) return list
-    return list.filter { it.icon != "nav_home" }
-}
+private fun footerNavRowChildren(children: List<UiComponent>?): List<UiComponent> =
+    children ?: emptyList()
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -309,7 +304,7 @@ private fun SduiComponentView(
                         "left", "start" -> Arrangement.spacedBy(spacing, Alignment.Start)
                         else -> Arrangement.spacedBy(spacing, Alignment.CenterHorizontally)
                     }
-                    val rowChildren = footerNavRowChildren(c.children, vm)
+                    val rowChildren = footerNavRowChildren(c.children)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = rowAlign,

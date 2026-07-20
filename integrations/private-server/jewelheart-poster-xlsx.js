@@ -25,7 +25,6 @@ const POSTER_DAY_COL_BY_ISO = {
 };
 
 const DAY_COLS = ['B', 'C', 'D', 'E', 'F', 'G'];
-const NOT_SCHEDULED_TEXT = 'XXXXX';
 const CHECKIN_PREFIX = '✓ ';
 const ROSTER_COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const ROSTER_DATA_STYLE = '25';
@@ -185,6 +184,32 @@ function replaceCell(rowInner, col, rowNum, newCell) {
   return rowInner.replace(/<\/row>/, `${newCell}</row>`);
 }
 
+function cellXmlAt(rowInner, col, rowNum) {
+  const re = new RegExp(`<c r="${col}${rowNum}"[^>]*/>|<c r="${col}${rowNum}"[^>]*>[\\s\\S]*?</c>`);
+  return rowInner.match(re)?.[0] || null;
+}
+
+function cellOpeningAttrs(cellXml, col, rowNum, fallbackStyle = '17') {
+  const m = cellXml?.match(new RegExp(`<c r="${col}${rowNum}"([^>]*)`));
+  if (!m) return ` s="${fallbackStyle}"`;
+  return m[1].replace(/\/\s*$/, '').trimEnd();
+}
+
+/** Paste assignee into an open slot without changing template formatting (style, borders, fill). */
+function setCellSharedValueOnly(existing, col, rowNum, idx, fallbackStyle = '17') {
+  let attrs = cellOpeningAttrs(existing, col, rowNum, fallbackStyle);
+  attrs = attrs.replace(/\s+t="[^"]*"/g, '');
+  attrs += ' t="s"';
+  return `<c r="${col}${rowNum}"${attrs}><v>${idx}</v></c>`;
+}
+
+/** Clear an open slot back to blank without changing template formatting. */
+function setCellEmptyValueOnly(existing, col, rowNum, fallbackStyle = '17') {
+  let attrs = cellOpeningAttrs(existing, col, rowNum, fallbackStyle);
+  attrs = attrs.replace(/\s+t="[^"]*"/g, '');
+  return `<c r="${col}${rowNum}"${attrs}/>`;
+}
+
 function rowInner(sheet, rowNum) {
   const rowRe = new RegExp(`<row r="${rowNum}"[^>]*>([\\s\\S]*?)</row>`);
   const rm = sheet.match(rowRe);
@@ -192,9 +217,10 @@ function rowInner(sheet, rowNum) {
 }
 
 function writeRow(sheet, rowNum, rowInnerContent) {
-  const rowRe = new RegExp(`<row r="${rowNum}"[^>]*>[\\s\\S]*?</row>`);
-  if (rowRe.test(sheet)) {
-    return sheet.replace(rowRe, `<row r="${rowNum}">${rowInnerContent}</row>`);
+  const rowRe = new RegExp(`(<row r="${rowNum}"[^>]*>)([\\s\\S]*?)</row>`);
+  const rm = sheet.match(rowRe);
+  if (rm) {
+    return sheet.replace(rowRe, `${rm[1]}${rowInnerContent}</row>`);
   }
   return sheet.replace('</sheetData>', `<row r="${rowNum}">${rowInnerContent}</row></sheetData>`);
 }
@@ -247,7 +273,6 @@ function dayCellsForJob(job, cellByTitle) {
 
 function populateScheduleSheet(sheetPath, jobs, cellByTitle, strings, stringCache) {
   let sheet = fs.readFileSync(sheetPath, 'utf8');
-  const notScheduledIdx = sharedIndex(strings, NOT_SCHEDULED_TEXT, stringCache);
   let assignedCells = 0;
 
   for (let i = 0; i < jobs.length; i++) {
@@ -260,20 +285,21 @@ function populateScheduleSheet(sheetPath, jobs, cellByTitle, strings, stringCach
     const dayAssignees = dayCellsForJob(job, cellByTitle);
 
     for (const [iso, col] of Object.entries(POSTER_DAY_COL_BY_ISO)) {
-      const style = extractCellStyle(rowInnerContent, col, rowNum, '17');
-      let cell;
-      if (!scheduled.has(iso)) {
-        cell = cellXmlShared(col, rowNum, notScheduledIdx, style);
-      } else {
-        const entry = dayAssignees.get(iso);
-        if (entry?.name) {
-          assignedCells += 1;
-          const label = entry.hasCheckin ? `${CHECKIN_PREFIX}${entry.name}` : entry.name;
-          cell = cellXmlShared(col, rowNum, sharedIndex(strings, label, stringCache), style);
-        } else {
-          cell = cellXmlEmpty(col, rowNum, style);
-        }
-      }
+      if (!scheduled.has(iso)) continue;
+      const existing = cellXmlAt(rowInnerContent, col, rowNum);
+      const entry = dayAssignees.get(iso);
+      const cell = entry?.name
+        ? (() => {
+            assignedCells += 1;
+            const label = entry.hasCheckin ? `${CHECKIN_PREFIX}${entry.name}` : entry.name;
+            return setCellSharedValueOnly(
+              existing,
+              col,
+              rowNum,
+              sharedIndex(strings, label, stringCache),
+            );
+          })()
+        : setCellEmptyValueOnly(existing, col, rowNum);
       rowInnerContent = replaceCell(rowInnerContent, col, rowNum, cell);
     }
     sheet = writeRow(sheet, rowNum, rowInnerContent);

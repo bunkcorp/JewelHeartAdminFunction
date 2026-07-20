@@ -2382,6 +2382,42 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split.jh-sdui-home-flat {
   padding-right: 12px;
 }
 
+@keyframes jh-sdui-early-alert-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 202, 16, 0.45);
+  }
+  50% {
+    opacity: 0.82;
+    box-shadow: 0 0 10px 2px rgba(255, 202, 16, 0.85);
+  }
+}
+
+@keyframes jh-sdui-shake-once {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.jh-sdui-early-alert-preview-pill {
+  animation: jh-sdui-early-alert-pulse 1.4s ease-in-out infinite;
+  cursor: not-allowed !important;
+}
+
+.jh-sdui-early-alert-preview-pill.jh-sdui-shake-once {
+  animation: jh-sdui-shake-once 0.35s ease-in-out;
+}
+
 .jh-sdui-bar,
 .jh-sdui-label-centered {
   width: 100%;
