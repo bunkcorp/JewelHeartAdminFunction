@@ -27,3 +27,7 @@ clients/android/local.properties
 .jewelheart-test-retreat-id
 
 scripts/__pycache__/
+
+# Local-only: DB dumps and stray docs (keep on disk, never commit)
+backups/
+Rainbow Body.pdf
