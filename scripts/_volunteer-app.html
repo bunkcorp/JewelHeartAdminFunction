@@ -388,6 +388,18 @@
       padding: 0.35rem 0.45rem;
       max-width: 14rem;
     }
+    /* Reveal the Sign out action in clean volunteer mode. The clean layout hides the
+       whole .jh-sdui-toolbar (see jewelheart-admin.css), which also hid the only logout
+       control (#btn-out). Re-show the toolbar but keep the title hidden for the clean look.
+       This inline block ships after the external CSS, so it wins on source order. */
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar {
+      display: flex;
+      flex: 0 0 auto;
+      justify-content: flex-end;
+    }
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar > #sdui-title {
+      display: none;
+    }
   </style>
 </head>
 <body class="jh-volunteer-clean jh-volunteer-auth">
