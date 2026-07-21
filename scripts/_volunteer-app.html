@@ -414,19 +414,19 @@
       height: auto;
       overflow-wrap: break-word;
     }
-    /* Let the blue SDUI screen-header/title bar (e.g. "Info • Kitchen • lunch break • light …"
-       on a detail sub-screen) wrap instead of truncating. Unlike the description bars above,
-       the JS renderer (jewelheart-sdui.js, from _prod-sdui.js) sets white-space:nowrap /
-       overflow:hidden / text-overflow:ellipsis as INLINE element styles on home-action-pill
-       bars, so a plain CSS rule can't win — !important is required to beat the inline style.
-       Scoped to .jh-sdui-bar text bars only (header lives in .jh-sdui-header); the shift/job
-       action BUTTONS are .jh-sdui-btn and are deliberately left clamped (single-line). */
-    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-header .jh-sdui-home-action-pill.jh-sdui-bar,
-    #volunteer-sdui-section .jh-sdui-header .jh-sdui-home-action-pill.jh-sdui-bar,
-    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
-    #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
-    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar,
-    #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar {
+    /* Wrap EVERY SDUI text surface in the volunteer app instead of ellipsis-truncating:
+       the blue screen-header/title bars (e.g. "Wed • Kitchen • lunch break • light …" and
+       "Kitchen • … • 15m"), the description/hint bars, AND the shift/job ACTION BUTTONS on the
+       home/list view ("Mon • Café • lunch break • light clea…"). The JS renderer
+       (jewelheart-sdui.js, built from _prod-sdui.js ~lines 2444-2468) sets
+       white-space:nowrap / overflow:hidden / text-overflow:ellipsis as INLINE element styles on
+       both home-action-pill buttons AND bars, so a plain CSS rule can't win — !important is
+       required to beat those inline styles. One combined rule covers .jh-sdui-btn (buttons) and
+       .jh-sdui-bar (bars/headers/descriptions) anywhere under the SDUI section. */
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-btn,
+    #volunteer-sdui-section .jh-sdui-btn,
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-bar {
       white-space: normal !important;
       overflow: visible !important;
       text-overflow: clip !important;
