@@ -433,6 +433,21 @@
       height: auto !important;
       overflow-wrap: break-word !important;
     }
+    /* Never clip the trailing ✎ edit button on nowrap action rows (assigned shifts,
+       check-in rows). The label pill carries an inline max-width: calc(100% - 12px)
+       (see _prod-sdui.js ~:2442) that reserves only 12px — not enough for the ~48px edit
+       button on a flex-nowrap row, so it overflows off the right edge. Let the pill shrink
+       (min-width:0) and wrap, and pin the edit button (flex:0 0 auto) so it keeps its width.
+       The :last-child:not(.jh-sdui-home-action-pill) guard leaves pill-only rows untouched. */
+    #volunteer-sdui-section .jh-sdui-row-nowrap > .jh-sdui-btn.jh-sdui-home-action-pill {
+      min-width: 0 !important;
+      max-width: 100% !important;
+      flex: 0 1 auto !important;
+    }
+    #volunteer-sdui-section .jh-sdui-row-nowrap > .jh-sdui-btn:last-child:not(.jh-sdui-home-action-pill) {
+      flex: 0 0 auto !important;
+      min-width: 44px;
+    }
   </style>
 </head>
 <body class="jh-volunteer-clean jh-volunteer-auth">
