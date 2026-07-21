@@ -22,6 +22,8 @@ import {
   buildJewelheartVolunteerAdminPrivilegesScreen,
   buildJewelheartVolunteerManageScreen,
   buildJewelheartVolunteerManageCheckinsScreen,
+  buildJewelheartVolunteerOboScreen,
+  buildJewelheartVolunteerJobFinderScreen,
   buildJewelheartVolunteerTestingScreen,
   buildJewelheartVolunteerUserManageScreen,
   searchJewelheartPeople,
@@ -268,6 +270,20 @@ export async function buildSduiResponse(
     case 'jewelheart.volunteer.manageCheckins':
       return wrap(
         await buildJewelheartVolunteerManageCheckinsScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.obo':
+      return wrap(
+        await buildJewelheartVolunteerOboScreen(firebaseUid, authToken, {
+          ...params,
+          retreatId: retreatId || params.retreatId,
+        }),
+      );
+    case 'jewelheart.volunteer.jobFinder':
+      return wrap(
+        await buildJewelheartVolunteerJobFinderScreen(firebaseUid, authToken, {
           ...params,
           retreatId: retreatId || params.retreatId,
         }),

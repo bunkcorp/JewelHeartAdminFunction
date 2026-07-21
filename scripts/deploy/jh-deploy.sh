@@ -173,7 +173,7 @@ deploy_local(){
 }
 
 promote(){
-  local from="$1" to="$2" do_mig="${3:-}" fdir tdir
+  local from="$1" to="$2" do_mig="${3:-}" fdir tdir env_file
   [ -n "${from:-}" ] && [ -n "${to:-}" ] || die "usage: promote <from> <to> [--migrate]"
   fdir="$(env_dir "$from")"; tdir="$(env_dir "$to")"
   [ -d "$fdir" ] || die "source dir missing: $fdir"
@@ -188,6 +188,25 @@ promote(){
     --exclude 'jewelheart-sdui-home.js.bak.*' \
     "$fdir/" "$tdir/"
   patch_web "$to"
+  env_file="$tdir/.env"
+  if [ -f "$env_file" ]; then
+    grep -q '^JEWELHEART_ACTIVE_RETREAT_ID=' "$env_file" 2>/dev/null \
+      || echo 'JEWELHEART_ACTIVE_RETREAT_ID=34d43115-67b3-5fbf-9173-abb051c11ca7' >> "$env_file"
+    case "$to" in
+      dev)
+        grep -q '^JEWELHEART_VOLUNTEER_LOGIN_URL=' "$env_file" 2>/dev/null \
+          || echo 'JEWELHEART_VOLUNTEER_LOGIN_URL=https://api-dev.karmadots.org/dev/' >> "$env_file"
+        ;;
+      test)
+        grep -q '^JEWELHEART_VOLUNTEER_LOGIN_URL=' "$env_file" 2>/dev/null \
+          || echo 'JEWELHEART_VOLUNTEER_LOGIN_URL=https://api-test.karmadots.org/test/' >> "$env_file"
+        ;;
+      retreat|prod)
+        grep -q '^JEWELHEART_VOLUNTEER_LOGIN_URL=' "$env_file" 2>/dev/null \
+          || echo 'JEWELHEART_VOLUNTEER_LOGIN_URL=https://api.karmadots.org/retreat/' >> "$env_file"
+        ;;
+    esac
+  fi
   if [ "${do_mig:-}" = "--migrate" ]; then migrate_env "$to"; fi
   restart_env "$to"
   echo "[promote] $from -> $to complete"

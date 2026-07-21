@@ -30,7 +30,7 @@ export async function volunteerEnrichShiftsWithCheckins(volunteerId, shifts) {
               j.title AS "jobTitle",
               (SELECT COUNT(*)::int
                FROM jewelheart_shift_checkins c
-               WHERE c.assignment_id = a.id) AS "checkinCount"
+               WHERE c.assignment_id = a.id AND c.finished_at IS NOT NULL) AS "checkinCount"
        FROM jewelheart_assignments a
        JOIN jewelheart_tasks t ON t.id = a.task_id
        JOIN jewelheart_jobs j ON j.id = t.job_id
@@ -89,7 +89,7 @@ export async function volunteerResolveAssignment(volunteerId, taskId) {
               COALESCE(j.checkins_required, 1) AS "checkinsRequired",
               (SELECT COUNT(*)::int
                FROM jewelheart_shift_checkins c
-               WHERE c.assignment_id = a.id) AS "checkinCount"
+               WHERE c.assignment_id = a.id AND c.finished_at IS NOT NULL) AS "checkinCount"
        FROM jewelheart_assignments a
        JOIN jewelheart_tasks t ON t.id = a.task_id
        JOIN jewelheart_slots s ON s.id = t.slot_id
@@ -137,8 +137,9 @@ export async function volunteerLoadCheckinRows(assignmentId) {
  * Apply start/finish for an assignment. Start only allowed when dayIso === todayIso.
  * @returns {{ ok: boolean, error?: string }}
  */
-export async function volunteerApplyCheckinOpDb(assignment, todayIso, op) {
+export async function volunteerApplyCheckinOpDb(assignment, todayIso, op, options = {}) {
   if (!assignment?.assignmentId || !op) return { ok: false, error: 'missing' };
+  const performedByVolunteerId = options.performedByVolunteerId || null;
   const dayIso = String(assignment.dayIso || '');
   if (op === 'start') {
     if (dayIso !== todayIso) return { ok: false, error: 'not_today' };
@@ -152,9 +153,9 @@ export async function volunteerApplyCheckinOpDb(assignment, todayIso, op) {
       );
       if (open.rows[0]) return { ok: true, alreadyOpen: true };
       await query(
-        `INSERT INTO jewelheart_shift_checkins (assignment_id, started_at)
-         VALUES ($1, now())`,
-        [assignment.assignmentId],
+        `INSERT INTO jewelheart_shift_checkins (assignment_id, started_at, performed_by_volunteer_id)
+         VALUES ($1, now(), $2)`,
+        [assignment.assignmentId, performedByVolunteerId],
       );
       return { ok: true };
     } catch (err) {
@@ -190,6 +191,96 @@ export async function volunteerApplyCheckinOpDb(assignment, todayIso, op) {
  * Keeps completed rows (including new Start+End pairs) and baseline rows that were
  * already finished when the screen opened.
  */
+/** Parse "h:mm AM/PM" to minutes since midnight, or null if invalid. */
+export function volunteerClockLabelMinutes(label) {
+  const m = String(label || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 1 || h > 12 || min < 0 || min > 59) return null;
+  const pm = m[3].toUpperCase() === 'PM';
+  if (h === 12) h = pm ? 12 : 0;
+  else if (pm) h += 12;
+  return h * 60 + min;
+}
+
+/** @returns {{ ok: boolean, error?: string }} */
+export function volunteerValidateClockPairLabels(startLabel, finishLabel) {
+  const startMin = volunteerClockLabelMinutes(startLabel);
+  const endMin = volunteerClockLabelMinutes(finishLabel);
+  if (startMin == null || endMin == null) {
+    return { ok: false, error: 'Enter times as h:mm AM or PM.' };
+  }
+  if (endMin <= startMin) {
+    return { ok: false, error: 'End time must be after start time.' };
+  }
+  if (endMin - startMin > 60) {
+    return { ok: false, error: 'Start and end must be within one hour.' };
+  }
+  return { ok: true };
+}
+
+function volunteerClockLabelToPgTime(label) {
+  const mins = volunteerClockLabelMinutes(label);
+  if (mins == null) return null;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+}
+
+/**
+ * Done with manually entered clock times (today only). Replaces open sessions from this visit.
+ */
+export async function volunteerApplyManualCheckinDoneDb(
+  assignment,
+  todayIso,
+  startLabel,
+  finishLabel,
+  baselineIds = [],
+  timeZone = 'America/New_York',
+  performedByVolunteerId = null,
+) {
+  if (!assignment?.assignmentId) return { ok: false, error: 'missing' };
+  const dayIso = String(assignment.dayIso || '');
+  if (dayIso !== todayIso) return { ok: false, error: 'not_today' };
+  const valid = volunteerValidateClockPairLabels(startLabel, finishLabel);
+  if (!valid.ok) return { ok: false, error: valid.error };
+  const startTime = volunteerClockLabelToPgTime(startLabel);
+  const finishTime = volunteerClockLabelToPgTime(finishLabel);
+  if (!startTime || !finishTime) return { ok: false, error: 'invalid_time' };
+  const base = (baselineIds || []).map(String).filter(Boolean);
+  try {
+    if (!base.length) {
+      await query(
+        `DELETE FROM jewelheart_shift_checkins
+         WHERE assignment_id = $1 AND finished_at IS NULL`,
+        [assignment.assignmentId],
+      );
+    } else {
+      await query(
+        `DELETE FROM jewelheart_shift_checkins
+         WHERE assignment_id = $1
+           AND finished_at IS NULL
+           AND NOT (id = ANY($2::uuid[]))`,
+        [assignment.assignmentId, base],
+      );
+    }
+    await query(
+      `INSERT INTO jewelheart_shift_checkins (assignment_id, started_at, finished_at, performed_by_volunteer_id)
+       VALUES (
+         $1,
+         ($2::date + $3::time) AT TIME ZONE $4,
+         ($2::date + $5::time) AT TIME ZONE $4,
+         $6
+       )`,
+      [assignment.assignmentId, dayIso, startTime, timeZone, finishTime, performedByVolunteerId],
+    );
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message || 'manual_done_failed' };
+  }
+}
+
 export async function volunteerCheckinDoneDb(assignment, baselineIds = []) {
   if (!assignment?.assignmentId) return { ok: false, error: 'missing' };
   const base = (baselineIds || []).map(String).filter(Boolean);
@@ -251,7 +342,7 @@ export async function volunteerListRetreatCheckins(retreatId, limit = 40) {
               c.finished_at AS "finishedAt",
               (SELECT COUNT(*)::int
                FROM jewelheart_shift_checkins c2
-               WHERE c2.assignment_id = a.id) AS "checkinCount",
+               WHERE c2.assignment_id = a.id AND c2.finished_at IS NOT NULL) AS "checkinCount",
               COALESCE(j.checkins_required, 1) AS "checkinsRequired"
        FROM jewelheart_shift_checkins c
        JOIN jewelheart_assignments a ON a.id = c.assignment_id

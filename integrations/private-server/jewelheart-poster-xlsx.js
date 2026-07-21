@@ -1,14 +1,19 @@
 /**
- * Build a populated Master-tab poster .xlsx from the v8 template + live assignments.
- * Output: P-mmdd-hhmm.xlsx (columns A–I only; J–M stripped).
+ * Build a populated jobs v4.xlsx: Poster + Compact (assignments, checkmarks) + Roster.
+ * Template: jobs v4.xlsx (Poster / Compact / Roster tabs; Jobs tab unchanged).
+ * Output: P-mmdd-hhmm.xlsx
  */
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { query } from '../db.js';
 import * as acl from './acl.js';
 import { HttpError } from './errors.js';
+import { getPosterSearchJobs, normPosterTitle } from './jewelheart-poster-data.js';
+
+const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const POSTER_DAY_COL_BY_ISO = {
   '2026-07-20': 'B',
@@ -19,50 +24,22 @@ const POSTER_DAY_COL_BY_ISO = {
   '2026-07-25': 'G',
 };
 
-/** v8 Master rows 2–18 in spreadsheet order (matches DB created_at / VOLUNTEER_POSTER_SEARCH_JOBS). */
-const POSTER_JOBS = [
-  { title: 'Café, lunch break / Light cleanup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Café, end of day / Full cleanup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Kitchen, lunch brk / Light cleanup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Kitchen, end of day / Full cleanup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Coffee & snacks / Morning setup', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Coffee & snacks / Evening brkdwn', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Tara Paradse, store / Vacuum', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
-  { title: 'JH off, main hallway / Vacuum', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
-  { title: 'Coatrm, café hallwy / Vacuum', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Foyer & lobby / Vacuum', scheduledDayIsos: ['2026-07-22', '2026-07-25'] },
-  { title: 'Lama offices / Clean', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
-  { title: "Men's room / Clean & stock", scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Urinals / Check pads & mop', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: "Women's room / Clean & stock", scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Unisx, Lama bathrooms', scheduledDayIsos: ['2026-07-20', '2026-07-21', '2026-07-22', '2026-07-23', '2026-07-24', '2026-07-25'] },
-  { title: 'Front windows / Clean', scheduledDayIsos: ['2026-07-22', '2026-07-25'] },
-  { title: 'Towels, mop pads / launder at home', scheduledDayIsos: ['2026-07-21', '2026-07-23', '2026-07-25'] },
-];
-
-const NOT_SCHEDULED_TEXT = 'XXXXX';
-const DROP_COLS = ['J', 'K', 'L', 'M'];
-/** v8 Master template cellXfs — header/job/est cols left untouched; day cols styled below. */
-const STYLE_NOT_SCHEDULED = '32'; // B–G: XXXXX
-const STYLE_ASSIGNED = '36'; // B–G: volunteer name
-const STYLE_DAY_EMPTY = '30'; // B–G: scheduled but open (fallback)
-
-function normTitle(s) {
-  return String(s || '')
-    .toLowerCase()
-    .replace(/[\r\n]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+const DAY_COLS = ['B', 'C', 'D', 'E', 'F', 'G'];
+const CHECKIN_PREFIX = '✓ ';
+const ROSTER_COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
+const ROSTER_DATA_STYLE = '25';
+const ROSTER_Y_STYLE = '25';
 
 function dayIsoOnly(raw) {
   return String(raw || '').slice(0, 10);
 }
 
 function defaultTemplatePath() {
-  const env = (process.env.JEWELHEART_POSTER_TEMPLATE_PATH || '').trim();
-  if (env) return env;
-  return path.resolve('data/retreat-volunteer-schedule-v8-template.xlsx');
+  const env =
+    (process.env.JEWELHEART_POSTER_TEMPLATE_PATH || '').trim() ||
+    (process.env.JEWELHEART_JOBS_XLSX_PATH || '').trim();
+  if (env) return path.resolve(env);
+  return path.resolve(__dir, '../../data/jewelheart/jobs-v4.xlsx');
 }
 
 function posterFilename(now = new Date()) {
@@ -169,16 +146,18 @@ function sharedIndex(strings, text, cache) {
   return idx;
 }
 
-function masterSheetPath(xlDir) {
+function sheetPathByName(xlDir, sheetName) {
   const wb = fs.readFileSync(path.join(xlDir, 'workbook.xml'), 'utf8');
   const rels = fs.readFileSync(path.join(xlDir, '_rels', 'workbook.xml.rels'), 'utf8');
   const relMap = {};
   for (const m of rels.matchAll(/<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)) {
     relMap[m[1]] = m[2];
   }
-  const master = [...wb.matchAll(/<sheet[^>]*name="Master"[^>]*r:id="([^"]+)"/g)][0];
-  if (!master) throw new HttpError(500, 'Master sheet not found in poster template');
-  const target = relMap[master[1]].replace(/^\//, '').replace(/^xl\//, '');
+  const match = [...wb.matchAll(/<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g)].find(
+    (m) => m[1] === sheetName,
+  );
+  if (!match) throw new HttpError(500, `${sheetName} sheet not found in Excel template`);
+  const target = relMap[match[2]].replace(/^\//, '').replace(/^xl\//, '');
   return path.join(xlDir, target);
 }
 
@@ -205,39 +184,65 @@ function replaceCell(rowInner, col, rowNum, newCell) {
   return rowInner.replace(/<\/row>/, `${newCell}</row>`);
 }
 
-function stripColsFromRow(rowInner, rowNum) {
-  let out = rowInner;
-  for (const col of DROP_COLS) {
-    const re = new RegExp(`<c r="${col}${rowNum}"[^>]*/>|<c r="${col}${rowNum}"[^>]*>[\\s\\S]*?</c>`, 'g');
-    out = out.replace(re, '');
+function cellXmlAt(rowInner, col, rowNum) {
+  const re = new RegExp(`<c r="${col}${rowNum}"[^>]*/>|<c r="${col}${rowNum}"[^>]*>[\\s\\S]*?</c>`);
+  return rowInner.match(re)?.[0] || null;
+}
+
+function cellOpeningAttrs(cellXml, col, rowNum, fallbackStyle = '17') {
+  const m = cellXml?.match(new RegExp(`<c r="${col}${rowNum}"([^>]*)`));
+  if (!m) return ` s="${fallbackStyle}"`;
+  return m[1].replace(/\/\s*$/, '').trimEnd();
+}
+
+/** Paste assignee into an open slot without changing template formatting (style, borders, fill). */
+function setCellSharedValueOnly(existing, col, rowNum, idx, fallbackStyle = '17') {
+  let attrs = cellOpeningAttrs(existing, col, rowNum, fallbackStyle);
+  attrs = attrs.replace(/\s+t="[^"]*"/g, '');
+  attrs += ' t="s"';
+  return `<c r="${col}${rowNum}"${attrs}><v>${idx}</v></c>`;
+}
+
+/** Clear an open slot back to blank without changing template formatting. */
+function setCellEmptyValueOnly(existing, col, rowNum, fallbackStyle = '17') {
+  let attrs = cellOpeningAttrs(existing, col, rowNum, fallbackStyle);
+  attrs = attrs.replace(/\s+t="[^"]*"/g, '');
+  return `<c r="${col}${rowNum}"${attrs}/>`;
+}
+
+function rowInner(sheet, rowNum) {
+  const rowRe = new RegExp(`<row r="${rowNum}"[^>]*>([\\s\\S]*?)</row>`);
+  const rm = sheet.match(rowRe);
+  return rm ? { full: rm[0], inner: rm[1] } : null;
+}
+
+function writeRow(sheet, rowNum, rowInnerContent) {
+  const rowRe = new RegExp(`(<row r="${rowNum}"[^>]*>)([\\s\\S]*?)</row>`);
+  const rm = sheet.match(rowRe);
+  if (rm) {
+    return sheet.replace(rowRe, `${rm[1]}${rowInnerContent}</row>`);
   }
-  return out;
+  return sheet.replace('</sheetData>', `<row r="${rowNum}">${rowInnerContent}</row></sheetData>`);
 }
 
-/** Poster output is static — drop template layout formulas (H/M/L refs, LEN, etc.). */
-function flattenFormulasInSheetXml(sheetXml) {
-  return sheetXml.replace(
-    /<c r="([^"]+)"([^>]*)>([\s\S]*?)<\/c>/g,
-    (full, ref, attrs, inner) => {
-      if (!/<f[\s>]/.test(inner)) return full;
-      let body = inner.replace(/<f[\s\S]*?<\/f>/g, '').replace(/<f[^/]*\/>/g, '').trim();
-      if (!body) return `<c r="${ref}"${attrs}/>`;
-      return `<c r="${ref}"${attrs}>${body}</c>`;
-    },
-  );
+function splitDisplayName(displayName) {
+  const parts = String(displayName || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { first: '', last: '' };
+  if (parts.length === 1) return { first: parts[0], last: '' };
+  return { first: parts[0], last: parts.slice(1).join(' ') };
 }
 
-function flattenFormulasInMasterSheet(sheetPath) {
-  const sheet = fs.readFileSync(sheetPath, 'utf8');
-  fs.writeFileSync(sheetPath, flattenFormulasInSheetXml(sheet), 'utf8');
-}
-
-async function loadAssigneeMap(retreatId) {
+/** @returns {Map<string, Map<string, { name: string, hasCheckin: boolean }>>} */
+async function loadAssignmentCellMap(retreatId) {
   const { rows } = await query(
     `SELECT DISTINCT ON (t.id)
             j.title,
             left(s.slot_date::text, 10) AS day,
-            v.display_name AS name
+            v.display_name AS name,
+            EXISTS (
+              SELECT 1 FROM jewelheart_shift_checkins c
+              WHERE c.assignment_id = a.id
+            ) AS has_checkin
      FROM jewelheart_assignments a
      JOIN jewelheart_tasks t ON t.id = a.task_id
      JOIN jewelheart_jobs j ON j.id = t.job_id
@@ -249,59 +254,125 @@ async function loadAssigneeMap(retreatId) {
   );
   const map = new Map();
   for (const r of rows) {
-    const key = normTitle(r.title);
+    const key = normPosterTitle(r.title);
     const day = dayIsoOnly(r.day);
-    if (!key || !day) continue;
+    const name = String(r.name || '').trim();
+    if (!key || !day || !name) continue;
     if (!map.has(key)) map.set(key, new Map());
-    map.get(key).set(day, String(r.name || '').trim());
+    map.get(key).set(day, { name, hasCheckin: r.has_checkin === true });
   }
   return map;
 }
 
-function populateMasterSheet(sheetPath, assigneesByJobTitle, strings, stringCache) {
-  let sheet = fs.readFileSync(sheetPath, 'utf8');
-  const notScheduledIdx = sharedIndex(strings, NOT_SCHEDULED_TEXT, stringCache);
+function dayCellsForJob(job, cellByTitle) {
+  for (const key of [normPosterTitle(job.title), normPosterTitle(job.dbTitle)]) {
+    if (cellByTitle.has(key)) return cellByTitle.get(key);
+  }
+  return new Map();
+}
 
-  POSTER_JOBS.forEach((job, jobIdx) => {
-    const rowNum = jobIdx + 2;
-    const rowRe = new RegExp(`<row r="${rowNum}"[^>]*>([\\s\\S]*?)</row>`);
-    const rm = sheet.match(rowRe);
-    if (!rm) return;
-    let rowInner = rm[1];
-    const titleKey = normTitle(job.title);
-    const dayAssignees = assigneesByJobTitle.get(titleKey) || new Map();
-    const scheduled = new Set(job.scheduledDayIsos);
+function populateScheduleSheet(sheetPath, jobs, cellByTitle, strings, stringCache) {
+  let sheet = fs.readFileSync(sheetPath, 'utf8');
+  let assignedCells = 0;
+
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    const rowNum = i + 2;
+    const row = rowInner(sheet, rowNum);
+    if (!row) continue;
+    let rowInnerContent = row.inner;
+    const scheduled = new Set(job.scheduledDayIsos || []);
+    const dayAssignees = dayCellsForJob(job, cellByTitle);
 
     for (const [iso, col] of Object.entries(POSTER_DAY_COL_BY_ISO)) {
-      const dayStyle = extractCellStyle(rowInner, col, rowNum, STYLE_DAY_EMPTY);
-      let cell;
-      if (!scheduled.has(iso)) {
-        cell = cellXmlShared(col, rowNum, notScheduledIdx, STYLE_NOT_SCHEDULED);
-      } else {
-        const name = dayAssignees.get(iso);
-        if (name) {
-          cell = cellXmlShared(col, rowNum, sharedIndex(strings, name, stringCache), STYLE_ASSIGNED);
-        } else {
-          cell = cellXmlEmpty(col, rowNum, dayStyle);
-        }
-      }
-      rowInner = replaceCell(rowInner, col, rowNum, cell);
+      if (!scheduled.has(iso)) continue;
+      const existing = cellXmlAt(rowInnerContent, col, rowNum);
+      const entry = dayAssignees.get(iso);
+      const cell = entry?.name
+        ? (() => {
+            assignedCells += 1;
+            const label = entry.hasCheckin ? `${CHECKIN_PREFIX}${entry.name}` : entry.name;
+            return setCellSharedValueOnly(
+              existing,
+              col,
+              rowNum,
+              sharedIndex(strings, label, stringCache),
+            );
+          })()
+        : setCellEmptyValueOnly(existing, col, rowNum);
+      rowInnerContent = replaceCell(rowInnerContent, col, rowNum, cell);
     }
-    rowInner = stripColsFromRow(rowInner, rowNum);
-    sheet = sheet.replace(rm[0], `<row r="${rowNum}">${rowInner}</row>`);
-  });
+    sheet = writeRow(sheet, rowNum, rowInnerContent);
+  }
 
-  // Header row: drop J–M
-  const r1 = sheet.match(/<row r="1"[^>]*>([\s\S]*?)<\/row>/);
-  if (r1) {
-    let h = stripColsFromRow(r1[1], 1);
-    sheet = sheet.replace(r1[0], `<row r="1">${h}</row>`);
+  fs.writeFileSync(sheetPath, sheet, 'utf8');
+  return assignedCells;
+}
+
+async function loadRetreatRoster(retreatId) {
+  const { rows } = await query(
+    `SELECT v.display_name AS "displayName",
+            v.email,
+            v.phone,
+            v.roster_manage AS "rosterManage",
+            v.roster_admin AS "rosterAdmin"
+     FROM jewelheart_retreat_volunteers rv
+     JOIN jewelheart_volunteers v ON v.id = rv.volunteer_id
+     WHERE rv.retreat_id = $1
+     ORDER BY v.display_name`,
+    [retreatId],
+  );
+  return rows;
+}
+
+function populateRosterSheet(sheetPath, volunteers, strings, stringCache) {
+  let sheet = fs.readFileSync(sheetPath, 'utf8');
+  const yIdx = sharedIndex(strings, 'y', stringCache);
+  const maxRow = Math.max(volunteers.length + 1, 10);
+
+  for (let i = 0; i < maxRow - 1; i++) {
+    const rowNum = i + 2;
+    const v = volunteers[i];
+    const row = rowInner(sheet, rowNum);
+    let rowInnerContent = row?.inner || '';
+    const style = row
+      ? extractCellStyle(rowInnerContent, 'A', rowNum, ROSTER_DATA_STYLE)
+      : ROSTER_DATA_STYLE;
+
+    if (v) {
+      const { first, last } = splitDisplayName(v.displayName);
+      const cols = {
+        A: first,
+        B: last,
+        C: String(v.email || '').trim(),
+        D: String(v.phone || '').trim(),
+        E: v.rosterManage === true ? 'y' : '',
+        F: v.rosterAdmin === true ? 'y' : '',
+      };
+      for (const col of ROSTER_COLS) {
+        const text = cols[col];
+        const colStyle = col === 'E' || col === 'F' ? ROSTER_Y_STYLE : style;
+        const cell =
+          text === 'y' && (col === 'E' || col === 'F')
+            ? cellXmlShared(col, rowNum, yIdx, colStyle)
+            : text
+              ? cellXmlShared(col, rowNum, sharedIndex(strings, text, stringCache), colStyle)
+              : cellXmlEmpty(col, rowNum, colStyle);
+        rowInnerContent = row ? replaceCell(rowInnerContent, col, rowNum, cell) : `${rowInnerContent}${cell}`;
+      }
+    } else {
+      for (const col of ROSTER_COLS) {
+        const colStyle = col === 'E' || col === 'F' ? ROSTER_Y_STYLE : style;
+        const cell = cellXmlEmpty(col, rowNum, colStyle);
+        rowInnerContent = row ? replaceCell(rowInnerContent, col, rowNum, cell) : `${rowInnerContent}${cell}`;
+      }
+    }
+    sheet = writeRow(sheet, rowNum, rowInnerContent);
   }
 
   fs.writeFileSync(sheetPath, sheet, 'utf8');
 }
 
-/** Drop stale calcChain + strip package refs (removed J–M formula cells break calcChain). */
 function sanitizeXlsxPackage(workDir) {
   const xlDir = path.join(workDir, 'xl');
   const calcPath = path.join(xlDir, 'calcChain.xml');
@@ -311,7 +382,6 @@ function sanitizeXlsxPackage(workDir) {
   if (fs.existsSync(relsPath)) {
     let rels = fs.readFileSync(relsPath, 'utf8');
     rels = rels.replace(/<Relationship[^>]*Target="[^"]*calcChain\.xml"[^>]*\/>/g, '');
-    rels = rels.replace(/<Relationship[^>]*calcChain[^>]*\/>/g, '');
     fs.writeFileSync(relsPath, rels, 'utf8');
   }
 
@@ -319,21 +389,25 @@ function sanitizeXlsxPackage(workDir) {
   if (fs.existsSync(ctPath)) {
     let ct = fs.readFileSync(ctPath, 'utf8');
     ct = ct.replace(/<Override[^>]*\/xl\/calcChain\.xml"[^>]*\/>/g, '');
-    ct = ct.replace(/<Override[^>]*calcChain[^>]*\/>/g, '');
     fs.writeFileSync(ctPath, ct, 'utf8');
   }
 }
 
 /**
- * @returns {{ buffer: Buffer, filename: string, assignedCells: number }}
+ * @returns {{ buffer: Buffer, filename: string, assignedCells: number, rosterRows: number }}
  */
 export async function buildPosterMasterXlsxBuffer(retreatId) {
   const templatePath = defaultTemplatePath();
   if (!fs.existsSync(templatePath)) {
     throw new HttpError(
       500,
-      `Poster template missing (${templatePath}). Set JEWELHEART_POSTER_TEMPLATE_PATH.`,
+      `Excel template missing (${templatePath}). Set JEWELHEART_POSTER_TEMPLATE_PATH or JEWELHEART_JOBS_XLSX_PATH.`,
     );
+  }
+
+  const jobs = getPosterSearchJobs();
+  if (!jobs.length) {
+    throw new HttpError(500, 'Poster job catalog not loaded (jobs v4.xlsx).');
   }
 
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jh-poster-'));
@@ -341,20 +415,30 @@ export async function buildPosterMasterXlsxBuffer(retreatId) {
   try {
     unzipXlsx(templatePath, workDir);
     const xlDir = path.join(workDir, 'xl');
-    const sheetPath = masterSheetPath(xlDir);
+    const posterPath = sheetPathByName(xlDir, 'Poster');
+    const compactPath = sheetPathByName(xlDir, 'Compact');
+    const rosterPath = sheetPathByName(xlDir, 'Roster');
     const ssPath = path.join(xlDir, 'sharedStrings.xml');
     const strings = parseSharedStrings(fs.readFileSync(ssPath, 'utf8'));
     const stringCache = new Map();
-    const assignees = await loadAssigneeMap(retreatId);
-    populateMasterSheet(sheetPath, assignees, strings, stringCache);
-    flattenFormulasInMasterSheet(sheetPath);
+
+    const cellByTitle = await loadAssignmentCellMap(retreatId);
+    const roster = await loadRetreatRoster(retreatId);
+
+    let assignedCells = populateScheduleSheet(posterPath, jobs, cellByTitle, strings, stringCache);
+    assignedCells += populateScheduleSheet(compactPath, jobs, cellByTitle, strings, stringCache);
+    populateRosterSheet(rosterPath, roster, strings, stringCache);
+
     fs.writeFileSync(ssPath, buildSharedStringsXml(strings), 'utf8');
     sanitizeXlsxPackage(workDir);
     zipXlsx(workDir, outPath);
     const buffer = fs.readFileSync(outPath);
-    let assignedCells = 0;
-    for (const jobMap of assignees.values()) assignedCells += jobMap.size;
-    return { buffer, filename: posterFilename(), assignedCells };
+    return {
+      buffer,
+      filename: posterFilename(),
+      assignedCells,
+      rosterRows: roster.length,
+    };
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
   }

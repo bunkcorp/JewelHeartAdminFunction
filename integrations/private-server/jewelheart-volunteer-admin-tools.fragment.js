@@ -6,11 +6,13 @@
  *   PUT  /retreats/:retreatId/volunteers/:volunteerId/privileges
  *   GET  /retreats/:retreatId/admin/assignments-summary
  *   POST /retreats/:retreatId/admin/clear-assignments
+ *   POST /retreats/:retreatId/admin/reload-poster-data
  */
 
 import { HttpError } from './errors.js';
 import * as acl from './acl.js';
 import { assertUuid } from './service.js';
+import { reloadPosterData, getPosterDataStatus } from './jewelheart-poster-data.js';
 
 async function assertGlobalAdmin(query, firebaseUid) {
   const uid = String(firebaseUid || '').trim();
@@ -18,6 +20,16 @@ async function assertGlobalAdmin(query, firebaseUid) {
   const admin = await query('SELECT 1 FROM jewelheart_admins WHERE firebase_uid = $1 LIMIT 1', [uid]);
   if (admin.rows[0]) return;
   throw new HttpError(403, 'Admin access required.');
+}
+
+async function assertAdminOrManager(query, firebaseUid) {
+  const uid = String(firebaseUid || '').trim();
+  if (!uid) throw new HttpError(401, 'Sign in required');
+  const admin = await query('SELECT 1 FROM jewelheart_admins WHERE firebase_uid = $1 LIMIT 1', [uid]);
+  if (admin.rows[0]) return;
+  const mgr = await query('SELECT 1 FROM jewelheart_managers WHERE firebase_uid = $1 LIMIT 1', [uid]);
+  if (mgr.rows[0]) return;
+  throw new HttpError(403, 'Manager or admin access required.');
 }
 
 async function ensureVolunteerOnRetreat(query, retreatId, volunteerId) {
@@ -275,6 +287,27 @@ export function createJewelHeartVolunteerAdminToolsHandlers({ query }) {
       } catch (e) {
         const code = e instanceof HttpError ? e.status : 500;
         if (code >= 500) console.error('admin clear assignments', e);
+        res.status(code).json({ error: e.message || 'Server error' });
+      }
+    },
+
+    async postReloadPosterData(req, res) {
+      try {
+        await assertAdminOrManager(query, req.uid);
+        const retreatId = req.params.retreatId;
+        await acl.assertRetreatReadAccess(req.uid, retreatId, req.authToken);
+        const result = await reloadPosterData();
+        const status = getPosterDataStatus();
+        const warnNote = result.warnings?.length ? ` (${result.warnings.length} warning(s))` : '';
+        res.status(200).json({
+          ok: true,
+          message: `Reloaded ${result.jobs.length} jobs and ${result.instructionsCount} instruction set(s)${warnNote}.`,
+          ...result,
+          status,
+        });
+      } catch (e) {
+        const code = e instanceof HttpError ? e.status : 500;
+        if (code >= 500) console.error('admin reload poster data', e);
         res.status(code).json({ error: e.message || 'Server error' });
       }
     },

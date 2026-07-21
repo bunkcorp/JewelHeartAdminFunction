@@ -1945,8 +1945,12 @@ body.jh-signed-in .jh-admin-corner {
   font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg);
+  background: #e3ebf6;
   color: var(--text);
+}
+
+.jh-sdui-job-picker .jh-sdui-person-picker-input {
+  background: #f5e0de;
 }
 
 .jh-sdui-bar.jh-sdui-bar-wrap {
@@ -2287,6 +2291,41 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split.jh-sdui-home-flat {
   row-gap: 0.35rem;
 }
 
+.jh-sdui-checkin-time-box {
+  cursor: pointer;
+  user-select: none;
+}
+
+.jh-sdui-checkin-time-box.jh-sdui-checkin-time-active {
+  outline: 2px solid #ffca10;
+  outline-offset: 1px;
+}
+
+.jh-sdui-checkin-time-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+}
+
+.jh-sdui-checkin-time-warn {
+  color: #cc0000;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 8px 0;
+}
+
+.jh-sdui-btn.jh-sdui-checkin-done-blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .jh-sdui-row {
   display: flex;
   flex-direction: row;
@@ -2341,6 +2380,42 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split.jh-sdui-home-flat {
 .jh-sdui-pill {
   padding-left: 12px;
   padding-right: 12px;
+}
+
+@keyframes jh-sdui-early-alert-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 202, 16, 0.45);
+  }
+  50% {
+    opacity: 0.82;
+    box-shadow: 0 0 10px 2px rgba(255, 202, 16, 0.85);
+  }
+}
+
+@keyframes jh-sdui-shake-once {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+.jh-sdui-early-alert-preview-pill {
+  animation: jh-sdui-early-alert-pulse 1.4s ease-in-out infinite;
+  cursor: not-allowed !important;
+}
+
+.jh-sdui-early-alert-preview-pill.jh-sdui-shake-once {
+  animation: jh-sdui-shake-once 0.35s ease-in-out;
 }
 
 .jh-sdui-bar,
@@ -2513,6 +2588,29 @@ body.jh-volunteer-clean .jh-sdui-root.jh-sdui-home-split.jh-sdui-home-flat {
   margin-bottom: 0 !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
+}
+
+.jh-sdui-header:has(.jh-sdui-today-shift-panel-header) {
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.jh-sdui-today-shift-panel-header {
+  width: 100%;
+  align-self: stretch;
+}
+
+.jh-sdui-header .jh-sdui-today-shift-panel-header .jh-sdui-today-shift-scroll {
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.jh-sdui-home-split:has(.jh-sdui-header .jh-sdui-today-shift-scroll) .jh-sdui-home-middle:empty {
+  display: none;
+  flex: 0 0 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .jh-sdui-scroll:has(.jh-sdui-job-list-scroll) {

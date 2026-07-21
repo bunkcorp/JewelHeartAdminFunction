@@ -56,6 +56,7 @@ const routes = `router.get('/retreats/:retreatId/volunteers/:volunteerId/privile
 router.put('/retreats/:retreatId/volunteers/:volunteerId/privileges', volunteerAdminToolsHandlers.putPrivileges);
 router.get('/retreats/:retreatId/admin/assignments-summary', volunteerAdminToolsHandlers.getAssignmentsSummary);
 router.post('/retreats/:retreatId/admin/clear-assignments', volunteerAdminToolsHandlers.postClearAssignments);
+router.post('/retreats/:retreatId/admin/reload-poster-data', volunteerAdminToolsHandlers.postReloadPosterData);
 `;
 
 if (!src.includes("router.get('/retreats/:retreatId/volunteers/:volunteerId/privileges'")) {
@@ -68,6 +69,17 @@ if (!src.includes("router.get('/retreats/:retreatId/volunteers/:volunteerId/priv
     src = src.replace(authAnchor, `${authAnchor}\n\n${routes}`);
   }
   console.log('added admin-tools routes');
+}
+
+if (!src.includes("router.post('/retreats/:retreatId/admin/reload-poster-data'")) {
+  const anchor = "router.post('/retreats/:retreatId/admin/clear-assignments', volunteerAdminToolsHandlers.postClearAssignments);";
+  if (src.includes(anchor)) {
+    src = src.replace(
+      anchor,
+      `${anchor}\nrouter.post('/retreats/:retreatId/admin/reload-poster-data', volunteerAdminToolsHandlers.postReloadPosterData);`,
+    );
+    console.log('added reload-poster-data route');
+  }
 }
 
 if (src === orig) {

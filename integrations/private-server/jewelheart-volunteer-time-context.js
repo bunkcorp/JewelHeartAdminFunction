@@ -371,6 +371,7 @@ export function createJewelHeartVolunteerTestingHandlers({ query }) {
           retreatBannerLine: timeCtx.retreatBannerLine,
           testingNote: timeCtx.testingNote,
           apiBuildStamp: VOLUNTEER_API_BUILD_STAMP,
+          minWebBuild: VOLUNTEER_API_BUILD_STAMP,
           retreat: {
             startDate: timeCtx.retreat?.startDate || null,
             endDate: timeCtx.retreat?.endDate || null,

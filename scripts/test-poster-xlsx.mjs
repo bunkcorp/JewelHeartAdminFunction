@@ -11,9 +11,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
 
 // Default template for local test
-if (!process.env.JEWELHEART_POSTER_TEMPLATE_PATH) {
-  const local = 'C:/Data/dev/RetreatVolunteer/Redesign/Retreat_Volunteer_Schedule v8, w abbrevs.xlsx';
-  if (fs.existsSync(local)) process.env.JEWELHEART_POSTER_TEMPLATE_PATH = local;
+if (!process.env.JEWELHEART_POSTER_TEMPLATE_PATH && !process.env.JEWELHEART_JOBS_XLSX_PATH) {
+  const local = path.join(repoRoot, 'data/jewelheart/jobs-v4.xlsx');
+  if (fs.existsSync(local)) process.env.JEWELHEART_JOBS_XLSX_PATH = local;
 }
 
 const retreatId = process.argv[2] || '34d43115-67b3-5fbf-9173-abb051c11ca7';
