@@ -414,6 +414,25 @@
       height: auto;
       overflow-wrap: break-word;
     }
+    /* Let the blue SDUI screen-header/title bar (e.g. "Info • Kitchen • lunch break • light …"
+       on a detail sub-screen) wrap instead of truncating. Unlike the description bars above,
+       the JS renderer (jewelheart-sdui.js, from _prod-sdui.js) sets white-space:nowrap /
+       overflow:hidden / text-overflow:ellipsis as INLINE element styles on home-action-pill
+       bars, so a plain CSS rule can't win — !important is required to beat the inline style.
+       Scoped to .jh-sdui-bar text bars only (header lives in .jh-sdui-header); the shift/job
+       action BUTTONS are .jh-sdui-btn and are deliberately left clamped (single-line). */
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-header .jh-sdui-home-action-pill.jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-header .jh-sdui-home-action-pill.jh-sdui-bar,
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar {
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      height: auto !important;
+      overflow-wrap: break-word !important;
+    }
   </style>
 </head>
 <body class="jh-volunteer-clean jh-volunteer-auth">
