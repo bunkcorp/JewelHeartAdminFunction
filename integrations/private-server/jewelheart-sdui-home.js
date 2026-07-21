@@ -84,9 +84,10 @@ const volunteerHomeMediumGray = '#808080';
  * At 17sp bold, ~30 characters fit on one line without wrapping.
  */
 const VOLUNTEER_HOME_MIN_WIDTH_DP = 360;
-/** ~35–36 chars at 17sp bold on 360dp (mockups). */
-const VOLUNTEER_HOME_MAX_BAR_CHARS = 38;
-const VOLUNTEER_HOME_MAX_HINT_CHARS = 38;
+/** Formerly ~38 (single-line clamp at 360dp). Raised so full labels are sent and
+ * clients wrap them to multiple lines instead of the server chopping with "…". */
+const VOLUNTEER_HOME_MAX_BAR_CHARS = 200;
+const VOLUNTEER_HOME_MAX_HINT_CHARS = 200;
 const VOLUNTEER_HOME_BAR_FONT_SP = 17;
 const VOLUNTEER_HOME_BAR_V_PAD = 10;
 const VOLUNTEER_HOME_BAR_H_PAD = 12;
@@ -179,10 +180,9 @@ function volunteerHomeDayJobPillLabel(jobName, dayIso, maxChars, warnings, code,
 }
 
 function volunteerHomeFitLine(text, maxChars, warnings, code) {
-  let s = volunteerHomeCompactJobPhrase(String(text || '').trim());
-  if (s.length <= maxChars) return s;
-  if (warnings) volunteerHomeLayoutWarn(warnings, code, s);
-  return `${s.slice(0, maxChars - 1)}…`;
+  // Return the full compacted label; no ellipsis truncation. Clients wrap long
+  // labels to multiple lines. (maxChars/warnings/code kept for call-site compat.)
+  return volunteerHomeCompactJobPhrase(String(text || '').trim());
 }
 
 /** Instruction bar: job title (• separators) + time estimate; ellipsis before " • NNm". */
@@ -219,10 +219,8 @@ function volunteerHomeInstructionMeta(ctx, jobId, taskId) {
 
 /** Fit abbrev text without compactJobPhrase (Master abbrev col M as-is except " - " → •). */
 function volunteerHomeFitAbbrevLine(text, maxChars, warnings, code) {
-  const s = String(text || '').trim();
-  if (s.length <= maxChars) return s;
-  if (warnings) volunteerHomeLayoutWarn(warnings, code, s);
-  return `${s.slice(0, maxChars - 1)}…`;
+  // Return the full abbrev text; no ellipsis truncation. Clients wrap.
+  return String(text || '').trim();
 }
 
 function volunteerHomeFitRetreatTitle(name, warnings) {
@@ -5128,8 +5126,8 @@ function selectedDaysJobsHint(params) {
     parts.push(`Jobs: ${params.selectedJobs}`);
   }
   const raw = parts.length ? parts.join(' · ') : '';
-  if (raw.length <= VOLUNTEER_HOME_MAX_HINT_CHARS) return raw;
-  return `${raw.slice(0, VOLUNTEER_HOME_MAX_HINT_CHARS - 1)}…`;
+  // Full hint text; no ellipsis truncation. Clients wrap.
+  return raw;
 }
 
 /**
