@@ -400,6 +400,20 @@
     body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-toolbar > #sdui-title {
       display: none;
     }
+    /* Let SDUI description/hint bars (.jh-sdui-bar) wrap fully instead of clamping to
+       one line with an ellipsis (see jewelheart-admin.css lines ~2110-2173). This targets
+       ONLY .jh-sdui-bar text elements, never the .jh-sdui-btn action buttons, which stay
+       single-line clamped by design. Ships inline so it wins on source order. */
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-home-action-pill.jh-sdui-bar,
+    body.jh-volunteer-clean #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar,
+    #volunteer-sdui-section .jh-sdui-gold-full-width.jh-sdui-bar {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      height: auto;
+      overflow-wrap: break-word;
+    }
   </style>
 </head>
 <body class="jh-volunteer-clean jh-volunteer-auth">
