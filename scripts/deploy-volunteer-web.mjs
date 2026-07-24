@@ -123,6 +123,19 @@ function deployRemoteEnv(env) {
     scpToRemote(redirectPath, 'public/login/volunteer.html', remoteDir);
   }
 
+  // Shared /login/manifest is what /retreat/ (and siblings) link for Add to Home Screen / PWA.
+  // Keep prod's start_url on /retreat/ (not legacy volunteer.html).
+  if (env === 'retreat') {
+    const manifestPath = path.join(tmpDir, 'manifest-volunteer.webmanifest');
+    fs.writeFileSync(
+      manifestPath,
+      `${JSON.stringify(buildVolunteerManifest(env, 'api'), null, 2)}\n`,
+      'utf8',
+    );
+    run('ssh', ['-o', 'BatchMode=yes', SSH, `mkdir -p ~/${remoteDir}/public/login`]);
+    scpToRemote(manifestPath, 'public/login/manifest-volunteer.webmanifest', remoteDir);
+  }
+
   process.stdout.write(`  api   -> ${cfg.loginUrl} (${remoteDir})\n`);
 }
 

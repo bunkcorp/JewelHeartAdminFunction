@@ -312,127 +312,132 @@
     "poster-cafe-lunch-light": [
       "AT END OF LUNCH BREAK:",
       "Wipe tables",
-      "Clean & tidy serving table",
-      "Vacuum or sweep",
-      "As needed, trash bag to kitchen, replace"
+      "Clean/tidy serving tbl",
+      "Vacuum/sweep",
+      "As needed…",
+      "Trash bags to kitchen",
+      "Replace bags"
     ],
     "poster-cafe-eod-full": [
       "AT END OF DAY:",
       "Wipe tables",
-      "Clear & clean serving table",
-      "Vacuum or sweep, mop",
+      "Clear & clean serving tbl",
+      "Vacuum/sweep, mop",
       "Wash dishes in kitchen",
-      "Trash (separate assignment)"
+      "Trash bags to kitchen",
+      "Replace bags"
     ],
     "poster-kitchen-lunch-light": [
       "AT END OF LUNCH BREAK:",
       "Wipe & tidy big table",
       "Vacuum or sweep",
-      "Store dry dishes, wash dishes…",
-      "Or load and run dishwasher"
+      "Store dry dishes.",
+      "Wash dishes or run dishwasher"
     ],
     "poster-kitchen-eod-full": [
       "AT END OF DAY:",
       "Wipe & tidy big table",
-      "Vacuum or sweep, mop",
-      "Store dry dishes, wash dishes",
-      "Or load and run dishwasher"
+      "Vacuum/sweep, mop",
+      "Store dry dishes.",
+      "Wash dishes or run washer"
     ],
     "poster-coffee-morning": [
       "EARLY MORNING, in Cafe:",
-      "Set out snacks",
-      "Set up tea, coffee, snacks",
-      "UNTIL END OF LUNCH:",
-      "Keep pots full, space tidy"
+      "Set up tea, coffee, sncks",
+      "UNTIL END OF LUNCH…",
+      "Keep pots full, tbls tidy"
     ],
     "poster-coffee-evening": [
       "LUNCH TO END OF DAY:",
-      "Keep pots full, space tidy",
+      "Keep pots full, tbls tidy",
       "AT END OF DAY:",
-      "Put away or cover snacks",
-      "Clear & clean serving table",
+      "Put away/cover snacks",
+      "Clean, tidy serving table",
       "Wash coffee & tea pots"
     ],
     "poster-towels-launder": [
-      "Get dirty towels under kitchen rack",
-      "Get dirty mop pads in closet",
+      "Dirty twls under K rack",
+      "Dirty mop pads in closet",
       "Launder at home",
-      "Return in the morning"
+      "Return in morning"
     ],
     "poster-trash-recycling": [
-      "Gather, bag kitchen & café trash",
+      "Gather K & café trash",
       "Take bags to dumpster",
       "Put in fresh bags",
       "If needed…",
-      "Gather, bag kitchn & café recycle",
+      "Gather K & café recycl",
       "Take to JH office…",
-      "(behind Hartmut’s old desk)",
-      "Put fresh big bags in boxes"
+      "behind Hartmut’s old desk",
+      "Fresh big bags in boxes"
     ],
     "poster-tara-vacuum": [
-      "Vacuum Tara Paradise floors",
-      "Vacuum store floors",
-      "Vac, dust, tidy office as needed",
-      "Vacuum store-to-Tara hall",
-      "Vacuum sofas as needed"
+      "Tara Paradise",
+      "Store, hall",
+      "Sofas as needed",
+      "Office if needed",
+      "Dust, tidy as needed"
     ],
     "poster-jh-hallway-vacuum": [
-      "Vacuum JH office",
-      "Vacuum main hallway",
-      "Vacuum carpet room as needed"
+      "JH office",
+      "Main hallway",
+      "Carpet room as needed"
     ],
     "poster-coatrm-vacuum": [
-      "Vacuum coatroom",
-      "Vacuum café-coatrm hall",
-      "Vacuum rear of main hall"
+      "Coatroom",
+      "Café-coatroom hall",
+      "Main hall to sound booth"
     ],
     "poster-foyer-vacuum": [
-      "Vacuum lobby to café entrance",
-      "Vacuum to main hall entrance",
-      "Vacuum entrance/foyer",
+      "Vacuum lobby…",
+      "To café entrance",
+      "To main hall entrance",
+      "Vacuum entrance",
       "Vacuum under big rugs",
-      "Vacuum big rugs",
-      "If really dirty, shake outside (get help)"
+      "Vacuum big rugs"
     ],
     "poster-front-windows": [
       "Clean entrance windows"
     ],
     "poster-mens-room": [
-      "Take trash bag to kitchen",
+      "Trash bag to kitchen",
       "Replace trash bag",
       "Mop",
-      "Clean sink, wipe counter, fixtures",
-      "Clean toilet with sanitary wipes",
-      "Replenish supplies from cabinet"
+      "Clean sink",
+      "Wipe counter, fixtures",
+      "Cln toilet, sanitary wipes",
+      "Fll supplies from cabinet"
     ],
     "poster-urinals": [
-      "TWICE A DAY OR MORE, as needed:",
+      "TWICE A DAY as needed:",
       "Mop around urinals",
-      "Clean urinals with sanitary wipes",
-      "Moisten mop pad SLIGHTLY",
-      "Or change mop pad as needed"
+      "Cln urinals sanitary wipes",
+      "Wet mop pad SLIGHTLY",
+      "Or change pad as needed"
     ],
     "poster-womens-room": [
-      "Take trash bag to kitchen or dumpster",
+      "Trash bag to K or dumpster",
       "Replace trash bag",
       "Mop",
-      "Clean sink, wipe counter, fixtures",
-      "Clean toilets with sanitary wipes",
-      "Replenish supplies from cabinet"
+      "Clean sink",
+      "Wipe counter, fixtures",
+      "Cln toilets sanitary wipes",
+      "Fill supplies from cabinet"
     ],
     "poster-unisex-lama": [
-      "Take trash bag to kitchen or dumpster",
+      "Trash bag to K or dumpster",
       "Replace trash bag",
       "Mop",
-      "Clean sink, wipe counter. fixtures",
-      "Clean toilets with sanitary wipes",
-      "Replenish supplies from cabinet"
+      "Clean sink",
+      "Wipe counter. fixtures",
+      "Cln toilets sanitary wipes",
+      "Fill supplies from cabinet"
     ]
   },
   "source": {
-    "jobsXlsx": "C:\\Data\\dev\\JHapp\\JewelHeartAdminFunction\\data\\jewelheart\\jobs-v4.xlsx",
-    "instructionsDocx": "C:\\Data\\dev\\JHapp\\JewelHeartAdminFunction\\data\\jewelheart\\instructions.docx",
-    "generatedAt": "2026-07-19T19:07:20.234Z"
+    "jobsXlsx": "/Users/kevinwoods/Desktop/JewelHeartAdminFunction/data/jewelheart/jobs-v4.xlsx",
+    "instructionsDocx": "/Users/kevinwoods/Desktop/JewelHeartAdminFunction/data/jewelheart/instructions.docx",
+    "generatedAt": "2026-07-24T15:48:31.735Z"
   },
   "titleCheck": {
     "errors": [],

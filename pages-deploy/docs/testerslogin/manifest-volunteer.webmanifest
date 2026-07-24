@@ -2,7 +2,7 @@
   "name": "JewelHeart Volunteers",
   "short_name": "JewelHeart",
   "description": "JewelHeart retreat volunteer app",
-  "start_url": "volunteer.html",
+  "start_url": "/retreat/",
   "display": "standalone",
   "background_color": "#5bb5e8",
   "theme_color": "#92160e",
